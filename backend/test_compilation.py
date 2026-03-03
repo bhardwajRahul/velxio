@@ -144,7 +144,7 @@ async def test_api_endpoint():
         import httpx
 
         # Test if server is running
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=True) as client:
             try:
                 response = await client.get("http://localhost:8001/api/compile/boards", timeout=5.0)
                 if response.status_code == 200:

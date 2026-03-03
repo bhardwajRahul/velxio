@@ -81,14 +81,13 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
         <div className="modal-header">
           <h2>Add Component</h2>
           <button className="close-btn" onClick={onClose} aria-label="Close">
-            ✕
+            X
           </button>
         </div>
 
         {/* Search Bar */}
         <div className="search-section">
           <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
             <input
               type="text"
               className="search-input"
@@ -103,7 +102,7 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
                 onClick={() => setSearchQuery('')}
                 aria-label="Clear search"
               >
-                ✕
+                X
               </button>
             )}
           </div>

@@ -146,15 +146,15 @@ export class ComponentRegistry {
    */
   static getCategoryDisplayName(category: ComponentCategory): string {
     const displayNames: Record<ComponentCategory, string> = {
-      boards: '🖥️ Boards',
-      sensors: '📡 Sensors',
-      displays: '📺 Displays',
-      input: '🎮 Input',
-      output: '💡 Output',
-      motors: '⚙️ Motors',
-      communication: '📶 Communication',
-      passive: '🔌 Passive',
-      other: '📦 Other',
+      boards: 'Boards',
+      sensors: 'Sensors',
+      displays: 'Displays',
+      input: 'Input',
+      output: 'Output',
+      motors: 'Motors',
+      communication: 'Communication',
+      passive: 'Passive',
+      other: 'Other',
     };
     return displayNames[category] || category;
   }

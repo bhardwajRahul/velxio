@@ -1,12 +1,12 @@
-# Arquitectura del Proyecto - Arduino Emulator
+# Project Architecture - Arduino Emulator
 
-## Visión General
+## Overview
 
-Este proyecto es un emulador de Arduino que funciona completamente local, utilizando los repositorios oficiales de Wokwi para máxima compatibilidad.
+This project is a fully local Arduino emulator using official Wokwi repositories for maximum compatibility.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    USUARIO (Navegador)                      │
+│                    USER (Browser)                           │
 │                   http://localhost:5173                      │
 └──────────────────────────┬──────────────────────────────────┘
                            │
@@ -24,7 +24,7 @@ Este proyecto es un emulador de Arduino que funciona completamente local, utiliz
 │                              ▼                               │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │         Wokwi Components Integration                 │   │
-│  │  (wokwi-elements + avr8js desde repos locales)      │   │
+│  │  (wokwi-elements + avr8js from local repos)         │   │
 │  └──────────────────────────────────────────────────────┘   │
 └──────────────────────────┬──────────────────────────────────┘
                            │ HTTP (axios)
@@ -35,41 +35,41 @@ Este proyecto es un emulador de Arduino que funciona completamente local, utiliz
 │                                                              │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  POST /api/compile                                   │    │
-│  │  - Recibe código Arduino (.ino)                      │    │
-│  │  - Compila con arduino-cli                           │    │
-│  │  - Retorna archivo .hex                              │    │
+│  │  - Receives Arduino code (.ino)                      │    │
+│  │  - Compiles with arduino-cli                         │    │
+│  │  - Returns .hex file                                 │    │
 │  └─────────────────────────────────────────────────────┘    │
 │                           │                                  │
 │                           ▼                                  │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │         Arduino CLI Service                          │    │
-│  │  (Invoca arduino-cli como subprocess)                │    │
+│  │  (Invokes arduino-cli as subprocess)                 │    │
 │  └─────────────────────────────────────────────────────┘    │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
                 ┌──────────────────────┐
                 │    arduino-cli       │
-                │   (Sistema local)    │
+                │   (Local system)     │
                 └──────────────────────┘
 ```
 
-## Flujo de Datos: Compilación y Simulación
+## Data Flow: Compilation and Simulation
 
-### 1. Edición de Código
+### 1. Code Editing
 ```
-Usuario escribe código
+User writes code
     ↓
 Monaco Editor
     ↓
 Zustand (useEditorStore)
     ↓
-Estado: code
+State: code
 ```
 
-### 2. Compilación
+### 2. Compilation
 ```
-Click en "Compile"
+Click "Compile"
     ↓
 EditorToolbar.tsx → compileCode()
     ↓
@@ -79,31 +79,31 @@ Backend: ArduinoCLIService.compile()
     ↓
 arduino-cli compile --fqbn arduino:avr:uno
     ↓
-Genera archivo .hex en directorio temporal
+Generates .hex file in temp directory
     ↓
-Backend lee .hex y retorna contenido
+Backend reads .hex and returns content
     ↓
 Frontend: useSimulatorStore.setCompiledHex()
 ```
 
-### 3. Simulación (Actualmente simplificada)
+### 3. Simulation (Currently simplified)
 ```
-Click en "Run"
+Click "Run"
     ↓
 useSimulatorStore.setRunning(true)
     ↓
-SimulatorCanvas: useEffect detecta running=true
+SimulatorCanvas: useEffect detects running=true
     ↓
-setInterval cada 1000ms
+setInterval every 1000ms
     ↓
 updateComponentState('led-builtin', !state)
     ↓
-wokwi-led component actualiza visualmente
+wokwi-led component updates visually
 ```
 
-### 4. Simulación Real (Próximamente con avr8js)
+### 4. Real Simulation (Coming with avr8js)
 ```
-Archivo .hex compilado
+Compiled .hex file
     ↓
 AVRSimulator.loadHex(hex)
     ↓
@@ -117,97 +117,97 @@ requestAnimationFrame loop
     ↓
 CPU.tick() × 267,000 cycles/frame
     ↓
-Escribe en PORTB/PORTC/PORTD
+Writes to PORTB/PORTC/PORTD
     ↓
 Write hooks → PinManager.updatePort()
     ↓
-PinManager notifica callbacks
+PinManager notifies callbacks
     ↓
-Componentes actualizan estado visual
+Components update visual state
 ```
 
-## Componentes Clave
+## Key Components
 
 ### Frontend
 
 #### 1. Stores (Zustand)
 - **[useEditorStore.ts](frontend/src/store/useEditorStore.ts)**
-  - `code`: Código fuente actual
-  - `theme`: Tema del editor (dark/light)
-  - `setCode()`: Actualizar código
+  - `code`: Current source code
+  - `theme`: Editor theme (dark/light)
+  - `setCode()`: Update code
 
 - **[useSimulatorStore.ts](frontend/src/store/useSimulatorStore.ts)**
-  - `running`: Estado de simulación
-  - `compiledHex`: Archivo hex compilado
-  - `components`: Lista de componentes electrónicos
-  - `setCompiledHex()`: Guardar hex
-  - `updateComponentState()`: Actualizar LED/componente
+  - `running`: Simulation state
+  - `compiledHex`: Compiled hex file
+  - `components`: List of electronic components
+  - `setCompiledHex()`: Save hex
+  - `updateComponentState()`: Update LED/component
 
-#### 2. Componentes UI
+#### 2. UI Components
 - **[CodeEditor.tsx](frontend/src/components/editor/CodeEditor.tsx)**
-  - Wrapper de Monaco Editor
-  - Syntax highlighting C++
-  - Auto-completado
+  - Monaco Editor wrapper
+  - C++ syntax highlighting
+  - Auto-completion
 
 - **[EditorToolbar.tsx](frontend/src/components/editor/EditorToolbar.tsx)**
-  - Botones: Compile, Run, Stop
-  - Manejo de estados de compilación
-  - Mensajes de error/éxito
+  - Buttons: Compile, Run, Stop
+  - Compilation state handling
+  - Error/success messages
 
 - **[SimulatorCanvas.tsx](frontend/src/components/simulator/SimulatorCanvas.tsx)**
-  - Renderiza Arduino Uno
-  - Renderiza componentes (LEDs)
-  - Loop de simulación
+  - Renders Arduino Uno
+  - Renders components (LEDs)
+  - Simulation loop
 
-#### 3. Wokwi Components Wrappers
+#### 3. Wokwi Component Wrappers
 - **[LED.tsx](frontend/src/components/components-wokwi/LED.tsx)**
-  - Wrapper React para `<wokwi-led>`
+  - React wrapper for `<wokwi-led>`
   - Props: color, value, x, y
 
 - **[ArduinoUno.tsx](frontend/src/components/components-wokwi/ArduinoUno.tsx)**
-  - Wrapper React para `<wokwi-arduino-uno>`
-  - Control de LED interno (pin 13)
+  - React wrapper for `<wokwi-arduino-uno>`
+  - Internal LED control (pin 13)
 
 - **[Resistor.tsx](frontend/src/components/components-wokwi/Resistor.tsx)**
-  - Wrapper React para `<wokwi-resistor>`
+  - React wrapper for `<wokwi-resistor>`
   - Props: value (ohms)
 
 - **[Pushbutton.tsx](frontend/src/components/components-wokwi/Pushbutton.tsx)**
-  - Wrapper React para `<wokwi-pushbutton>`
+  - React wrapper for `<wokwi-pushbutton>`
   - Events: onPress, onRelease
 
 ### Backend
 
 #### 1. API Routes
 - **[compile.py](backend/app/api/routes/compile.py)**
-  - `POST /api/compile`: Compilar código
-  - `GET /api/compile/boards`: Listar placas
+  - `POST /api/compile`: Compile code
+  - `GET /api/compile/boards`: List boards
 
 #### 2. Services
 - **[arduino_cli.py](backend/app/services/arduino_cli.py)**
-  - `compile()`: Compilar sketch con arduino-cli
-  - `list_boards()`: Obtener placas disponibles
-  - Manejo de directorios temporales
+  - `compile()`: Compile sketch with arduino-cli
+  - `list_boards()`: Get available boards
+  - Temporary directory management
 
-### Wokwi Libraries (Clonadas Localmente)
+### Wokwi Libraries (Cloned Locally)
 
 #### 1. wokwi-elements
-- **Ubicación**: `wokwi-libs/wokwi-elements/`
-- **Build**: `dist/esm/` y `dist/cjs/`
-- **Componentes**: 50+ elementos electrónicos
-- **Tecnología**: Lit (Web Components)
+- **Location**: `wokwi-libs/wokwi-elements/`
+- **Build**: `dist/esm/` and `dist/cjs/`
+- **Components**: 50+ electronic elements
+- **Technology**: Lit (Web Components)
 
 #### 2. avr8js
-- **Ubicación**: `wokwi-libs/avr8js/`
-- **Build**: `dist/esm/` y `dist/cjs/`
-- **Funcionalidad**: Emulador completo de ATmega328p
-- **Soporta**: CPU, Timers, USART, GPIO, ADC, etc.
+- **Location**: `wokwi-libs/avr8js/`
+- **Build**: `dist/esm/` and `dist/cjs/`
+- **Functionality**: Complete ATmega328p emulator
+- **Supports**: CPU, Timers, USART, GPIO, ADC, etc.
 
 #### 3. rp2040js
-- **Ubicación**: `wokwi-libs/rp2040js/`
-- **Uso futuro**: Soporte para Raspberry Pi Pico
+- **Location**: `wokwi-libs/rp2040js/`
+- **Future use**: Raspberry Pi Pico support
 
-## Integración con Vite
+## Vite Integration
 
 ### Alias Configuration
 ```typescript
@@ -220,98 +220,98 @@ resolve: {
 }
 ```
 
-Esto permite:
-- Usar repos locales en lugar de npm
-- Actualizar fácilmente con `git pull`
-- Modificar código fuente si es necesario
+This allows:
+- Use local repos instead of npm
+- Easy updates with `git pull`
+- Modify source code if needed
 
-## Stack Tecnológico
+## Technology Stack
 
 ### Frontend
-| Tecnología | Versión | Propósito |
+| Technology | Version | Purpose |
 |------------|---------|-----------|
-| React | 19.2 | Framework UI |
+| React | 19.2 | UI framework |
 | Vite | 7.3 | Build tool & dev server |
-| TypeScript | 5.9 | Tipado estático |
-| Monaco Editor | 4.7 | Editor de código (VSCode) |
+| TypeScript | 5.9 | Static typing |
+| Monaco Editor | 4.7 | Code editor (VSCode) |
 | Zustand | 5.0 | State management |
 | Axios | 1.13 | HTTP client |
-| wokwi-elements | 1.9.2 | Componentes electrónicos |
-| avr8js | 0.21.0 | Emulador AVR8 |
+| wokwi-elements | 1.9.2 | Electronic components |
+| avr8js | 0.21.0 | AVR8 emulator |
 
 ### Backend
-| Tecnología | Versión | Propósito |
+| Technology | Version | Purpose |
 |------------|---------|-----------|
 | Python | 3.12+ | Runtime |
 | FastAPI | 0.115 | Web framework |
 | Uvicorn | 0.32 | ASGI server |
-| SQLAlchemy | 2.0 | ORM (futuro) |
-| aiosqlite | 0.20 | DB async (futuro) |
+| SQLAlchemy | 2.0 | ORM (future) |
+| aiosqlite | 0.20 | Async DB (future) |
 
-### Herramientas Externas
-| Herramienta | Propósito |
-|-------------|-----------|
-| arduino-cli | Compilador de Arduino |
-| Git | Control de versiones de Wokwi libs |
+### External Tools
+| Tool | Purpose |
+|------|---------|
+| arduino-cli | Arduino compiler |
+| Git | Version control for Wokwi libs |
 
-## Ventajas de la Arquitectura
+## Architecture Advantages
 
-### ✅ Separación de Responsabilidades
-- **Frontend**: UI, UX, visualización
-- **Backend**: Compilación, lógica de negocio
-- **Wokwi Libs**: Emulación y componentes (mantenido por Wokwi)
+### ✅ Separation of Concerns
+- **Frontend**: UI, UX, visualization
+- **Backend**: Compilation, business logic
+- **Wokwi Libs**: Emulation and components (maintained by Wokwi)
 
-### ✅ Compatibilidad con Wokwi
-- Repositorios oficiales = misma funcionalidad
-- Actualizaciones automáticas con `git pull`
-- Nuevos componentes disponibles inmediatamente
+### ✅ Wokwi Compatibility
+- Official repositories = same functionality
+- Automatic updates with `git pull`
+- New components available immediately
 
-### ✅ Escalabilidad
-- Frontend puede agregar más componentes fácilmente
-- Backend puede agregar más endpoints (proyectos, sensores)
-- Wokwi libs se actualizan independientemente
+### ✅ Scalability
+- Frontend can easily add more components
+- Backend can add more endpoints (projects, sensors)
+- Wokwi libs update independently
 
-### ✅ Desarrollo Local
-- No requiere internet para funcionar
-- Compilación local con arduino-cli
-- Base de datos local (SQLite)
+### ✅ Local Development
+- No internet required to work
+- Local compilation with arduino-cli
+- Local database (SQLite)
 
-## Próximas Mejoras
+## Upcoming Improvements
 
-### Fase 2: Emulación Real (avr8js)
+### Phase 2: Real Emulation (avr8js)
 ```
-[ ] Implementar AVRSimulator.ts
-[ ] Parser de archivos Intel HEX
-[ ] PinManager con write hooks
-[ ] Integrar CPU execution loop
-[ ] Mapear pines Arduino a componentes
-```
-
-### Fase 3: Más Componentes
-```
-[ ] Integrar más wokwi-elements
-[ ] Botones, potenciómetros
-[ ] Sensores (DHT22, HC-SR04)
-[ ] Pantallas (LCD, 7-segment)
+[ ] Implement AVRSimulator.ts
+[ ] Intel HEX file parser
+[ ] PinManager with write hooks
+[ ] Integrate CPU execution loop
+[ ] Map Arduino pins to components
 ```
 
-### Fase 4: Persistencia
+### Phase 3: More Components
 ```
-[ ] Base de datos SQLite
-[ ] Modelos SQLAlchemy
-[ ] CRUD de proyectos
-[ ] Guardar circuitos como JSON
+[ ] Integrate more wokwi-elements
+[ ] Buttons, potentiometers
+[ ] Sensors (DHT22, HC-SR04)
+[ ] Displays (LCD, 7-segment)
 ```
 
-### Fase 5: Features Avanzadas
+### Phase 4: Persistence
+```
+[ ] SQLite database
+[ ] SQLAlchemy models
+[ ] Project CRUD
+[ ] Save circuits as JSON
+```
+
+### Phase 5: Advanced Features
 ```
 [ ] Serial Monitor
-[ ] Wiring visual (drag & drop)
-[ ] Múltiples placas (Mega, Nano, ESP32)
-[ ] Exportar a Wokwi.com
+[ ] Visual wiring (drag & drop)
+[ ] Multiple boards (Mega, Nano, ESP32)
+[ ] Export to Wokwi.com
 ```
 
-## Referencias
+## References
 
 - [Wokwi Elements Repo](https://github.com/wokwi/wokwi-elements)
 - [AVR8js Repo](https://github.com/wokwi/avr8js)

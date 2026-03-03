@@ -174,6 +174,8 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
         userSelect: 'none',
         zIndex: isSelected ? 1000 : 1,
         pointerEvents: 'auto',
+        transform: properties.rotation ? `rotate(${properties.rotation}deg)` : undefined,
+        transformOrigin: 'center center',
       }}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}

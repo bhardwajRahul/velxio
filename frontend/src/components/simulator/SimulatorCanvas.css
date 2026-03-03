@@ -7,20 +7,19 @@
 /* Add Component Button */
 .add-component-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #007acc;
   color: white;
   border: none;
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
   transition: all 0.2s;
   white-space: nowrap;
 }
 
 .add-component-btn:hover {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  background: #005a9e;
   transform: translateY(-1px);
 }
 
@@ -84,10 +83,10 @@
   padding: 20px;
   position: relative;
   overflow: auto;
+  background-color: #1e1e1e;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 20px 20px;
+    repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(255, 255, 255, 0.03) 19px, rgba(255, 255, 255, 0.03) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255, 255, 255, 0.03) 19px, rgba(255, 255, 255, 0.03) 20px);
 }
 
 .arduino-board {

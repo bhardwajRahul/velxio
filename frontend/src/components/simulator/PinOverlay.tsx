@@ -9,8 +9,8 @@ import React, { useEffect, useState } from 'react';
 
 interface PinInfo {
   name: string;
-  x: number;  // mm
-  y: number;  // mm
+  x: number;  // CSS pixels
+  y: number;  // CSS pixels
   signals?: Array<{ type: string; signal?: string }>;
 }
 
@@ -21,8 +21,6 @@ interface PinOverlayProps {
   onPinClick: (componentId: string, pinName: string, x: number, y: number) => void;
   showPins: boolean;
 }
-
-const MM_TO_PX = 3.7795275591;
 
 export const PinOverlay: React.FC<PinOverlayProps> = ({
   componentId,
@@ -52,12 +50,13 @@ export const PinOverlay: React.FC<PinOverlayProps> = ({
         left: `${componentX + 6}px`, // +6px for wrapper padding (4px padding + 2px border)
         top: `${componentY + 6}px`,
         pointerEvents: 'none',
-        zIndex: 10,
+        zIndex: 1002, // Above property dialog (1001)
       }}
     >
       {pins.map((pin) => {
-        const pinX = pin.x * MM_TO_PX;
-        const pinY = pin.y * MM_TO_PX;
+        // Pin coordinates are already in CSS pixels
+        const pinX = pin.x;
+        const pinY = pin.y;
 
         return (
           <div

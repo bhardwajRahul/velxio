@@ -2,6 +2,7 @@ import { useSimulatorStore, ARDUINO_POSITION } from '../../store/useSimulatorSto
 import React, { useEffect, useState, useRef } from 'react';
 import { ArduinoUno } from '../components-wokwi/ArduinoUno';
 import { ComponentPickerModal } from '../ComponentPickerModal';
+import { ComponentPropertyDialog } from './ComponentPropertyDialog';
 import { DynamicComponent, createComponentFromMetadata } from '../DynamicComponent';
 import { ComponentRegistry } from '../../services/ComponentRegistry';
 import { PinSelector } from './PinSelector';
@@ -39,12 +40,18 @@ export const SimulatorCanvas = () => {
   const [showPinSelector, setShowPinSelector] = useState(false);
   const [pinSelectorPos, setPinSelectorPos] = useState({ x: 0, y: 0 });
 
+  // Component property dialog
+  const [showPropertyDialog, setShowPropertyDialog] = useState(false);
+  const [propertyDialogComponentId, setPropertyDialogComponentId] = useState<string | null>(null);
+  const [propertyDialogPosition, setPropertyDialogPosition] = useState({ x: 0, y: 0 });
+
+  // Click vs drag detection
+  const [clickStartTime, setClickStartTime] = useState<number>(0);
+  const [clickStartPos, setClickStartPos] = useState({ x: 0, y: 0 });
+
   // Component dragging state
   const [draggedComponentId, setDraggedComponentId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  // Pin visualization
-  const [hoveredComponentId, setHoveredComponentId] = useState<string | null>(null);
 
   // Canvas ref for coordinate calculations
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -135,14 +142,32 @@ export const SimulatorCanvas = () => {
     } as any);
   };
 
+  // Component rotation
+  const handleRotateComponent = (componentId: string) => {
+    const component = components.find((c) => c.id === componentId);
+    if (!component) return;
+
+    const currentRotation = (component.properties.rotation as number) || 0;
+    updateComponent(componentId, {
+      properties: {
+        ...component.properties,
+        rotation: (currentRotation + 90) % 360,
+      },
+    } as any);
+  };
+
   // Component dragging handlers
   const handleComponentMouseDown = (componentId: string, e: React.MouseEvent) => {
-    // Don't start dragging if we're clicking on the pin selector
-    if (showPinSelector) return;
+    // Don't start dragging if we're clicking on the pin selector or property dialog
+    if (showPinSelector || showPropertyDialog) return;
 
     e.stopPropagation();
     const component = components.find((c) => c.id === componentId);
     if (!component || !canvasRef.current) return;
+
+    // Record click start for click vs drag detection
+    setClickStartTime(Date.now());
+    setClickStartPos({ x: e.clientX, y: e.clientY });
 
     // Get canvas position to convert viewport coords to canvas coords
     const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -180,8 +205,25 @@ export const SimulatorCanvas = () => {
     }
   };
 
-  const handleCanvasMouseUp = () => {
+  const handleCanvasMouseUp = (e: React.MouseEvent) => {
     if (draggedComponentId) {
+      // Check if this was a click or a drag
+      const timeDiff = Date.now() - clickStartTime;
+      const posDiff = Math.sqrt(
+        Math.pow(e.clientX - clickStartPos.x, 2) +
+        Math.pow(e.clientY - clickStartPos.y, 2)
+      );
+
+      // If moved < 5px and time < 300ms, treat as click
+      if (posDiff < 5 && timeDiff < 300) {
+        const component = components.find((c) => c.id === draggedComponentId);
+        if (component) {
+          setPropertyDialogComponentId(draggedComponentId);
+          setPropertyDialogPosition({ x: component.x, y: component.y });
+          setShowPropertyDialog(true);
+        }
+      }
+
       // Recalculate wire positions after moving component
       recalculateAllWirePositions();
       setDraggedComponentId(null);
@@ -190,6 +232,11 @@ export const SimulatorCanvas = () => {
 
   // Wire creation via pin clicks
   const handlePinClick = (componentId: string, pinName: string, x: number, y: number) => {
+    // Close property dialog when starting wire creation
+    if (showPropertyDialog) {
+      setShowPropertyDialog(false);
+    }
+
     if (wireInProgress) {
       // Finish wire creation
       finishWireCreation({
@@ -230,8 +277,8 @@ export const SimulatorCanvas = () => {
     }
 
     const isSelected = selectedComponentId === component.id;
-    const isHovered = hoveredComponentId === component.id;
-    const showPinsForComponent = isHovered || wireInProgress !== null;
+    // Always show pins for better UX when creating wires
+    const showPinsForComponent = true;
 
     return (
       <React.Fragment key={component.id}>
@@ -248,8 +295,6 @@ export const SimulatorCanvas = () => {
           onDoubleClick={(e) => {
             handleComponentDoubleClick(component.id, e);
           }}
-          onMouseEnter={() => setHoveredComponentId(component.id)}
-          onMouseLeave={() => setHoveredComponentId(null)}
         />
 
         {/* Pin overlay for wire creation */}
@@ -308,7 +353,7 @@ export const SimulatorCanvas = () => {
             componentX={ARDUINO_POSITION.x}
             componentY={ARDUINO_POSITION.y}
             onPinClick={handlePinClick}
-            showPins={wireInProgress !== null}
+            showPins={true}
           />
 
           {/* Components using wokwi-elements */}
@@ -331,6 +376,32 @@ export const SimulatorCanvas = () => {
           position={pinSelectorPos}
         />
       )}
+
+      {/* Component Property Dialog */}
+      {showPropertyDialog && propertyDialogComponentId && (() => {
+        const component = components.find((c) => c.id === propertyDialogComponentId);
+        const metadata = component ? registry.getById(component.metadataId) : null;
+        if (!component || !metadata) return null;
+
+        const element = document.getElementById(propertyDialogComponentId);
+        const pinInfo = element ? (element as any).pinInfo : [];
+
+        return (
+          <ComponentPropertyDialog
+            componentId={propertyDialogComponentId}
+            componentMetadata={metadata}
+            componentProperties={component.properties}
+            position={propertyDialogPosition}
+            pinInfo={pinInfo || []}
+            onClose={() => setShowPropertyDialog(false)}
+            onRotate={handleRotateComponent}
+            onDelete={(id) => {
+              removeComponent(id);
+              setShowPropertyDialog(false);
+            }}
+          />
+        );
+      })()}
 
       {/* Component Picker Modal */}
       <ComponentPickerModal

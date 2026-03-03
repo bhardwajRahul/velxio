@@ -7,25 +7,25 @@ const COMPONENT_TEMPLATES: ComponentTemplate[] = [
   {
     type: 'led',
     label: 'LED',
-    icon: '💡',
+    icon: 'L',
     defaultProperties: { color: 'red' },
   },
   {
     type: 'resistor',
     label: 'Resistor',
-    icon: '⚡',
+    icon: 'R',
     defaultProperties: { value: 220 },
   },
   {
     type: 'pushbutton',
     label: 'Button',
-    icon: '🔘',
+    icon: 'B',
     defaultProperties: { color: 'red' },
   },
   {
     type: 'potentiometer',
     label: 'Potentiometer',
-    icon: '🎛️',
+    icon: 'P',
     defaultProperties: { value: 50 },
   },
 ];
@@ -61,9 +61,9 @@ export const ComponentPalette = ({ onDragStart }: ComponentPaletteProps) => {
         ))}
       </div>
       <div className="palette-help">
-        <p>💡 Drag components to the canvas</p>
-        <p>📍 Click a component to assign pin</p>
-        <p>🗑️ Press Delete to remove selected</p>
+        <p>Drag components to the canvas</p>
+        <p>Click a component to assign pin</p>
+        <p>Press Delete to remove selected</p>
       </div>
     </div>
   );
