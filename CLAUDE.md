@@ -243,6 +243,14 @@ Wire positions auto-update when components move via `updateWirePositions()`.
 - [frontend/src/pages/UserProfilePage.tsx](frontend/src/pages/UserProfilePage.tsx) - Profile with project grid
 - [frontend/src/pages/ProjectPage.tsx](frontend/src/pages/ProjectPage.tsx) - Loads project into editor
 
+### Frontend - SEO & Public Files
+- `frontend/index.html` — Full SEO meta tags, OG, Twitter Card, JSON-LD. **Domain is `https://velxio.dev`** — update if domain changes.
+- `frontend/public/favicon.svg` — SVG chip favicon (scales to all sizes)
+- `frontend/public/og-image.svg` — 1200×630 social preview image (OG/Twitter). Export as PNG for max compatibility.
+- `frontend/public/robots.txt` — Allow all crawlers, points to sitemap
+- `frontend/public/sitemap.xml` — All public routes with priorities
+- `frontend/public/manifest.webmanifest` — PWA manifest, theme color `#007acc`
+
 ### Docker & CI
 - [Dockerfile.standalone](Dockerfile.standalone) - Multi-stage Docker build
 - [.github/workflows/docker-publish.yml](.github/workflows/docker-publish.yml) - Publishes to GHCR + Docker Hub on push to master
