@@ -66,35 +66,14 @@ function generateMultiSegmentPath(
 ): string {
   let path = `M ${start.x} ${start.y}`;
 
-  // Add control points with orthogonal constraint
+  // Control points already represent exact corners, so connect them sequentially
   for (let i = 0; i < controlPoints.length; i++) {
     const cp = controlPoints[i];
-    const prev = i === 0 ? start : controlPoints[i - 1];
-
-    // Determine if we should go horizontal-first or vertical-first
-    // Based on which axis has more distance to cover
-    const dx = Math.abs(cp.x - prev.x);
-    const dy = Math.abs(cp.y - prev.y);
-
-    if (dx > dy) {
-      // More horizontal movement - go horizontal first, then vertical
-      path += ` L ${cp.x} ${prev.y} L ${cp.x} ${cp.y}`;
-    } else {
-      // More vertical movement - go vertical first, then horizontal
-      path += ` L ${prev.x} ${cp.y} L ${cp.x} ${cp.y}`;
-    }
+    path += ` L ${cp.x} ${cp.y}`;
   }
 
   // Connect last control point to end
-  const lastPoint = controlPoints.length > 0 ? controlPoints[controlPoints.length - 1] : start;
-  const dx = Math.abs(end.x - lastPoint.x);
-  const dy = Math.abs(end.y - lastPoint.y);
-
-  if (dx > dy) {
-    path += ` L ${end.x} ${lastPoint.y} L ${end.x} ${end.y}`;
-  } else {
-    path += ` L ${lastPoint.x} ${end.y} L ${end.x} ${end.y}`;
-  }
+  path += ` L ${end.x} ${end.y}`;
 
   return path;
 }
