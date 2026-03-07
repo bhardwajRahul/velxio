@@ -8,6 +8,7 @@ import { RegisterPage } from './pages/RegisterPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { ProjectPage } from './pages/ProjectPage';
 import { ProjectByIdPage } from './pages/ProjectByIdPage';
+import { AdminPage } from './pages/AdminPage';
 import { useAuthStore } from './store/useAuthStore';
 import './App.css';
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/examples" element={<ExamplesPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         {/* Canonical project URL by ID */}
         <Route path="/project/:id" element={<ProjectByIdPage />} />
         {/* Legacy slug route — redirects to /project/:id */}

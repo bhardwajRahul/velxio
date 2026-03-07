@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.api.routes import compile, libraries
+from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.projects import router as projects_router
 from app.core.config import settings
@@ -19,6 +20,11 @@ import app.models.project  # noqa: F401
 async def lifespan(_app: FastAPI):
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Add is_admin column to existing databases that predate this feature
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
+        except Exception:
+            pass  # Column already exists
     yield
 
 
@@ -48,6 +54,7 @@ app.include_router(compile.router, prefix="/api/compile", tags=["compilation"])
 app.include_router(libraries.router, prefix="/api/libraries", tags=["libraries"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(projects_router, prefix="/api", tags=["projects"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 
 @app.get("/")
