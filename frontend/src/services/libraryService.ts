@@ -1,4 +1,4 @@
-const API_BASE = `${import.meta.env.VITE_API_BASE || 'http://localhost:8001/api'}/libraries`;
+const API_BASE = `${import.meta.env.VITE_API_BASE || '/api'}/libraries`;
 
 export interface ArduinoLibrary {
     name: string;
