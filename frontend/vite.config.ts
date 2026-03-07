@@ -12,6 +12,14 @@ export default defineConfig({
       '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+      },
+    },
+  },
   optimizeDeps: {
     include: ['avr8js', 'rp2040js', '@wokwi/elements'],
   },

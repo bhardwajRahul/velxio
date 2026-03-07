@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8001/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export interface SketchFile {
   name: string;
