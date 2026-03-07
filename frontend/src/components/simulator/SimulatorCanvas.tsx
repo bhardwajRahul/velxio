@@ -1,4 +1,4 @@
-import { useSimulatorStore, ARDUINO_POSITION, BOARD_LABELS } from '../../store/useSimulatorStore';
+import { useSimulatorStore, BOARD_LABELS } from '../../store/useSimulatorStore';
 import type { BoardType } from '../../store/useSimulatorStore';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ArduinoUno } from '../components-wokwi/ArduinoUno';
@@ -19,6 +19,8 @@ export const SimulatorCanvas = () => {
   const {
     boardType,
     setBoardType,
+    boardPosition,
+    setBoardPosition,
     components,
     running,
     pinManager,
@@ -289,10 +291,17 @@ export const SimulatorCanvas = () => {
     // Handle component dragging
     if (draggedComponentId) {
       const world = toWorld(e.clientX, e.clientY);
-      updateComponent(draggedComponentId, {
-        x: Math.max(0, world.x - dragOffset.x),
-        y: Math.max(0, world.y - dragOffset.y),
-      } as any);
+      if (draggedComponentId === '__board__') {
+        setBoardPosition({
+          x: Math.max(0, world.x - dragOffset.x),
+          y: Math.max(0, world.y - dragOffset.y),
+        });
+      } else {
+        updateComponent(draggedComponentId, {
+          x: Math.max(0, world.x - dragOffset.x),
+          y: Math.max(0, world.y - dragOffset.y),
+        } as any);
+      }
     }
 
     // Handle wire creation preview
@@ -317,7 +326,7 @@ export const SimulatorCanvas = () => {
         Math.pow(e.clientY - clickStartPos.y, 2)
       );
 
-      if (posDiff < 5 && timeDiff < 300) {
+      if (posDiff < 5 && timeDiff < 300 && draggedComponentId !== '__board__') {
         const component = components.find((c) => c.id === draggedComponentId);
         if (component) {
           setPropertyDialogComponentId(draggedComponentId);
@@ -574,23 +583,47 @@ export const SimulatorCanvas = () => {
             {/* Board visual — switches based on selected board type */}
             {boardType === 'arduino-uno' ? (
               <ArduinoUno
-                x={ARDUINO_POSITION.x}
-                y={ARDUINO_POSITION.y}
+                x={boardPosition.x}
+                y={boardPosition.y}
                 led13={Boolean(components.find((c) => c.id === 'led-builtin')?.properties.state)}
               />
             ) : (
               <NanoRP2040
-                x={ARDUINO_POSITION.x}
-                y={ARDUINO_POSITION.y}
+                x={boardPosition.x}
+                y={boardPosition.y}
                 ledBuiltIn={Boolean(components.find((c) => c.id === 'led-builtin')?.properties.state)}
+              />
+            )}
+
+            {/* Board interaction overlay for dragging */}
+            {!running && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: boardPosition.x,
+                  top: boardPosition.y,
+                  width: boardType === 'arduino-uno' ? 360 : 280,
+                  height: boardType === 'arduino-uno' ? 250 : 180,
+                  cursor: 'move',
+                  zIndex: 1,
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  const world = toWorld(e.clientX, e.clientY);
+                  setDraggedComponentId('__board__');
+                  setDragOffset({
+                    x: world.x - boardPosition.x,
+                    y: world.y - boardPosition.y,
+                  });
+                }}
               />
             )}
 
             {/* Board pin overlay */}
             <PinOverlay
               componentId={boardType === 'arduino-uno' ? 'arduino-uno' : 'nano-rp2040'}
-              componentX={ARDUINO_POSITION.x}
-              componentY={ARDUINO_POSITION.y}
+              componentX={boardPosition.x}
+              componentY={boardPosition.y}
               onPinClick={handlePinClick}
               showPins={true}
               wrapperOffsetX={0}

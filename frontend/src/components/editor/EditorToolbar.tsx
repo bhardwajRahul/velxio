@@ -97,9 +97,9 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
 
   const handleExport = async () => {
     try {
-      const { components, wires } = useSimulatorStore.getState();
+      const { components, wires, boardPosition } = useSimulatorStore.getState();
       const projectName = files.find((f) => f.name.endsWith('.ino'))?.name.replace('.ino', '') || 'velxio-project';
-      await exportToWokwiZip(files, components, wires, boardType, projectName);
+      await exportToWokwiZip(files, components, wires, boardType, projectName, boardPosition);
     } catch (err) {
       setMessage({ type: 'error', text: 'Export failed.' });
     }
@@ -113,9 +113,10 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
     try {
       const result = await importFromWokwiZip(file);
       const { loadFiles } = useEditorStore.getState();
-      const { setComponents, setWires, setBoardType, stopSimulation } = useSimulatorStore.getState();
+      const { setComponents, setWires, setBoardType, setBoardPosition, stopSimulation } = useSimulatorStore.getState();
       stopSimulation();
       if (result.boardType) setBoardType(result.boardType);
+      setBoardPosition(result.boardPosition);
       setComponents(result.components);
       setWires(result.wires);
       if (result.files.length > 0) loadFiles(result.files);

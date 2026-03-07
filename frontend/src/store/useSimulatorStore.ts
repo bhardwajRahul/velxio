@@ -19,8 +19,10 @@ export const BOARD_LABELS: Record<BoardType, string> = {
   'raspberry-pi-pico': 'Raspberry Pi Pico',
 };
 
-// Fixed position for the Arduino board (not in components array)
-export const ARDUINO_POSITION = { x: 50, y: 50 };
+// Default position for the Arduino board
+export const DEFAULT_BOARD_POSITION = { x: 50, y: 50 };
+// Keep legacy export alias for any remaining references
+export const ARDUINO_POSITION = DEFAULT_BOARD_POSITION;
 
 interface Component {
   id: string;
@@ -34,6 +36,10 @@ interface SimulatorState {
   // Board selection
   boardType: BoardType;
   setBoardType: (type: BoardType) => void;
+
+  // Board position (mutable — allows dragging)
+  boardPosition: { x: number; y: number };
+  setBoardPosition: (pos: { x: number; y: number }) => void;
 
   // Simulation state
   simulator: AVRSimulator | RP2040Simulator | null;
@@ -102,6 +108,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
   return {
     boardType: 'arduino-uno' as BoardType,
+    boardPosition: { ...DEFAULT_BOARD_POSITION },
     simulator: null,
     pinManager,
     running: false,
@@ -167,6 +174,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     serialOutput: '',
     serialBaudRate: 0,
     serialMonitorOpen: false,
+
+    setBoardPosition: (pos) => {
+      set({ boardPosition: pos });
+    },
 
     setBoardType: (type: BoardType) => {
       const { running } = get();
@@ -426,9 +437,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     updateWirePositions: (componentId) => {
       set((state) => {
         const component = state.components.find((c) => c.id === componentId);
-        // For fixed components like Arduino, use ARDUINO_POSITION
-        const compX = component ? component.x : ARDUINO_POSITION.x;
-        const compY = component ? component.y : ARDUINO_POSITION.y;
+        // For the board, use boardPosition from state
+        const bp = state.boardPosition;
+        const compX = component ? component.x : bp.x;
+        const compY = component ? component.y : bp.y;
 
         const updatedWires = state.wires.map((wire) => {
           const updated = { ...wire };
@@ -471,8 +483,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       const updatedWires = state.wires.map((wire) => {
         const updated = { ...wire };
         const startComp = state.components.find((c) => c.id === wire.start.componentId);
-        const startX = startComp ? startComp.x : ARDUINO_POSITION.x;
-        const startY = startComp ? startComp.y : ARDUINO_POSITION.y;
+        const bp = state.boardPosition;
+        const startX = startComp ? startComp.x : bp.x;
+        const startY = startComp ? startComp.y : bp.y;
 
         const startPos = calculatePinPosition(
           wire.start.componentId,
@@ -486,8 +499,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
         // Resolve end component position
         const endComp = state.components.find((c) => c.id === wire.end.componentId);
-        const endX = endComp ? endComp.x : ARDUINO_POSITION.x;
-        const endY = endComp ? endComp.y : ARDUINO_POSITION.y;
+        const endX = endComp ? endComp.x : bp.x;
+        const endY = endComp ? endComp.y : bp.y;
 
         const endPos = calculatePinPosition(
           wire.end.componentId,
