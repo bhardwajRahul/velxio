@@ -1,4 +1,4 @@
-import { CPU, AVRTimer, timer0Config, timer1Config, timer2Config, AVRUSART, usart0Config, AVRIOPort, portBConfig, portCConfig, portDConfig, avrInstruction, AVRADC, adcConfig, AVRSPI, spiConfig, AVRTWI, twiConfig } from 'avr8js';
+import { CPU, AVRTimer, timer0Config, timer1Config, timer2Config, AVRUSART, usart0Config, AVRIOPort, portAConfig, portBConfig, portCConfig, portDConfig, portEConfig, portFConfig, portGConfig, portHConfig, portJConfig, portKConfig, portLConfig, avrInstruction, AVRADC, adcConfig, AVRSPI, spiConfig, AVRTWI, twiConfig } from 'avr8js';
 import { PinManager } from './PinManager';
 import { hexToUint8Array } from '../utils/hexParser';
 import { I2CBusManager } from './I2CBusManager';
@@ -17,14 +17,95 @@ import type { I2CDevice } from './I2CBusManager';
  * - Pin state tracking via PinManager
  */
 
-// OCR register addresses → Arduino pin mapping for PWM
-const PWM_PINS = [
+// OCR register addresses → Arduino pin mapping for PWM (ATmega328P / Uno / Nano)
+const PWM_PINS_UNO = [
   { ocrAddr: 0x47, pin: 6,  label: 'OCR0A' }, // Timer0A → D6
   { ocrAddr: 0x48, pin: 5,  label: 'OCR0B' }, // Timer0B → D5
   { ocrAddr: 0x88, pin: 9,  label: 'OCR1AL' }, // Timer1A low byte → D9
   { ocrAddr: 0x8A, pin: 10, label: 'OCR1BL' }, // Timer1B low byte → D10
   { ocrAddr: 0xB3, pin: 11, label: 'OCR2A' }, // Timer2A → D11
   { ocrAddr: 0xB4, pin: 3,  label: 'OCR2B' }, // Timer2B → D3
+];
+
+// OCR register addresses → Arduino Mega pin mapping for PWM (ATmega2560)
+// Timers 0/1/2 same addresses; Timers 3/4/5 at higher addresses.
+const PWM_PINS_MEGA = [
+  { ocrAddr: 0x47, pin: 13, label: 'OCR0A' }, // Timer0A → D13
+  { ocrAddr: 0x48, pin: 4,  label: 'OCR0B' }, // Timer0B → D4
+  { ocrAddr: 0x88, pin: 11, label: 'OCR1AL' }, // Timer1A → D11
+  { ocrAddr: 0x8A, pin: 12, label: 'OCR1BL' }, // Timer1B → D12
+  { ocrAddr: 0xB3, pin: 10, label: 'OCR2A' }, // Timer2A → D10
+  { ocrAddr: 0xB4, pin: 9,  label: 'OCR2B' }, // Timer2B → D9
+  // Timer3 (0x80–0x8D, but OCR3A/B/C at 0x98/0x9A/0x9C)
+  { ocrAddr: 0x98, pin: 5,  label: 'OCR3AL' }, // Timer3A → D5
+  { ocrAddr: 0x9A, pin: 2,  label: 'OCR3BL' }, // Timer3B → D2
+  { ocrAddr: 0x9C, pin: 3,  label: 'OCR3CL' }, // Timer3C → D3
+  // Timer4 (OCR4A/B/C at 0xA8/0xAA/0xAC)
+  { ocrAddr: 0xA8, pin: 6,  label: 'OCR4AL' }, // Timer4A → D6
+  { ocrAddr: 0xAA, pin: 7,  label: 'OCR4BL' }, // Timer4B → D7
+  { ocrAddr: 0xAC, pin: 8,  label: 'OCR4CL' }, // Timer4C → D8
+  // Timer5 (OCR5A/B/C at 0x128/0x12A/0x12C — extended I/O)
+  { ocrAddr: 0x128, pin: 46, label: 'OCR5AL' }, // Timer5A → D46
+  { ocrAddr: 0x12A, pin: 45, label: 'OCR5BL' }, // Timer5B → D45
+  { ocrAddr: 0x12C, pin: 44, label: 'OCR5CL' }, // Timer5C → D44
+];
+
+/**
+ * ATmega2560 port-bit → Arduino Mega pin mapping.
+ * Index = bit position (0–7).  -1 = not exposed on the Arduino Mega header.
+ */
+const MEGA_PORT_BIT_MAP: Record<string, number[]> = {
+  // PA0-PA7 → D22-D29
+  'PORTA': [22, 23, 24, 25, 26, 27, 28, 29],
+  // PB0=D53(SS), PB1=D52(SCK), PB2=D51(MOSI), PB3=D50(MISO), PB4-PB7=D10-D13
+  'PORTB': [53, 52, 51, 50, 10, 11, 12, 13],
+  // PC0-PC7 → D37, D36, D35, D34, D33, D32, D31, D30  (reversed)
+  'PORTC': [37, 36, 35, 34, 33, 32, 31, 30],
+  // PD0=D21(SCL), PD1=D20(SDA), PD2=D19(RX1), PD3=D18(TX1), PD7=D38
+  'PORTD': [21, 20, 19, 18, -1, -1, -1, 38],
+  // PE0=D0(RX0), PE1=D1(TX0), PE3=D5, PE4=D2, PE5=D3
+  'PORTE': [0,  1,  -1, 5,  2,  3,  -1, -1],
+  // PF0-PF7 → A0-A7 (pin numbers 54-61)
+  'PORTF': [54, 55, 56, 57, 58, 59, 60, 61],
+  // PG0=D41, PG1=D40, PG2=D39, PG5=D4
+  'PORTG': [41, 40, 39, -1, -1, 4,  -1, -1],
+  // PH0=D17(RX2), PH1=D16(TX2), PH3=D6, PH4=D7, PH5=D8, PH6=D9
+  'PORTH': [17, 16, -1, 6,  7,  8,  9,  -1],
+  // PJ0=D15(RX3), PJ1=D14(TX3)
+  'PORTJ': [15, 14, -1, -1, -1, -1, -1, -1],
+  // PK0-PK7 → A8-A15 (pin numbers 62-69)
+  'PORTK': [62, 63, 64, 65, 66, 67, 68, 69],
+  // PL0=D49, PL1=D48, PL2=D47, PL3=D46, PL4=D45, PL5=D44, PL6=D43, PL7=D42
+  'PORTL': [49, 48, 47, 46, 45, 44, 43, 42],
+};
+
+/**
+ * Reverse of MEGA_PORT_BIT_MAP: Arduino Mega pin → { portName, bit }.
+ * Pre-built for fast setPinState() lookups.
+ */
+const MEGA_PIN_TO_PORT = (() => {
+  const map: Record<number, { portName: string; bit: number; port?: AVRIOPort }> = {};
+  for (const [portName, pins] of Object.entries(MEGA_PORT_BIT_MAP)) {
+    pins.forEach((pin, bit) => {
+      if (pin >= 0) map[pin] = { portName, bit };
+    });
+  }
+  return map;
+})();
+
+/** Ordered list of Mega ports with their avr8js configs */
+const MEGA_PORT_CONFIGS = [
+  { name: 'PORTA', config: portAConfig },
+  { name: 'PORTB', config: portBConfig },
+  { name: 'PORTC', config: portCConfig },
+  { name: 'PORTD', config: portDConfig },
+  { name: 'PORTE', config: portEConfig },
+  { name: 'PORTF', config: portFConfig },
+  { name: 'PORTG', config: portGConfig },
+  { name: 'PORTH', config: portHConfig },
+  { name: 'PORTJ', config: portJConfig },
+  { name: 'PORTK', config: portKConfig },
+  { name: 'PORTL', config: portLConfig },
 ];
 
 export class AVRSimulator {
@@ -34,6 +115,9 @@ export class AVRSimulator {
   private portB: AVRIOPort | null = null;
   private portC: AVRIOPort | null = null;
   private portD: AVRIOPort | null = null;
+  /** Extra ports used by the Mega (A, E–L); keyed by port name */
+  private megaPorts: Map<string, AVRIOPort> = new Map();
+  private megaPortValues: Map<string, number> = new Map();
   private adc: AVRADC | null = null;
   public spi: AVRSPI | null = null;
   public usart: AVRUSART | null = null;
@@ -43,7 +127,9 @@ export class AVRSimulator {
   private running = false;
   private animationFrame: number | null = null;
   public pinManager: PinManager;
-  private speed = 1.0; // Simulation speed multiplier
+  private speed = 1.0;
+  /** 'uno' for ATmega328P boards (Uno, Nano); 'mega' for ATmega2560 */
+  private boardVariant: 'uno' | 'mega';
 
   /** Serial output buffer — subscribers receive each byte or line */
   public onSerialData: ((char: string) => void) | null = null;
@@ -52,10 +138,15 @@ export class AVRSimulator {
   private lastPortBValue = 0;
   private lastPortCValue = 0;
   private lastPortDValue = 0;
-  private lastOcrValues: number[] = new Array(PWM_PINS.length).fill(-1);
+  private lastOcrValues: number[] = [];
 
-  constructor(pinManager: PinManager) {
+  constructor(pinManager: PinManager, boardVariant: 'uno' | 'mega' = 'uno') {
     this.pinManager = pinManager;
+    this.boardVariant = boardVariant;
+  }
+
+  private get pwmPins() {
+    return this.boardVariant === 'mega' ? PWM_PINS_MEGA : PWM_PINS_UNO;
   }
 
   /**
@@ -64,45 +155,33 @@ export class AVRSimulator {
   loadHex(hexContent: string): void {
     console.log('Loading HEX file...');
 
-    // Parse Intel HEX format to Uint8Array
     const bytes = hexToUint8Array(hexContent);
 
-    // Create program memory (ATmega328p has 32KB = 16K words)
-    this.program = new Uint16Array(16384);
+    // ATmega328P: 32 KB = 16 384 words.  ATmega2560: 256 KB = 131 072 words.
+    const progWords = this.boardVariant === 'mega' ? 131072 : 16384;
+    // ATmega2560 has 8 KB SRAM; 328P has 2 KB but avr8js defaults 8 KB (safe over-alloc)
+    const sramBytes = this.boardVariant === 'mega' ? 8192 : 8192;
 
-    // Load bytes into program memory (little-endian, 16-bit words)
+    this.program = new Uint16Array(progWords);
     for (let i = 0; i < bytes.length; i += 2) {
-      const low = bytes[i] || 0;
-      const high = bytes[i + 1] || 0;
-      this.program[i >> 1] = low | (high << 8);
+      this.program[i >> 1] = (bytes[i] || 0) | ((bytes[i + 1] || 0) << 8);
     }
 
     console.log(`Loaded ${bytes.length} bytes into program memory`);
 
-    // Initialize CPU (ATmega328p @ 16MHz)
-    this.cpu = new CPU(this.program);
+    this.cpu = new CPU(this.program, sramBytes);
 
-    // Initialize peripherals (kept alive so their CPU hooks are not GC'd)
     this.spi = new AVRSPI(this.cpu, spiConfig, 16000000);
-    // Default onByte: complete transfer immediately (no external device)
-    this.spi.onByte = (value) => {
-      this.spi!.completeTransfer(value);
-    };
+    this.spi.onByte = (value) => { this.spi!.completeTransfer(value); };
 
-    // USART (Serial) — hook onByteTransmit to forward output
     this.usart = new AVRUSART(this.cpu, usart0Config, 16000000);
     this.usart.onByteTransmit = (value: number) => {
-      if (this.onSerialData) {
-        this.onSerialData(String.fromCharCode(value));
-      }
+      if (this.onSerialData) this.onSerialData(String.fromCharCode(value));
     };
     this.usart.onConfigurationChange = () => {
-      if (this.onBaudRateChange && this.usart) {
-        this.onBaudRateChange(this.usart.baudRate);
-      }
+      if (this.onBaudRateChange && this.usart) this.onBaudRateChange(this.usart.baudRate);
     };
 
-    // TWI (I2C)
     this.twi = new AVRTWI(this.cpu, twiConfig, 16000000);
     this.i2cBus = new I2CBusManager(this.twi);
 
@@ -115,21 +194,31 @@ export class AVRSimulator {
       this.twi,
     ];
 
-    // Initialize ADC (analogRead support)
     this.adc = new AVRADC(this.cpu, adcConfig);
 
-    // Initialize IO ports
+    // ── GPIO ports ────────────────────────────────────────────────────────
     this.portB = new AVRIOPort(this.cpu, portBConfig);
     this.portC = new AVRIOPort(this.cpu, portCConfig);
     this.portD = new AVRIOPort(this.cpu, portDConfig);
 
-    // Reset OCR tracking
-    this.lastOcrValues = new Array(PWM_PINS.length).fill(-1);
+    if (this.boardVariant === 'mega') {
+      this.megaPorts.clear();
+      this.megaPortValues.clear();
+      for (const { name, config } of MEGA_PORT_CONFIGS) {
+        this.megaPorts.set(name, new AVRIOPort(this.cpu, config));
+        this.megaPortValues.set(name, 0);
+      }
+    }
 
-    // Set up pin change hooks
+    this.lastPortBValue = 0;
+    this.lastPortCValue = 0;
+    this.lastPortDValue = 0;
+    this.lastOcrValues = new Array(this.pwmPins.length).fill(-1);
+
     this.setupPinHooks();
 
-    console.log(`AVR CPU initialized (${this.peripherals.length} peripherals, ADC + Timer1/Timer2 enabled)`);
+    const board = this.boardVariant === 'mega' ? 'ATmega2560' : 'ATmega328P';
+    console.log(`AVR CPU initialized (${board}, ${this.peripherals.length} peripherals)`);
   }
 
   /**
@@ -144,32 +233,42 @@ export class AVRSimulator {
    */
   private setupPinHooks(): void {
     if (!this.cpu) return;
-
     console.log('Setting up pin hooks...');
 
-    // PORTB (Digital pins 8-13)
-    this.portB!.addListener((value, _oldValue) => {
-      if (value !== this.lastPortBValue) {
-        this.pinManager.updatePort('PORTB', value, this.lastPortBValue);
-        this.lastPortBValue = value;
+    if (this.boardVariant === 'mega') {
+      // Mega: use explicit per-bit pin maps for all 11 ports
+      for (const [portName, port] of this.megaPorts) {
+        const pinMap = MEGA_PORT_BIT_MAP[portName];
+        this.megaPortValues.set(portName, 0);
+        port.addListener((value) => {
+          const old = this.megaPortValues.get(portName) ?? 0;
+          if (value !== old) {
+            this.pinManager.updatePort(portName, value, old, pinMap);
+            this.megaPortValues.set(portName, value);
+          }
+        });
       }
-    });
-
-    // PORTC (Analog pins A0-A5)
-    this.portC!.addListener((value, _oldValue) => {
-      if (value !== this.lastPortCValue) {
-        this.pinManager.updatePort('PORTC', value, this.lastPortCValue);
-        this.lastPortCValue = value;
-      }
-    });
-
-    // PORTD (Digital pins 0-7)
-    this.portD!.addListener((value, _oldValue) => {
-      if (value !== this.lastPortDValue) {
-        this.pinManager.updatePort('PORTD', value, this.lastPortDValue);
-        this.lastPortDValue = value;
-      }
-    });
+    } else {
+      // Uno / Nano: simple 3-port setup
+      this.portB!.addListener((value) => {
+        if (value !== this.lastPortBValue) {
+          this.pinManager.updatePort('PORTB', value, this.lastPortBValue);
+          this.lastPortBValue = value;
+        }
+      });
+      this.portC!.addListener((value) => {
+        if (value !== this.lastPortCValue) {
+          this.pinManager.updatePort('PORTC', value, this.lastPortCValue);
+          this.lastPortCValue = value;
+        }
+      });
+      this.portD!.addListener((value) => {
+        if (value !== this.lastPortDValue) {
+          this.pinManager.updatePort('PORTD', value, this.lastPortDValue);
+          this.lastPortDValue = value;
+        }
+      });
+    }
 
     console.log('Pin hooks configured successfully');
   }
@@ -179,14 +278,13 @@ export class AVRSimulator {
    */
   private pollPwmRegisters(): void {
     if (!this.cpu) return;
-
-    for (let i = 0; i < PWM_PINS.length; i++) {
-      const { ocrAddr, pin } = PWM_PINS[i];
+    const pins = this.pwmPins;
+    for (let i = 0; i < pins.length; i++) {
+      const { ocrAddr, pin } = pins[i];
       const ocrValue = this.cpu.data[ocrAddr];
       if (ocrValue !== this.lastOcrValues[i]) {
         this.lastOcrValues[i] = ocrValue;
-        const dutyCycle = ocrValue / 255;
-        this.pinManager.updatePwm(pin, dutyCycle);
+        this.pinManager.updatePwm(pin, ocrValue / 255);
       }
     }
   }
@@ -273,15 +371,16 @@ export class AVRSimulator {
   }
 
   /**
-   * Reset simulator
+   * Reset simulator (re-run program from scratch without recompiling)
    */
   reset(): void {
     this.stop();
-
-    if (this.cpu && this.program) {
+    if (this.program) {
+      // Re-use the stored hex content path: just reload
+      const sramBytes = this.boardVariant === 'mega' ? 8192 : 8192;
       console.log('Resetting AVR CPU...');
 
-      this.cpu = new CPU(this.program);
+      this.cpu = new CPU(this.program, sramBytes);
 
       this.spi = new AVRSPI(this.cpu, spiConfig, 16000000);
       this.spi.onByte = (value) => { this.spi!.completeTransfer(value); };
@@ -291,9 +390,7 @@ export class AVRSimulator {
         if (this.onSerialData) this.onSerialData(String.fromCharCode(value));
       };
       this.usart.onConfigurationChange = () => {
-        if (this.onBaudRateChange && this.usart) {
-          this.onBaudRateChange(this.usart.baudRate);
-        }
+        if (this.onBaudRateChange && this.usart) this.onBaudRateChange(this.usart.baudRate);
       };
 
       this.twi = new AVRTWI(this.cpu, twiConfig, 16000000);
@@ -303,9 +400,7 @@ export class AVRSimulator {
         new AVRTimer(this.cpu, timer0Config),
         new AVRTimer(this.cpu, timer1Config),
         new AVRTimer(this.cpu, timer2Config),
-        this.usart,
-        this.spi,
-        this.twi,
+        this.usart, this.spi, this.twi,
       ];
       this.adc = new AVRADC(this.cpu, adcConfig);
 
@@ -313,11 +408,19 @@ export class AVRSimulator {
       this.portC = new AVRIOPort(this.cpu, portCConfig);
       this.portD = new AVRIOPort(this.cpu, portDConfig);
 
+      if (this.boardVariant === 'mega') {
+        this.megaPorts.clear();
+        this.megaPortValues.clear();
+        for (const { name, config } of MEGA_PORT_CONFIGS) {
+          this.megaPorts.set(name, new AVRIOPort(this.cpu, config));
+          this.megaPortValues.set(name, 0);
+        }
+      }
+
       this.lastPortBValue = 0;
       this.lastPortCValue = 0;
       this.lastPortDValue = 0;
-      this.lastOcrValues = new Array(PWM_PINS.length).fill(-1);
-
+      this.lastOcrValues = new Array(this.pwmPins.length).fill(-1);
       this.setupPinHooks();
 
       console.log('AVR CPU reset complete');
@@ -347,6 +450,15 @@ export class AVRSimulator {
    * Set the state of an Arduino pin externally (e.g. from a UI button)
    */
   setPinState(arduinoPin: number, state: boolean): void {
+    if (this.boardVariant === 'mega') {
+      const entry = MEGA_PIN_TO_PORT[arduinoPin];
+      if (entry) {
+        const port = this.megaPorts.get(entry.portName);
+        port?.setPin(entry.bit, state);
+      }
+      return;
+    }
+    // Uno / Nano
     if (arduinoPin >= 0 && arduinoPin <= 7 && this.portD) {
       this.portD.setPin(arduinoPin, state);
     } else if (arduinoPin >= 8 && arduinoPin <= 13 && this.portB) {

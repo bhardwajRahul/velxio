@@ -1,10 +1,15 @@
 /**
  * PinManager - Manages Arduino pin states and notifies listeners
  *
- * Maps AVR PORT registers to Arduino pin numbers:
+ * Maps AVR PORT registers to Arduino pin numbers.
+ *
+ * Arduino Uno / Nano (ATmega328P):
  * - PORTB (0x25) → Digital pins 8-13
  * - PORTC (0x28) → Analog pins A0-A5 (14-19)
  * - PORTD (0x2B) → Digital pins 0-7
+ *
+ * Arduino Mega 2560 (ATmega2560): uses explicit per-bit pin maps
+ * for non-linear port ↔ Arduino-pin relationships.
  *
  * Also supports:
  * - Analog voltage injection (for potentiometers, sensors)
@@ -41,13 +46,17 @@ export class PinManager {
 
   /**
    * Update port register and notify digital pin listeners.
+   *
+   * @param portName  Human-readable port name for log output (e.g. 'PORTB').
+   * @param newValue  New 8-bit port value.
+   * @param oldValue  Previous 8-bit port value (default 0).
+   * @param pinMap    Optional per-bit Arduino pin numbers (length 8).
+   *                  Use -1 for bits that are not exposed as Arduino pins.
+   *                  When omitted the legacy Uno/Nano fixed offsets are used:
+   *                  PORTB→8, PORTC→14, PORTD→0.
    */
-  updatePort(portName: 'PORTB' | 'PORTC' | 'PORTD', newValue: number, oldValue: number = 0) {
-    const pinOffset = {
-      'PORTB': 8,
-      'PORTC': 14,
-      'PORTD': 0,
-    }[portName];
+  updatePort(portName: string, newValue: number, oldValue: number = 0, pinMap?: number[]) {
+    const legacyOffsets: Record<string, number> = { 'PORTB': 8, 'PORTC': 14, 'PORTD': 0 };
 
     for (let bit = 0; bit < 8; bit++) {
       const mask = 1 << bit;
@@ -55,7 +64,9 @@ export class PinManager {
       const newState = (newValue & mask) !== 0;
 
       if (oldState !== newState) {
-        const arduinoPin = pinOffset + bit;
+        const arduinoPin = pinMap ? pinMap[bit] : (legacyOffsets[portName] ?? 0) + bit;
+        if (arduinoPin < 0) continue; // unmapped bit
+
         this.pinStates.set(arduinoPin, newState);
 
         const callbacks = this.listeners.get(arduinoPin);

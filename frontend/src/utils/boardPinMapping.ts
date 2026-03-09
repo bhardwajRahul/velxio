@@ -50,8 +50,19 @@ const ARDUINO_UNO_ANALOG_MAP: Record<string, number> = {
   'A7': 21,
 };
 
+/**
+ * Arduino Mega analog pin names → AVR pin numbers.
+ * A0–A15 map to physical pins 54–69 on the ATmega2560.
+ */
+const ARDUINO_MEGA_ANALOG_MAP: Record<string, number> = {
+  'A0': 54,  'A1': 55,  'A2': 56,  'A3': 57,
+  'A4': 58,  'A5': 59,  'A6': 60,  'A7': 61,
+  'A8': 62,  'A9': 63,  'A10': 64, 'A11': 65,
+  'A12': 66, 'A13': 67, 'A14': 68, 'A15': 69,
+};
+
 /** All known board component IDs in the simulator */
-export const BOARD_COMPONENT_IDS = ['arduino-uno', 'arduino-nano', 'nano-rp2040'];
+export const BOARD_COMPONENT_IDS = ['arduino-uno', 'arduino-nano', 'arduino-mega', 'nano-rp2040'];
 
 /**
  * Check whether a componentId represents a board (not an external component).
@@ -80,6 +91,17 @@ export function boardPinToNumber(boardId: string, pinName: string): number | nul
     }
     // Analog naming
     return ARDUINO_UNO_ANALOG_MAP[pinName] ?? null;
+  }
+
+  if (boardId === 'arduino-mega') {
+    // Digital pins D0–D53 parsed numerically
+    const num = parseInt(pinName, 10);
+    if (!isNaN(num) && num >= 0 && num <= 53) return num;
+    if (pinName.startsWith('D')) {
+      const d = parseInt(pinName.substring(1), 10);
+      if (!isNaN(d) && d <= 53) return d;
+    }
+    return ARDUINO_MEGA_ANALOG_MAP[pinName] ?? null;
   }
 
   if (boardId === 'nano-rp2040') {

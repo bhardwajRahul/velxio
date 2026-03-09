@@ -7,17 +7,19 @@ import type { RP2040I2CDevice } from '../simulation/RP2040Simulator';
 import type { Wire, WireInProgress, WireEndpoint } from '../types/wire';
 import { calculatePinPosition } from '../utils/pinPositionCalculator';
 
-export type BoardType = 'arduino-uno' | 'arduino-nano' | 'raspberry-pi-pico';
+export type BoardType = 'arduino-uno' | 'arduino-nano' | 'arduino-mega' | 'raspberry-pi-pico';
 
 export const BOARD_FQBN: Record<BoardType, string> = {
   'arduino-uno': 'arduino:avr:uno',
   'arduino-nano': 'arduino:avr:nano:cpu=atmega328',
+  'arduino-mega': 'arduino:avr:mega',
   'raspberry-pi-pico': 'rp2040:rp2040:rpipico',
 };
 
 export const BOARD_LABELS: Record<BoardType, string> = {
   'arduino-uno': 'Arduino Uno',
   'arduino-nano': 'Arduino Nano',
+  'arduino-mega': 'Arduino Mega 2560',
   'raspberry-pi-pico': 'Raspberry Pi Pico',
 };
 
@@ -191,8 +193,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       if (running) {
         get().stopSimulation();
       }
-      const simulator = (type === 'arduino-uno' || type === 'arduino-nano')
-        ? new AVRSimulator(pinManager)
+      const simulator = (type === 'arduino-uno' || type === 'arduino-nano' || type === 'arduino-mega')
+        ? new AVRSimulator(pinManager, type === 'arduino-mega' ? 'mega' : 'uno')
         : new RP2040Simulator(pinManager);
       // Wire serial output callback for both simulator types
       simulator.onSerialData = (char: string) => {
@@ -207,8 +209,8 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
     initSimulator: () => {
       const { boardType } = get();
-      const simulator = (boardType === 'arduino-uno' || boardType === 'arduino-nano')
-        ? new AVRSimulator(pinManager)
+      const simulator = (boardType === 'arduino-uno' || boardType === 'arduino-nano' || boardType === 'arduino-mega')
+        ? new AVRSimulator(pinManager, boardType === 'arduino-mega' ? 'mega' : 'uno')
         : new RP2040Simulator(pinManager);
       // Wire serial output callback for both simulator types
       simulator.onSerialData = (char: string) => {

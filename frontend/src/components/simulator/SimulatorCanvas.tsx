@@ -3,6 +3,7 @@ import type { BoardType } from '../../store/useSimulatorStore';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ArduinoUno } from '../components-wokwi/ArduinoUno';
 import { ArduinoNano } from '../components-wokwi/ArduinoNano';
+import { ArduinoMega } from '../components-wokwi/ArduinoMega';
 import { NanoRP2040 } from '../components-wokwi/NanoRP2040';
 import { ComponentPickerModal } from '../ComponentPickerModal';
 import { ComponentPropertyDialog } from './ComponentPropertyDialog';
@@ -625,6 +626,12 @@ export const SimulatorCanvas = () => {
                 y={boardPosition.y}
                 led13={Boolean(components.find((c) => c.id === 'led-builtin')?.properties.state)}
               />
+            ) : boardType === 'arduino-mega' ? (
+              <ArduinoMega
+                x={boardPosition.x}
+                y={boardPosition.y}
+                led13={Boolean(components.find((c) => c.id === 'led-builtin')?.properties.state)}
+              />
             ) : (
               <NanoRP2040
                 x={boardPosition.x}
@@ -640,8 +647,8 @@ export const SimulatorCanvas = () => {
                   position: 'absolute',
                   left: boardPosition.x,
                   top: boardPosition.y,
-                  width: boardType === 'arduino-uno' ? 360 : boardType === 'arduino-nano' ? 175 : 280,
-                  height: boardType === 'arduino-uno' ? 250 : boardType === 'arduino-nano' ? 70 : 180,
+                  width: boardType === 'arduino-uno' ? 360 : boardType === 'arduino-nano' ? 175 : boardType === 'arduino-mega' ? 530 : 280,
+                  height: boardType === 'arduino-uno' ? 250 : boardType === 'arduino-nano' ? 70 : boardType === 'arduino-mega' ? 195 : 180,
                   cursor: 'move',
                   zIndex: 1,
                 }}
@@ -659,7 +666,7 @@ export const SimulatorCanvas = () => {
 
             {/* Board pin overlay */}
             <PinOverlay
-              componentId={boardType === 'arduino-uno' ? 'arduino-uno' : boardType === 'arduino-nano' ? 'arduino-nano' : 'nano-rp2040'}
+              componentId={boardType === 'arduino-uno' ? 'arduino-uno' : boardType === 'arduino-nano' ? 'arduino-nano' : boardType === 'arduino-mega' ? 'arduino-mega' : 'nano-rp2040'}
               componentX={boardPosition.x}
               componentY={boardPosition.y}
               onPinClick={handlePinClick}

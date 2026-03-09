@@ -43,7 +43,7 @@ export interface VelxioComponent {
 }
 
 export interface ImportResult {
-  boardType: 'arduino-uno' | 'arduino-nano' | 'raspberry-pi-pico';
+  boardType: 'arduino-uno' | 'arduino-nano' | 'arduino-mega' | 'raspberry-pi-pico';
   boardPosition: { x: number; y: number };
   components: VelxioComponent[];
   wires: Wire[];
@@ -53,10 +53,10 @@ export interface ImportResult {
 // ── Board mappings ────────────────────────────────────────────────────────────
 
 // Wokwi board type → Velxio boardType
-const WOKWI_TYPE_TO_BOARD: Record<string, 'arduino-uno' | 'arduino-nano' | 'raspberry-pi-pico'> = {
+const WOKWI_TYPE_TO_BOARD: Record<string, 'arduino-uno' | 'arduino-nano' | 'arduino-mega' | 'raspberry-pi-pico'> = {
   'wokwi-arduino-uno': 'arduino-uno',
   'wokwi-arduino-nano': 'arduino-nano',
-  'wokwi-arduino-mega': 'arduino-uno',
+  'wokwi-arduino-mega': 'arduino-mega',
   'wokwi-raspberry-pi-pico': 'raspberry-pi-pico',
 };
 
@@ -64,6 +64,7 @@ const WOKWI_TYPE_TO_BOARD: Record<string, 'arduino-uno' | 'arduino-nano' | 'rasp
 const BOARD_TO_WOKWI_TYPE: Record<string, string> = {
   'arduino-uno': 'wokwi-arduino-uno',
   'arduino-nano': 'wokwi-arduino-nano',
+  'arduino-mega': 'wokwi-arduino-mega',
   'raspberry-pi-pico': 'wokwi-raspberry-pi-pico',
 };
 
@@ -71,6 +72,7 @@ const BOARD_TO_WOKWI_TYPE: Record<string, string> = {
 const BOARD_TO_WOKWI_ID: Record<string, string> = {
   'arduino-uno': 'uno',
   'arduino-nano': 'nano',
+  'arduino-mega': 'mega',
   'raspberry-pi-pico': 'pico',
 };
 
@@ -217,6 +219,7 @@ export async function importFromWokwiZip(file: File): Promise<ImportResult> {
   const VELXIO_BOARD_ID: Record<string, string> = {
     'arduino-uno': 'arduino-uno',
     'arduino-nano': 'arduino-nano',
+    'arduino-mega': 'arduino-mega',
     'raspberry-pi-pico': 'nano-rp2040',
   };
   const velxioBoardId = VELXIO_BOARD_ID[boardType] ?? 'arduino-uno';
