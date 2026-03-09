@@ -132,6 +132,24 @@ function metadataIdToWokwiType(metadataId: string): string {
   return `wokwi-${metadataId}`;
 }
 
+// ── Library list parser ───────────────────────────────────────────────────────
+
+/**
+ * Parse the contents of a Wokwi libraries.txt file.
+ * - Strips blank lines and # comments
+ * - Excludes Wokwi-hosted entries in the form  name@wokwi:hash
+ *   (they have no arduino-cli installable equivalent)
+ */
+export function parseLibrariesTxt(content: string): string[] {
+  const libs: string[] = [];
+  for (const raw of content.split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#') || line.includes('@wokwi:')) continue;
+    libs.push(line);
+  }
+  return libs;
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 export async function exportToWokwiZip(
@@ -305,16 +323,11 @@ export async function importFromWokwiZip(file: File): Promise<ImportResult> {
     return a.name.localeCompare(b.name);
   });
 
-  // Parse libraries.txt — skip blank lines, comments (#), and Wokwi-only entries (name@wokwi:hash)
+  // Parse libraries.txt
   const libraries: string[] = [];
   const libEntry = zip.file('libraries.txt');
   if (libEntry) {
-    const libText = await libEntry.async('string');
-    for (const raw of libText.split('\n')) {
-      const line = raw.trim();
-      if (!line || line.startsWith('#') || line.includes('@wokwi:')) continue;
-      libraries.push(line);
-    }
+    libraries.push(...parseLibrariesTxt(await libEntry.async('string')));
   }
 
   return { boardType, boardPosition, components, wires, files, libraries };
