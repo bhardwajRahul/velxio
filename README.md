@@ -1,4 +1,4 @@
-# Velxio — Arduino Emulator
+# Velxio: Arduino Emulator
 
 **Live at [velxio.dev](https://velxio.dev)**
 
