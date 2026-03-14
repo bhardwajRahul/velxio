@@ -105,6 +105,10 @@ interface SimulatorState {
   disconnectRemoteSimulator: () => void;
   sendRemotePinEvent: (pin: string, state: number) => void;
 
+  // ── ESP32 crash notification ─────────────────────────────────────────────
+  esp32CrashBoardId: string | null;
+  dismissEsp32Crash: () => void;
+
   // ── Components ──────────────────────────────────────────────────────────
   components: Component[];
   addComponent: (component: Component) => void;
@@ -251,8 +255,31 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
       } else if (isEsp32Kind(boardKind)) {
         const bridge = new Esp32Bridge(id, boardKind);
         bridge.onSerialData = serialCallback;
-        bridge.onPinChange = (_gpioPin, _state) => {
-          // Cross-board routing handled in SimulatorCanvas
+        bridge.onPinChange = (gpioPin, state) => {
+          const boardPm = pinManagerMap.get(id);
+          if (boardPm) boardPm.triggerPinChange(gpioPin, state);
+        };
+        bridge.onCrash = () => {
+          set({ esp32CrashBoardId: id });
+        };
+        bridge.onLedcUpdate = (update) => {
+          // Route LEDC duty cycles to PinManager as PWM.
+          // LEDC channel N drives a GPIO; the mapping is firmware-defined.
+          const boardPm = pinManagerMap.get(id);
+          if (boardPm && typeof boardPm.updatePwm === 'function') {
+            boardPm.updatePwm(update.channel, update.duty_pct);
+          }
+        };
+        bridge.onWs2812Update = (channel, pixels) => {
+          // Forward WS2812 pixel data to any DOM element with id=`ws2812-{id}-{channel}`
+          // (set by NeoPixel components rendered in SimulatorCanvas).
+          // We fire a custom event that NeoPixel components can listen to.
+          const eventTarget = document.getElementById(`ws2812-${id}-${channel}`);
+          if (eventTarget) {
+            eventTarget.dispatchEvent(
+              new CustomEvent('ws2812-pixels', { detail: { pixels } })
+            );
+          }
         };
         esp32BridgeMap.set(id, bridge);
       } else {
@@ -486,6 +513,9 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
     serialMonitorOpen: false,
     remoteConnected: false,
     remoteSocket: null,
+
+    esp32CrashBoardId: null,
+    dismissEsp32Crash: () => set({ esp32CrashBoardId: null }),
 
     setBoardType: (type: BoardType) => {
       const { activeBoardId, running, stopSimulation } = get();

@@ -50,6 +50,10 @@ export const SimulatorCanvas = () => {
   const oscilloscopeOpen = useOscilloscopeStore((s) => s.open);
   const toggleOscilloscope = useOscilloscopeStore((s) => s.toggleOscilloscope);
 
+  // ESP32 crash notification
+  const esp32CrashBoardId = useSimulatorStore((s) => s.esp32CrashBoardId);
+  const dismissEsp32Crash = useSimulatorStore((s) => s.dismissEsp32Crash);
+
   // Board picker modal
   const [showBoardPicker, setShowBoardPicker] = useState(false);
 
@@ -779,6 +783,27 @@ export const SimulatorCanvas = () => {
 
   return (
     <div className="simulator-canvas-container">
+      {/* ESP32 crash notification */}
+      {esp32CrashBoardId && (
+        <div style={{
+          position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000, background: '#c0392b', color: '#fff',
+          padding: '8px 16px', borderRadius: 6, display: 'flex', alignItems: 'center',
+          gap: 12, fontSize: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+        }}>
+          <span>ESP32 crash detected on board <strong>{esp32CrashBoardId}</strong> — cache error (IDF incompatibility)</span>
+          <button
+            onClick={dismissEsp32Crash}
+            style={{
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.6)',
+              color: '#fff', borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Main Canvas */}
       <div className="simulator-canvas">
         <div className="canvas-header">

@@ -9,12 +9,20 @@
  *     { type: 'start_esp32',        data: { board: BoardKind, firmware_b64?: string } }
  *     { type: 'stop_esp32' }
  *     { type: 'load_firmware',      data: { firmware_b64: string } }
- *     { type: 'esp32_serial_input', data: { bytes: number[] } }
+ *     { type: 'esp32_serial_input', data: { bytes: number[], uart?: number } }
  *     { type: 'esp32_gpio_in',      data: { pin: number, state: 0 | 1 } }
+ *     { type: 'esp32_adc_set',      data: { channel: number, millivolts: number } }
+ *     { type: 'esp32_i2c_response', data: { addr: number, response: number } }
+ *     { type: 'esp32_spi_response', data: { response: number } }
  *
  *   Backend → Frontend
- *     { type: 'serial_output', data: { data: string } }
+ *     { type: 'serial_output', data: { data: string, uart?: number } }
  *     { type: 'gpio_change',   data: { pin: number, state: 0 | 1 } }
+ *     { type: 'gpio_dir',      data: { pin: number, dir: 0 | 1 } }
+ *     { type: 'ledc_update',   data: { channel: number, duty: number, duty_pct: number } }
+ *     { type: 'ws2812_update', data: { channel: number, pixels: [number, number, number][] } }
+ *     { type: 'i2c_event',     data: { addr: number, data: number } }
+ *     { type: 'spi_event',     data: { data: number } }
  *     { type: 'system',        data: { event: string, ... } }
  *     { type: 'error',         data: { message: string } }
  */
@@ -24,17 +32,26 @@ import type { BoardKind } from '../types/board';
 const API_BASE = (): string =>
   (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8001/api';
 
+export interface Ws2812Pixel { r: number; g: number; b: number }
+export interface LedcUpdate  { channel: number; duty: number; duty_pct: number }
+
 export class Esp32Bridge {
   readonly boardId: string;
   readonly boardKind: BoardKind;
 
   // Callbacks wired up by useSimulatorStore
-  onSerialData:   ((char: string) => void) | null = null;
-  onPinChange:    ((gpioPin: number, state: boolean) => void) | null = null;
-  onConnected:    (() => void) | null = null;
-  onDisconnected: (() => void) | null = null;
-  onError:        ((msg: string) => void) | null = null;
-  onSystemEvent:  ((event: string, data: Record<string, unknown>) => void) | null = null;
+  onSerialData:    ((char: string, uart?: number) => void) | null = null;
+  onPinChange:     ((gpioPin: number, state: boolean) => void) | null = null;
+  onPinDir:        ((gpioPin: number, dir: 0 | 1) => void) | null = null;
+  onLedcUpdate:    ((update: LedcUpdate) => void) | null = null;
+  onWs2812Update:  ((channel: number, pixels: Ws2812Pixel[]) => void) | null = null;
+  onI2cEvent:      ((addr: number, data: number) => void) | null = null;
+  onSpiEvent:      ((data: number) => void) | null = null;
+  onConnected:     (() => void) | null = null;
+  onDisconnected:  (() => void) | null = null;
+  onError:         ((msg: string) => void) | null = null;
+  onSystemEvent:   ((event: string, data: Record<string, unknown>) => void) | null = null;
+  onCrash:         ((data: Record<string, unknown>) => void) | null = null;
 
   private socket: WebSocket | null = null;
   private _connected = false;
@@ -63,7 +80,6 @@ export class Esp32Bridge {
     socket.onopen = () => {
       this._connected = true;
       this.onConnected?.();
-      // Boot the ESP32 via QEMU, optionally with pre-loaded firmware
       this._send({
         type: 'start_esp32',
         data: {
@@ -84,8 +100,9 @@ export class Esp32Bridge {
       switch (msg.type) {
         case 'serial_output': {
           const text = (msg.data.data as string) ?? '';
+          const uart = msg.data.uart as number | undefined;
           if (this.onSerialData) {
-            for (const ch of text) this.onSerialData(ch);
+            for (const ch of text) this.onSerialData(ch, uart);
           }
           break;
         }
@@ -95,9 +112,42 @@ export class Esp32Bridge {
           this.onPinChange?.(pin, state);
           break;
         }
-        case 'system':
-          this.onSystemEvent?.(msg.data.event as string, msg.data);
+        case 'gpio_dir': {
+          const pin = msg.data.pin as number;
+          const dir = msg.data.dir as 0 | 1;
+          this.onPinDir?.(pin, dir);
           break;
+        }
+        case 'ledc_update': {
+          this.onLedcUpdate?.(msg.data as unknown as LedcUpdate);
+          break;
+        }
+        case 'ws2812_update': {
+          const channel = msg.data.channel as number;
+          const raw = msg.data.pixels as [number, number, number][];
+          const pixels: Ws2812Pixel[] = raw.map(([r, g, b]) => ({ r, g, b }));
+          this.onWs2812Update?.(channel, pixels);
+          break;
+        }
+        case 'i2c_event': {
+          const addr = msg.data.addr as number;
+          const data = msg.data.data as number;
+          this.onI2cEvent?.(addr, data);
+          break;
+        }
+        case 'spi_event': {
+          const data = msg.data.data as number;
+          this.onSpiEvent?.(data);
+          break;
+        }
+        case 'system': {
+          const evt = msg.data.event as string;
+          if (evt === 'crash') {
+            this.onCrash?.(msg.data);
+          }
+          this.onSystemEvent?.(evt, msg.data);
+          break;
+        }
         case 'error':
           this.onError?.(msg.data.message as string);
           break;
@@ -135,20 +185,35 @@ export class Esp32Bridge {
     }
   }
 
-  /** Send a byte to the ESP32 UART0 */
-  sendSerialByte(byte: number): void {
-    this._send({ type: 'esp32_serial_input', data: { bytes: [byte] } });
+  /** Send a byte to the ESP32 UART0 (or UART1/2) */
+  sendSerialByte(byte: number, uart = 0): void {
+    this._send({ type: 'esp32_serial_input', data: { bytes: [byte], uart } });
   }
 
   /** Send multiple bytes at once */
-  sendSerialBytes(bytes: number[]): void {
+  sendSerialBytes(bytes: number[], uart = 0): void {
     if (bytes.length === 0) return;
-    this._send({ type: 'esp32_serial_input', data: { bytes } });
+    this._send({ type: 'esp32_serial_input', data: { bytes, uart } });
   }
 
   /** Drive a GPIO pin from an external source (e.g. connected Arduino) */
   sendPinEvent(gpioPin: number, state: boolean): void {
     this._send({ type: 'esp32_gpio_in', data: { pin: gpioPin, state: state ? 1 : 0 } });
+  }
+
+  /** Set an ADC channel voltage (millivolts, 0–3300) */
+  setAdc(channel: number, millivolts: number): void {
+    this._send({ type: 'esp32_adc_set', data: { channel, millivolts } });
+  }
+
+  /** Configure the byte an I2C device at addr returns */
+  setI2cResponse(addr: number, response: number): void {
+    this._send({ type: 'esp32_i2c_response', data: { addr, response } });
+  }
+
+  /** Configure the MISO byte returned during an SPI transaction */
+  setSpiResponse(response: number): void {
+    this._send({ type: 'esp32_spi_response', data: { response } });
   }
 
   private _send(payload: unknown): void {

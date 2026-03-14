@@ -262,13 +262,29 @@ class ArduinoCLIService:
 
             try:
                 # Run compilation using subprocess.run in a thread (Windows compatible)
-                cmd = [
-                    self.cli_path,
-                    "compile",
-                    "--fqbn", board_fqbn,
-                    "--output-dir", str(build_dir),
-                    str(sketch_dir)
-                ]
+                # ESP32 lcgamboa emulator requires DIO flash mode and
+                # IRAM-safe interrupt placement to avoid cache errors.
+                # Force these at compile time for all ESP32 targets.
+                cmd = [self.cli_path, "compile", "--fqbn", board_fqbn]
+                if self._is_esp32_board(board_fqbn):
+                    # FlashMode=dio: required by esp32-picsimlab QEMU machine
+                    # IRAM_ATTR on all interrupt handlers prevents cache crashes
+                    # when WiFi emulation disables the SPI flash cache on core 1.
+                    fqbn_dio = board_fqbn
+                    if 'FlashMode' not in board_fqbn:
+                        fqbn_dio = board_fqbn + ':FlashMode=dio'
+                    cmd[2] = '--fqbn'
+                    cmd.insert(3, fqbn_dio)
+                    cmd = cmd[:4]  # trim accidental duplicates
+                    cmd = [self.cli_path, "compile", "--fqbn", fqbn_dio,
+                           "--build-property",
+                           "build.extra_flags=-DARDUINO_ESP32_LCGAMBOA=1",
+                           "--output-dir", str(build_dir),
+                           str(sketch_dir)]
+                else:
+                    cmd = [self.cli_path, "compile", "--fqbn", board_fqbn,
+                           "--output-dir", str(build_dir),
+                           str(sketch_dir)]
                 print(f"Running command: {' '.join(cmd)}")
 
                 # Use subprocess.run in a thread for Windows compatibility
