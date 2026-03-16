@@ -900,7 +900,7 @@ export const SimulatorCanvas = () => {
     return () => timers.forEach(t => clearTimeout(t));
   }, [components, recalculateAllWirePositions]);
 
-  // Auto-pan to keep the board visible after a project import/load.
+  // Auto-pan to keep the board and all components visible after a project import/load.
   // We track the previous component count and only re-center when the count
   // jumps (indicating the user loaded a new circuit, not just added one part).
   const prevComponentCountRef = useRef(-1);
@@ -919,9 +919,21 @@ export const SimulatorCanvas = () => {
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
       const currentZoom = zoomRef.current;
+
+      // Compute the centroid of all world-space elements (board + extra components)
+      // so that the auto-pan keeps everything visible, not just the board.
+      const allX = [boardPositionRef.current.x, ...componentsRef.current.map((c) => c.x)];
+      const allY = [boardPositionRef.current.y, ...componentsRef.current.map((c) => c.y)];
+      const minX = Math.min(...allX);
+      const maxX = Math.max(...allX);
+      const minY = Math.min(...allY);
+      const maxY = Math.max(...allY);
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
       const newPan = {
-        x: rect.width  / 4 - boardPosition.x * currentZoom,
-        y: rect.height / 4 - boardPosition.y * currentZoom,
+        x: rect.width  / 2 - centerX * currentZoom,
+        y: rect.height / 2 - centerY * currentZoom,
       };
       panRef.current = newPan;
       setPan(newPan);

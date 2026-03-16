@@ -586,6 +586,8 @@ const ili9341Simulation = {
         const pinManager = (avrSimulator as any).pinManager;
         const spi = (avrSimulator as any).spi;
 
+        console.log('[ILI9341] attachEvents called. spi=', !!spi, 'pinManager=', !!pinManager, 'cpu=', !!(avrSimulator as any).cpu);
+
         if (!pinManager || !spi) {
             console.warn('[ILI9341] pinManager or SPI peripheral not available');
             return () => {};
@@ -622,6 +624,7 @@ const ili9341Simulation = {
         let pendingFlush = false;
         let rafId: number | null = null;
 
+        let flushCount = 0;
         const scheduleFlush = () => {
             if (rafId !== null) return;
             rafId = requestAnimationFrame(() => {
@@ -629,6 +632,10 @@ const ili9341Simulation = {
                 if (pendingFlush && ctx && imageData) {
                     ctx.putImageData(imageData, 0, 0);
                     pendingFlush = false;
+                    flushCount++;
+                    if (flushCount === 1) console.log('[ILI9341] First canvas flush complete');
+                } else if (pendingFlush) {
+                    console.warn('[ILI9341] Flush skipped: ctx=', !!ctx, 'imageData=', !!imageData);
                 }
             });
         };
@@ -681,6 +688,7 @@ const ili9341Simulation = {
         };
 
         // ── Command / data processing ─────────────────────────────────────
+        let ramwrPixelCount = 0;
         const processCommand = (cmd: number) => {
             currentCmd = cmd;
             dataBytes   = [];
@@ -688,11 +696,15 @@ const ili9341Simulation = {
             pixelByteCount = 0;
 
             if (cmd === 0x01) { // SWRESET – clear framebuffer
+                console.log('[ILI9341] SWRESET received, ctx=', !!ctx);
                 colStart = 0; colEnd = SCREEN_W - 1;
                 rowStart = 0; rowEnd = SCREEN_H - 1;
                 curX = 0;     curY  = 0;
                 imageData = null;
                 if (ctx) ctx.clearRect(0, 0, SCREEN_W, SCREEN_H);
+            } else if (cmd === 0x2C) { // RAMWR
+                ramwrPixelCount = 0;
+                console.log('[ILI9341] RAMWR received, ctx=', !!ctx, 'col=', colStart, '-', colEnd, 'row=', rowStart, '-', rowEnd);
             }
         };
 
@@ -706,6 +718,10 @@ const ili9341Simulation = {
                     writePixel(pixelHiByte, value);
                     scheduleFlush();
                     pixelByteCount = 0;
+                    ramwrPixelCount++;
+                    if (ramwrPixelCount === 1) {
+                        console.log('[ILI9341] First pixel written: rgb565=', ((pixelHiByte << 8) | value).toString(16));
+                    }
                 }
                 return;
             }
@@ -727,7 +743,12 @@ const ili9341Simulation = {
         // ── Intercept SPI ─────────────────────────────────────────────────
         const prevOnByte = spi.onByte.bind(spi);
 
+        let spiByteCount = 0;
         spi.onByte = (value: number) => {
+            spiByteCount++;
+            if (spiByteCount === 1) {
+                console.log('[ILI9341] First SPI byte! value=0x' + value.toString(16) + ' dcState=' + dcState);
+            }
             if (!dcState) {
                 processCommand(value);
             } else {
@@ -736,7 +757,8 @@ const ili9341Simulation = {
             spi.completeTransfer(0xFF); // Unblock CPU immediately
         };
 
-        console.log(`[ILI9341] SPI simulation ready. DC→pin${pinDC}`);
+        // Verify the override was applied (same object ref check)
+        console.log(`[ILI9341] SPI simulation ready. DC→pin${pinDC}. spi.onByte overridden=${spi.onByte !== prevOnByte}`);
 
         // ── Cleanup ───────────────────────────────────────────────────────
         return () => {

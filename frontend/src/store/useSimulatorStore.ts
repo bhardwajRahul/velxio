@@ -497,10 +497,10 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
       set((s) => {
         const boards = s.boards.map((b) =>
-          b.id === boardId ? { ...b, running: true, serialMonitorOpen: true } : b
+          b.id === boardId ? { ...b, running: true } : b
         );
         const isActive = s.activeBoardId === boardId;
-        return { boards, ...(isActive ? { running: true, serialMonitorOpen: true } : {}) };
+        return { boards, ...(isActive ? { running: true } : {}) };
       });
     },
 

@@ -508,7 +508,6 @@ export const LandingPage: React.FC = () => {
       {/* Hero */}
       <section className="landing-hero">
         <div className="hero-left">
-          <p className="hero-eyebrow">Open Source · Free · Runs Locally</p>
           <h1 className="hero-title">
             Emulate Hardware.<br />
             <span className="hero-accent">In your browser.</span>
@@ -526,14 +525,7 @@ export const LandingPage: React.FC = () => {
               View on GitHub
             </a>
           </div>
-          <p className="hero-specs">
-            <span className="spec-pill">ATmega328p</span>
-            <span className="spec-pill">RP2040</span>
-            <span className="spec-pill">RV32IMC</span>
-            <span className="spec-pill">Xtensa LX6/LX7</span>
-            <span className="spec-pill">ARM Cortex-A53</span>
-            <span className="spec-pill">48+ components</span>
-          </p>
+          
         </div>
         <div className="hero-right">
           <img src="/image.png" alt="Velxio simulator preview" className="hero-preview-img" />
@@ -556,30 +548,24 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="boards-row">
             <div className="board-card-sm">
-              <div className="board-element-wrap board-element-uno">
-                <wokwi-arduino-uno />
-              </div>
+              <div className="board-img-box"><BoardUno /></div>
               <span className="board-name-sm">Arduino Uno</span>
               <span className="board-chip-sm">ATmega328p · 32 KB</span>
             </div>
             <div className="board-card-sm">
-              <div className="board-element-wrap board-element-nano">
-                <wokwi-arduino-nano />
-              </div>
+              <div className="board-img-box"><BoardNano /></div>
               <span className="board-name-sm">Arduino Nano</span>
               <span className="board-chip-sm">ATmega328p · 32 KB</span>
             </div>
             <div className="board-card-sm">
-              <div className="board-element-wrap board-element-mega">
-                <wokwi-arduino-mega />
-              </div>
+              <div className="board-img-box"><BoardMega /></div>
               <span className="board-name-sm">Arduino Mega 2560</span>
               <span className="board-chip-sm">ATmega2560 · 256 KB</span>
             </div>
             <div className="board-card-sm">
-              <BoardATtiny85 />
+              <div className="board-img-box"><BoardATtiny85 /></div>
               <span className="board-name-sm">ATtiny85</span>
-              <span className="board-chip-sm">ATtiny85 · 8 KB</span>
+              <span className="board-chip-sm">AVR · 8 KB · DIP-8</span>
             </div>
           </div>
         </div>
@@ -592,12 +578,16 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="boards-row">
             <div className="board-card-sm">
-              <img src="/boards/pi-pico.svg" alt="Raspberry Pi Pico" className="board-img-sm" />
+              <div className="board-img-box">
+                <img src="/boards/pi-pico.svg" alt="Raspberry Pi Pico" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">Raspberry Pi Pico</span>
               <span className="board-chip-sm">RP2040 · 264 KB RAM</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/pi-pico-w.svg" alt="Raspberry Pi Pico W" className="board-img-sm" />
+              <div className="board-img-box">
+                <img src="/boards/pi-pico-w.svg" alt="Raspberry Pi Pico W" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">Raspberry Pi Pico W</span>
               <span className="board-chip-sm">RP2040 + WiFi</span>
             </div>
@@ -612,22 +602,28 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="boards-row">
             <div className="board-card-sm">
-              <img src="/boards/esp32-c3.svg" alt="ESP32-C3" className="board-img-sm board-img-tall" />
+              <div className="board-img-box">
+                <img src="/boards/esp32-c3.svg" alt="ESP32-C3" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">ESP32-C3 DevKit</span>
               <span className="board-chip-sm">RV32IMC · 4 MB flash</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/xiao-esp32-c3.svg" alt="XIAO ESP32-C3" className="board-img-sm" />
+              <div className="board-img-box">
+                <img src="/boards/xiao-esp32-c3.svg" alt="XIAO ESP32-C3" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">XIAO ESP32-C3</span>
               <span className="board-chip-sm">RV32IMC · compact</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/esp32c3-supermini.svg" alt="ESP32-C3 SuperMini" className="board-img-sm" />
+              <div className="board-img-box">
+                <img src="/boards/esp32c3-supermini.svg" alt="ESP32-C3 SuperMini" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">ESP32-C3 SuperMini</span>
               <span className="board-chip-sm">RV32IMC · mini form</span>
             </div>
             <div className="board-card-sm">
-              <BoardCH32V003 />
+              <div className="board-img-box"><BoardCH32V003 /></div>
               <span className="board-name-sm">CH32V003 (RISC-V)</span>
               <span className="board-chip-sm">RV32EC · 48 MHz</span>
             </div>
@@ -642,34 +638,44 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="boards-row">
             <div className="board-card-sm">
-              <div className="board-element-wrap board-element-esp32">
-                <wokwi-esp32-devkit-v1 />
+              <div className="board-img-box">
+                <img src="/boards/esp32-devkit-c-v4.svg" alt="ESP32 DevKit V1" className="board-img-sm" />
               </div>
               <span className="board-name-sm">ESP32 DevKit V1</span>
               <span className="board-chip-sm">LX6 · 4 MB flash</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/esp32-devkit-c-v4.svg" alt="ESP32 DevKit C V4" className="board-img-sm board-img-tall" />
+              <div className="board-img-box">
+                <img src="/boards/esp32-devkit-c-v4.svg" alt="ESP32 DevKit C V4" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">ESP32 DevKit C V4</span>
               <span className="board-chip-sm">LX6 · 4 MB flash</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/esp32-cam.svg" alt="ESP32-CAM" className="board-img-sm board-img-tall" />
+              <div className="board-img-box">
+                <img src="/boards/esp32-cam.svg" alt="ESP32-CAM" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">ESP32-CAM</span>
               <span className="board-chip-sm">LX6 · camera module</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/esp32-s3.svg" alt="ESP32-S3" className="board-img-sm board-img-tall" />
+              <div className="board-img-box">
+                <img src="/boards/esp32-s3.svg" alt="ESP32-S3" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">ESP32-S3 DevKit</span>
               <span className="board-chip-sm">LX7 · 4 MB flash</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/xiao-esp32-s3.svg" alt="XIAO ESP32-S3" className="board-img-sm" />
+              <div className="board-img-box">
+                <img src="/boards/xiao-esp32-s3.svg" alt="XIAO ESP32-S3" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">XIAO ESP32-S3</span>
               <span className="board-chip-sm">LX7 · compact</span>
             </div>
             <div className="board-card-sm">
-              <img src="/boards/arduino-nano-esp32.svg" alt="Arduino Nano ESP32" className="board-img-sm board-img-tall" />
+              <div className="board-img-box">
+                <img src="/boards/arduino-nano-esp32.svg" alt="Arduino Nano ESP32" className="board-img-sm" />
+              </div>
               <span className="board-name-sm">Arduino Nano ESP32</span>
               <span className="board-chip-sm">LX7 · Nano form</span>
             </div>
@@ -684,8 +690,8 @@ export const LandingPage: React.FC = () => {
           </div>
           <div className="boards-row">
             <div className="board-card-sm">
-              <div className="board-img-wrap">
-                <img src={raspberryPi3Svg} alt="Raspberry Pi 3" className="board-img-pi3" />
+              <div className="board-img-box">
+                <img src={raspberryPi3Svg} alt="Raspberry Pi 3B" className="board-img-sm" />
               </div>
               <span className="board-name-sm">Raspberry Pi 3B</span>
               <span className="board-chip-sm">Cortex-A53 · 1.2 GHz · Linux</span>

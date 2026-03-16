@@ -72,55 +72,55 @@ const NAV_ITEMS: NavItem[] = [
 interface SectionMeta { title: string; description: string; }
 const SECTION_META: Record<SectionId, SectionMeta> = {
   'intro': {
-    title: 'Introduction — Velxio Documentation',
+    title: 'Introduction | Velxio Documentation',
     description: 'Learn about Velxio, the free open-source Arduino emulator with real AVR8 and RP2040 CPU emulation and 48+ interactive electronic components.',
   },
   'getting-started': {
-    title: 'Getting Started — Velxio Documentation',
+    title: 'Getting Started | Velxio Documentation',
     description: 'Get started with Velxio: use the hosted editor, self-host with Docker, or set up a local development environment. Simulate your first Arduino sketch in minutes.',
   },
   'emulator': {
-    title: 'Emulator Architecture — Velxio Documentation',
+    title: 'Emulator Architecture | Velxio Documentation',
     description: 'How Velxio emulates AVR8 (ATmega328p), RP2040, and RISC-V (ESP32-C3) CPUs. Covers execution loops, peripherals, and pin mapping for all supported boards.',
   },
   'riscv-emulation': {
-    title: 'RISC-V Emulation (ESP32-C3) — Velxio Documentation',
+    title: 'RISC-V Emulation (ESP32-C3) | Velxio Documentation',
     description: 'Browser-side RV32IMC emulator for ESP32-C3, XIAO ESP32-C3, and C3 SuperMini. Covers memory map, GPIO, UART0, the ESP32 image parser, RV32IMC ISA, and test suite.',
   },
   'esp32-emulation': {
-    title: 'ESP32 Emulation (Xtensa) — Velxio Documentation',
+    title: 'ESP32 Emulation (Xtensa) | Velxio Documentation',
     description: 'QEMU-based emulation for ESP32 and ESP32-S3 (Xtensa LX6/LX7). Covers the lcgamboa fork, libqemu-xtensa, GPIO, WiFi, I2C, SPI, RMT/NeoPixel, and LEDC/PWM.',
   },
   'components': {
-    title: 'Components Reference — Velxio Documentation',
+    title: 'Components Reference | Velxio Documentation',
     description: 'Full reference for all 48+ interactive electronic components in Velxio: LEDs, displays, sensors, buttons, potentiometers, and more. Includes wiring and property details.',
   },
   'roadmap': {
-    title: 'Roadmap — Velxio Documentation',
+    title: 'Roadmap | Velxio Documentation',
     description: "Velxio's feature roadmap: what's implemented, what's in progress, and what's planned for future releases.",
   },
   'architecture': {
-    title: 'Project Architecture — Velxio Documentation',
+    title: 'Project Architecture | Velxio Documentation',
     description: 'Detailed overview of the Velxio system architecture: frontend, backend, AVR8 emulation pipeline, data flows, Zustand stores, and wire system.',
   },
   'wokwi-libs': {
-    title: 'Wokwi Libraries — Velxio Documentation',
+    title: 'Wokwi Libraries | Velxio Documentation',
     description: 'How Velxio integrates the official Wokwi open-source libraries: avr8js, wokwi-elements, and rp2040js. Covers configuration, updates, and the 48 available components.',
   },
   'mcp': {
-    title: 'MCP Server — Velxio Documentation',
+    title: 'MCP Server | Velxio Documentation',
     description: 'Velxio MCP Server reference: integrate AI agents (Claude, Cursor) with Velxio via Model Context Protocol. Covers tools, transports, circuit format, and example walkthroughs.',
   },
   'setup': {
-    title: 'Project Status — Velxio Documentation',
+    title: 'Project Status | Velxio Documentation',
     description: 'Complete status of all implemented Velxio features: AVR emulation, component system, wire system, code editor, example projects, and next steps.',
   },
   'rp2040-emulation': {
-    title: 'RP2040 Emulation (Raspberry Pi Pico) — Velxio Documentation',
+    title: 'RP2040 Emulation (Raspberry Pi Pico) | Velxio Documentation',
     description: 'How Velxio emulates the Raspberry Pi Pico and Pico W using rp2040js: ARM Cortex-M0+ at 133 MHz, GPIO, UART, ADC, I2C, SPI, PWM and WFI optimization.',
   },
   'raspberry-pi3-emulation': {
-    title: 'Raspberry Pi 3 Emulation (QEMU) — Velxio Documentation',
+    title: 'Raspberry Pi 3 Emulation (QEMU) | Velxio Documentation',
     description: 'How Velxio emulates a full Raspberry Pi 3B using QEMU raspi3b: real Raspberry Pi OS, Python + RPi.GPIO shim, dual-channel UART, VFS, and multi-board serial bridge.',
   },
 };
@@ -133,16 +133,16 @@ const IntroSection: React.FC = () => (
     <p>
       <strong>Velxio</strong> is a fully local, open-source Arduino emulator that runs entirely in your browser.
       Write Arduino C++ code, compile it with a real <code>arduino-cli</code> backend, and simulate it using
-      true AVR8 / RP2040 CPU emulation — with 48+ interactive electronic components, all without installing
+      true AVR8 / RP2040 CPU emulation, with 48+ interactive electronic components, all without installing
       any software on your machine.
     </p>
 
     <h2>Why Velxio?</h2>
     <ul>
-      <li><strong>No installation required</strong> — everything runs in the browser.</li>
-      <li><strong>Real emulation</strong> — not a simplified model, but accurate AVR8 / RP2040 CPU emulation.</li>
-      <li><strong>Interactive components</strong> — LEDs, buttons, potentiometers, displays, sensors, and more.</li>
-      <li><strong>Open-source</strong> — inspect, modify, and self-host it yourself.</li>
+      <li><strong>No installation required</strong>: everything runs in the browser.</li>
+      <li><strong>Real emulation</strong>: not a simplified model, but accurate AVR8 / RP2040 CPU emulation.</li>
+      <li><strong>Interactive components</strong>: LEDs, buttons, potentiometers, displays, sensors, and more.</li>
+      <li><strong>Open-source</strong>: inspect, modify, and self-host it yourself.</li>
     </ul>
 
     <h2>Supported Boards</h2>
@@ -163,7 +163,7 @@ const IntroSection: React.FC = () => (
     <div className="docs-callout">
       <strong>Live Demo:</strong>{' '}
       <a href="https://velxio.dev" target="_blank" rel="noopener noreferrer">velxio.dev</a>
-      {' '}— no installation needed, open the editor and start simulating immediately.
+      {' '}, no installation needed, open the editor and start simulating immediately.
     </div>
   </div>
 );
@@ -176,7 +176,7 @@ const GettingStartedSection: React.FC = () => (
 
     <h2>Option 1: Use the Hosted Version</h2>
     <p>
-      No installation needed — go to{' '}
+      No installation needed, go to{' '}
       <a href="https://velxio.dev" target="_blank" rel="noopener noreferrer">https://velxio.dev</a>{' '}
       and start coding immediately.
     </p>
@@ -235,8 +235,8 @@ void loop() {
   delay(500);
 }`}</CodeBlock>
     <ol start={4}>
-      <li><strong>Click Compile</strong> — the backend calls <code>arduino-cli</code> and returns a <code>.hex</code> file.</li>
-      <li><strong>Click Run</strong> — the AVR8 emulator executes the compiled program.</li>
+      <li><strong>Click Compile</strong>: the backend calls <code>arduino-cli</code> and returns a <code>.hex</code> file.</li>
+      <li><strong>Click Run</strong>: the AVR8 emulator executes the compiled program.</li>
       <li><strong>Add components</strong> using the component picker (click the <strong>+</strong> button on the canvas).</li>
       <li><strong>Connect wires</strong> by clicking a component pin and then another pin.</li>
     </ol>
@@ -317,7 +317,7 @@ cpu.tick();           // advance peripheral timers and counters`}</CodeBlock>
       <tbody>
         <tr><td>GPIO</td><td>PORTB (pins 8–13), PORTC (A0–A5), PORTD (pins 0–7)</td></tr>
         <tr><td>Timer0 / Timer1 / Timer2</td><td><code>millis()</code>, <code>delay()</code>, PWM via <code>analogWrite()</code></td></tr>
-        <tr><td>USART</td><td>Full transmit and receive — powers the Serial Monitor</td></tr>
+        <tr><td>USART</td><td>Full transmit and receive, powers the Serial Monitor</td></tr>
         <tr><td>ADC</td><td>10-bit, 5 V reference on pins A0–A5</td></tr>
         <tr><td>SPI</td><td>Hardware SPI (enables ILI9341, SD card, etc.)</td></tr>
         <tr><td>I2C (TWI)</td><td>Hardware I2C with virtual device bus</td></tr>
@@ -392,7 +392,7 @@ const ComponentsSection: React.FC = () => (
 
     <h2>Connecting Components</h2>
     <ol>
-      <li>Click a <strong>pin</strong> on any component — a wire starts from that pin.</li>
+      <li>Click a <strong>pin</strong> on any component, a wire starts from that pin.</li>
       <li>Click a <strong>destination pin</strong> to complete the connection.</li>
       <li>Wires are <strong>color-coded</strong> by signal type:</li>
     </ol>
@@ -488,7 +488,7 @@ const RoadmapSection: React.FC = () => (
     <h2>✅ Implemented</h2>
     <ul>
       <li>Monaco Editor with C++ syntax highlighting, autocomplete, and minimap</li>
-      <li>Multi-file workspace — create, rename, delete, and switch between files</li>
+      <li>Multi-file workspace, create, rename, delete, and switch between files</li>
       <li>Arduino compilation via <code>arduino-cli</code> (multi-file sketch support)</li>
       <li>Real ATmega328p / ATmega2560 emulation at 16 MHz via avr8js</li>
       <li>Full GPIO, Timers, USART, ADC, SPI, I2C support</li>
@@ -505,33 +505,33 @@ const RoadmapSection: React.FC = () => (
 
     <h2>🔄 In Progress</h2>
     <ul>
-      <li>Functional wire connections — electrical signal routing and validation</li>
-      <li>Wire connection error handling — detect short circuits and invalid connections</li>
+      <li>Functional wire connections, electrical signal routing and validation</li>
+      <li>Wire connection error handling, detect short circuits and invalid connections</li>
     </ul>
 
-    <h2>🗓 Planned — Near-Term</h2>
+    <h2>🗓 Planned: Near-Term</h2>
     <ul>
       <li>Undo / redo for code edits and canvas changes</li>
       <li>Export / import projects as <code>.zip</code> files</li>
-      <li>More boards — ESP32, Arduino Leonardo</li>
-      <li>Breadboard — place components with automatic wire routing</li>
+      <li>More boards, ESP32, Arduino Leonardo</li>
+      <li>Breadboard, place components with automatic wire routing</li>
     </ul>
 
-    <h2>🗓 Planned — Mid-Term</h2>
+    <h2>🗓 Planned: Mid-Term</h2>
     <ul>
-      <li>TypeDoc API documentation — auto-generated from source code</li>
-      <li>GitHub Pages docs site — automatic deployment on push to <code>main</code></li>
-      <li>More sensor simulations — HC-SR04, DHT22, IR receiver</li>
-      <li>EEPROM emulation — persistent read/write across simulation restarts</li>
-      <li>Oscilloscope component — plot analog pin voltages over time</li>
+      <li>TypeDoc API documentation, auto-generated from source code</li>
+      <li>GitHub Pages docs site, automatic deployment on push to <code>main</code></li>
+      <li>More sensor simulations, HC-SR04, DHT22, IR receiver</li>
+      <li>EEPROM emulation, persistent read/write across simulation restarts</li>
+      <li>Oscilloscope component, plot analog pin voltages over time</li>
     </ul>
 
-    <h2>🗓 Planned — Long-Term</h2>
+    <h2>🗓 Planned: Long-Term</h2>
     <ul>
-      <li>Multiplayer — share and co-edit simulations in real time</li>
-      <li>Embedded tutorial system — step-by-step guided projects inside the editor</li>
-      <li>Custom component SDK — define new components with a JSON/TypeScript API</li>
-      <li>Mobile / tablet support — responsive layout for touch devices</li>
+      <li>Multiplayer, share and co-edit simulations in real time</li>
+      <li>Embedded tutorial system, step-by-step guided projects inside the editor</li>
+      <li>Custom component SDK, define new components with a JSON/TypeScript API</li>
+      <li>Mobile / tablet support, responsive layout for touch devices</li>
     </ul>
 
     <div className="docs-callout">
@@ -635,10 +635,10 @@ const ArchitectureSection: React.FC = () => (
   signalType: 'digital' | 'analog' | 'power-vcc' | 'power-gnd'
 }`}</CodeBlock>
     <ul>
-      <li>Orthogonal routing — no diagonal segments</li>
-      <li>Segment drag — drag perpendicular to segment orientation</li>
-      <li>Auto-update — wire positions recalculate when components move</li>
-      <li>Grid snapping — 20 px grid for all wire endpoints</li>
+      <li>Orthogonal routing, no diagonal segments</li>
+      <li>Segment drag, drag perpendicular to segment orientation</li>
+      <li>Auto-update, wire positions recalculate when components move</li>
+      <li>Grid snapping, 20 px grid for all wire endpoints</li>
     </ul>
 
     <div className="docs-callout">
@@ -796,7 +796,7 @@ const McpSection: React.FC = () => (
 
     <h2>Transport Options</h2>
 
-    <h3>1. stdio — Claude Desktop / CLI agents</h3>
+    <h3>1. stdio: Claude Desktop / CLI agents</h3>
     <CodeBlock language="bash">{`cd backend
 python mcp_server.py`}</CodeBlock>
     <p>Claude Desktop config (<code>~/.claude/claude_desktop_config.json</code>):</p>
@@ -809,7 +809,7 @@ python mcp_server.py`}</CodeBlock>
   }
 }`}</CodeBlock>
 
-    <h3>2. SSE / HTTP — Cursor IDE / web agents</h3>
+    <h3>2. SSE / HTTP: Cursor IDE / web agents</h3>
     <CodeBlock language="bash">{`cd backend
 python mcp_sse_server.py --port 8002`}</CodeBlock>
     <p>MCP client config:</p>
@@ -847,7 +847,7 @@ python mcp_sse_server.py --port 8002`}</CodeBlock>
       </tbody>
     </table>
 
-    <h2>Example — Blink LED from Scratch</h2>
+    <h2>Example: Blink LED from Scratch</h2>
     <CodeBlock language="json">{`// Step 1 — Create a circuit
 {
   "tool": "create_circuit",
@@ -1048,7 +1048,7 @@ const RiscVEmulationSection: React.FC = () => (
     <h1>RISC-V Emulation (ESP32-C3)</h1>
     <p>
       ESP32-C3, XIAO ESP32-C3, and C3 SuperMini boards use a <strong>RISC-V RV32IMC</strong> core running at
-      160 MHz. Velxio emulates them entirely in the browser — no backend, no QEMU, no WebAssembly pipeline.
+      160 MHz. Velxio emulates them entirely in the browser, no backend, no QEMU, no WebAssembly pipeline.
       The emulator is written in pure TypeScript and runs at real-time speeds.
     </p>
 
@@ -1095,9 +1095,9 @@ const RiscVEmulationSection: React.FC = () => (
 
     <h2>ISA Support</h2>
     <ul>
-      <li><strong>RV32I</strong> — Full base integer instruction set (ALU, load/store, branches, JAL/JALR)</li>
-      <li><strong>RV32M</strong> — Multiply/divide: MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU</li>
-      <li><strong>RV32C</strong> — 16-bit compressed instructions: C.LI, C.ADDI, C.LUI, C.J, C.JAL, C.BEQZ,
+      <li><strong>RV32I</strong>: Full base integer instruction set (ALU, load/store, branches, JAL/JALR)</li>
+      <li><strong>RV32M</strong>: Multiply/divide: MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU</li>
+      <li><strong>RV32C</strong>: 16-bit compressed instructions: C.LI, C.ADDI, C.LUI, C.J, C.JAL, C.BEQZ,
         C.BNEZ, C.MV, C.ADD, C.JR, C.JALR, C.LW, C.SW, C.LWSP, C.SWSP, C.SLLI, C.ADDI4SPN</li>
     </ul>
 
@@ -1165,14 +1165,14 @@ const Esp32EmulationSection: React.FC = () => (
     <p>
       ESP32 and ESP32-S3 boards use an <strong>Xtensa LX6 / LX7</strong> architecture. Because no
       production-quality Xtensa emulator is available as pure JavaScript, Velxio uses a
-      <strong> QEMU-based backend</strong> for these boards — the lcgamboa fork with
+      <strong> QEMU-based backend</strong> for these boards, the lcgamboa fork with
       libqemu-xtensa, compiled to a native binary and served by the FastAPI backend.
     </p>
 
     <div className="docs-callout">
       <strong>Note:</strong> This section applies only to <strong>ESP32</strong> and <strong>ESP32-S3</strong> (Xtensa).
       For ESP32-C3, XIAO ESP32-C3, and C3 SuperMini (RISC-V), see{' '}
-      <strong>RISC-V Emulation (ESP32-C3)</strong> in the sidebar — those boards run entirely in the browser.
+      <strong>RISC-V Emulation (ESP32-C3)</strong> in the sidebar, those boards run entirely in the browser.
     </div>
 
     <h2>How It Works</h2>
@@ -1219,12 +1219,12 @@ const Esp32EmulationSection: React.FC = () => (
 
     <h2>Peripheral Support</h2>
     <ul>
-      <li><strong>GPIO</strong> — digital output / input, LED control</li>
-      <li><strong>UART</strong> — Serial Monitor via <code>Serial.print()</code></li>
-      <li><strong>I2C / SPI</strong> — peripheral communication</li>
-      <li><strong>RMT / NeoPixel</strong> — addressable LED strips</li>
-      <li><strong>LEDC / PWM</strong> — hardware PWM channels</li>
-      <li><strong>WiFi</strong> — partial (connection events forwarded)</li>
+      <li><strong>GPIO</strong>: digital output / input, LED control</li>
+      <li><strong>UART</strong>: Serial Monitor via <code>Serial.print()</code></li>
+      <li><strong>I2C / SPI</strong>: peripheral communication</li>
+      <li><strong>RMT / NeoPixel</strong>: addressable LED strips</li>
+      <li><strong>LEDC / PWM</strong>: hardware PWM channels</li>
+      <li><strong>WiFi</strong>: partial (connection events forwarded)</li>
     </ul>
 
     <h2>Requirements</h2>
@@ -1253,7 +1253,7 @@ const Rp2040EmulationSection: React.FC = () => (
     <p>
       The Raspberry Pi Pico and Pico W are emulated entirely in the browser using{' '}
       <a href="https://github.com/wokwi/rp2040js" target="_blank" rel="noopener noreferrer">rp2040js</a>,
-      an open-source ARM Cortex-M0+ emulator. No QEMU or backend process is required — the binary runs at full speed inside a Web Worker.
+      an open-source ARM Cortex-M0+ emulator. No QEMU or backend process is required, the binary runs at full speed inside a Web Worker.
     </p>
 
     <h2>Supported Boards</h2>
@@ -1278,7 +1278,7 @@ const Rp2040EmulationSection: React.FC = () => (
     <h2>Binary Format</h2>
     <p>
       The backend compiles the sketch with <code>arduino-cli</code> targeting <code>rp2040:rp2040:rpipico</code> and returns
-      a raw ARM binary (<code>.bin</code>) encoded in base64. Unlike AVR, there is no Intel HEX — the binary is loaded
+      a raw ARM binary (<code>.bin</code>) encoded in base64. Unlike AVR, there is no Intel HEX, the binary is loaded
       directly into the RP2040 flash at offset 0.
     </p>
     <p>
@@ -1316,11 +1316,11 @@ const Rp2040EmulationSection: React.FC = () => (
 
     <h2>Known Limitations</h2>
     <ul>
-      <li>Pico W wireless chip (CYW43439) is not emulated — WiFi/Bluetooth will not work</li>
-      <li>SPI loopback only — no real SPI device emulation</li>
+      <li>Pico W wireless chip (CYW43439) is not emulated, WiFi/Bluetooth will not work</li>
+      <li>SPI loopback only, no real SPI device emulation</li>
       <li>PWM produces correct frequency but no visual waveform on components</li>
       <li>DMA not emulated</li>
-      <li>Second CPU core (core 1) not emulated — <code>multicore_launch_core1()</code> has no effect</li>
+      <li>Second CPU core (core 1) not emulated, <code>multicore_launch_core1()</code> has no effect</li>
     </ul>
 
     <h2>Full Documentation</h2>
@@ -1340,7 +1340,7 @@ const RaspberryPi3EmulationSection: React.FC = () => (
     <h1>Raspberry Pi 3 Emulation (QEMU)</h1>
     <p>
       The Raspberry Pi 3B is emulated using <strong>QEMU 8.1.3</strong> with <code>-M raspi3b</code>.
-      This is the only board in Velxio that runs a full operating system — a real{' '}
+      This is the only board in Velxio that runs a full operating system, a real{' '}
       <strong>Raspberry Pi OS (Trixie)</strong> image booted inside the emulator.
       Users write Python scripts (not C++), which are executed by the real Python 3 interpreter inside the VM.
     </p>
@@ -1364,8 +1364,8 @@ const RaspberryPi3EmulationSection: React.FC = () => (
       QEMU exposes two UART channels to the backend:
     </p>
     <ul>
-      <li><strong>ttyAMA0</strong> — User serial: interactive terminal (Serial Monitor). The user's <code>print()</code> output appears here.</li>
-      <li><strong>ttyAMA1</strong> — GPIO shim: carries a text protocol between the GPIO shim inside the VM and the backend.</li>
+      <li><strong>ttyAMA0</strong>: User serial: interactive terminal (Serial Monitor). The user's <code>print()</code> output appears here.</li>
+      <li><strong>ttyAMA1</strong>: GPIO shim: carries a text protocol between the GPIO shim inside the VM and the backend.</li>
     </ul>
 
     <h2>RPi.GPIO Shim</h2>
@@ -1402,7 +1402,7 @@ const RaspberryPi3EmulationSection: React.FC = () => (
       <li>No I2C or SPI device emulation</li>
       <li>No PWM waveform output to components</li>
       <li>No networking (WiFi/Ethernet not emulated)</li>
-      <li>Session state is not persisted — overlay is discarded on stop</li>
+      <li>Session state is not persisted, overlay is discarded on stop</li>
       <li>Boot time is slow (~10–20 s) as a full OS must start</li>
       <li>Requires the ~5.67 GB base SD image to be present on the server</li>
     </ul>

@@ -652,8 +652,8 @@ void loop() {
 
 Adafruit_ILI9341 tft(TFT_CS, TFT_DC, TFT_RST);
 
-// Background color: dark blue
-#define BG_COLOR 0x0006
+// Background color: blue (visible on dark simulator canvas)
+#define BG_COLOR 0x001F
 
 // Ball state
 int ballX = 120, ballY = 200;
@@ -724,8 +724,8 @@ void loop() {
       {
         type: 'wokwi-ili9341',
         id: 'tft1',
-        x: 480,
-        y: 60,
+        x: 300,
+        y: 30,
         properties: {},
       },
     ],
