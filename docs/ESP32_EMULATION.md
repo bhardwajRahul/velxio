@@ -1,8 +1,11 @@
-# ESP32 Emulation — Documentación Técnica
+# ESP32 Emulation (Xtensa) — Documentación Técnica
 
 > Estado: **Funcional** · Backend completo · Frontend completo
 > Motor: **lcgamboa/qemu-8.1.3** · Plataforma: **arduino-esp32 2.0.17 (IDF 4.4.x)**
 > Disponible en: **Windows** (`.dll`) · **Linux / Docker** (`.so`, incluido en imagen oficial)
+> Aplica a: **ESP32, ESP32-S3** (arquitectura Xtensa LX6/LX7)
+
+> **Nota sobre ESP32-C3:** Los boards ESP32-C3, XIAO ESP32-C3 y ESP32-C3 SuperMini usan la arquitectura **RISC-V RV32IMC** y tienen su propio emulador en el navegador. Ver → [RISCV_EMULATION.md](./RISCV_EMULATION.md)
 
 ---
 

@@ -27,6 +27,8 @@ type SectionId =
   | 'intro'
   | 'getting-started'
   | 'emulator'
+  | 'riscv-emulation'
+  | 'esp32-emulation'
   | 'components'
   | 'roadmap'
   | 'architecture'
@@ -38,6 +40,8 @@ const VALID_SECTIONS: SectionId[] = [
   'intro',
   'getting-started',
   'emulator',
+  'riscv-emulation',
+  'esp32-emulation',
   'components',
   'roadmap',
   'architecture',
@@ -55,6 +59,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'intro', label: 'Introduction' },
   { id: 'getting-started', label: 'Getting Started' },
   { id: 'emulator', label: 'Emulator Architecture' },
+  { id: 'riscv-emulation', label: 'RISC-V Emulation (ESP32-C3)' },
+  { id: 'esp32-emulation', label: 'ESP32 Emulation (Xtensa)' },
   { id: 'components', label: 'Components Reference' },
   { id: 'architecture', label: 'Project Architecture' },
   { id: 'wokwi-libs', label: 'Wokwi Libraries' },
@@ -76,7 +82,15 @@ const SECTION_META: Record<SectionId, SectionMeta> = {
   },
   'emulator': {
     title: 'Emulator Architecture — Velxio Documentation',
-    description: 'How Velxio emulates AVR8 (ATmega328p) and RP2040 CPUs. Covers the execution loop, peripherals (GPIO, Timers, USART, ADC, SPI, I2C), and pin mapping.',
+    description: 'How Velxio emulates AVR8 (ATmega328p), RP2040, and RISC-V (ESP32-C3) CPUs. Covers execution loops, peripherals, and pin mapping for all supported boards.',
+  },
+  'riscv-emulation': {
+    title: 'RISC-V Emulation (ESP32-C3) — Velxio Documentation',
+    description: 'Browser-side RV32IMC emulator for ESP32-C3, XIAO ESP32-C3, and C3 SuperMini. Covers memory map, GPIO, UART0, the ESP32 image parser, RV32IMC ISA, and test suite.',
+  },
+  'esp32-emulation': {
+    title: 'ESP32 Emulation (Xtensa) — Velxio Documentation',
+    description: 'QEMU-based emulation for ESP32 and ESP32-S3 (Xtensa LX6/LX7). Covers the lcgamboa fork, libqemu-xtensa, GPIO, WiFi, I2C, SPI, RMT/NeoPixel, and LEDC/PWM.',
   },
   'components': {
     title: 'Components Reference — Velxio Documentation',
@@ -134,6 +148,8 @@ const IntroSection: React.FC = () => (
         <tr><td>Arduino Nano</td><td>ATmega328p @ 16 MHz</td><td>avr8js</td></tr>
         <tr><td>Arduino Mega</td><td>ATmega2560 @ 16 MHz</td><td>avr8js</td></tr>
         <tr><td>Raspberry Pi Pico</td><td>RP2040 @ 133 MHz</td><td>rp2040js</td></tr>
+        <tr><td>ESP32-C3 / XIAO C3 / C3 SuperMini</td><td>RV32IMC @ 160 MHz</td><td>Esp32C3Simulator (browser)</td></tr>
+        <tr><td>ESP32 / ESP32-S3</td><td>Xtensa LX6/LX7 @ 240 MHz</td><td>QEMU (lcgamboa)</td></tr>
       </tbody>
     </table>
 
@@ -1019,10 +1035,179 @@ const SetupSection: React.FC = () => (
   </div>
 );
 
+const RiscVEmulationSection: React.FC = () => (
+  <div className="docs-section">
+    <span className="docs-label">// risc-v</span>
+    <h1>RISC-V Emulation (ESP32-C3)</h1>
+    <p>
+      ESP32-C3, XIAO ESP32-C3, and C3 SuperMini boards use a <strong>RISC-V RV32IMC</strong> core running at
+      160 MHz. Velxio emulates them entirely in the browser — no backend, no QEMU, no WebAssembly pipeline.
+      The emulator is written in pure TypeScript and runs at real-time speeds.
+    </p>
+
+    <h2>Supported Boards</h2>
+    <table>
+      <thead>
+        <tr><th>Board</th><th>CPU</th><th>Flash</th><th>RAM</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ESP32-C3</td><td>RV32IMC @ 160 MHz</td><td>4 MB</td><td>384 KB DRAM</td></tr>
+        <tr><td>XIAO ESP32-C3</td><td>RV32IMC @ 160 MHz</td><td>4 MB</td><td>384 KB DRAM</td></tr>
+        <tr><td>C3 SuperMini</td><td>RV32IMC @ 160 MHz</td><td>4 MB</td><td>384 KB DRAM</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Memory Map</h2>
+    <table>
+      <thead>
+        <tr><th>Region</th><th>Base Address</th><th>Size</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>IROM (Flash)</td><td><code>0x42000000</code></td><td>4 MB</td><td>Code stored in flash</td></tr>
+        <tr><td>DROM (Flash R/O)</td><td><code>0x3C000000</code></td><td>4 MB</td><td>Read-only data in flash</td></tr>
+        <tr><td>DRAM</td><td><code>0x3FC80000</code></td><td>384 KB</td><td>Data RAM (stack + heap)</td></tr>
+        <tr><td>IRAM</td><td><code>0x4037C000</code></td><td>384 KB</td><td>Instruction RAM (copied from flash)</td></tr>
+        <tr><td>UART0</td><td><code>0x60000000</code></td><td>1 KB</td><td>Serial port 0 (GPIO 20/21)</td></tr>
+        <tr><td>GPIO</td><td><code>0x60004000</code></td><td>512 B</td><td>GPIO output / input / enable</td></tr>
+      </tbody>
+    </table>
+
+    <h2>ISA Support</h2>
+    <ul>
+      <li><strong>RV32I</strong> — Full base integer instruction set (ALU, load/store, branches, JAL/JALR)</li>
+      <li><strong>RV32M</strong> — Multiply/divide: MUL, MULH, MULHSU, MULHU, DIV, DIVU, REM, REMU</li>
+      <li><strong>RV32C</strong> — 16-bit compressed instructions: C.LI, C.ADDI, C.LUI, C.J, C.JAL, C.BEQZ,
+        C.BNEZ, C.MV, C.ADD, C.JR, C.JALR, C.LW, C.SW, C.LWSP, C.SWSP, C.SLLI, C.ADDI4SPN</li>
+    </ul>
+
+    <h2>Compilation Flow</h2>
+    <p>When you click <strong>Compile + Run</strong> for an ESP32-C3 board:</p>
+    <ol>
+      <li>The backend compiles your sketch with <code>arduino-cli</code> using the <code>esp32:esp32</code> core.</li>
+      <li>The resulting binary is a <strong>merged 4 MB flash image</strong>: bootloader at <code>0x1000</code>,
+        partition table at <code>0x8000</code>, application at <code>0x10000</code>.</li>
+      <li>The frontend's <code>esp32ImageParser.ts</code> finds the app at offset <code>0x10000</code>,
+        reads the 24-byte ESP32 image header (magic <code>0xE9</code>), and extracts all segments
+        (load address + data).</li>
+      <li>Each segment is written into the correct memory region (IROM, DROM, DRAM, or IRAM) of
+        the <code>Esp32C3Simulator</code>.</li>
+      <li>The CPU starts executing from the entry point specified in the image header.</li>
+    </ol>
+
+    <h2>GPIO Registers</h2>
+    <table>
+      <thead>
+        <tr><th>Register</th><th>Offset</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>GPIO_OUT_REG</code></td><td><code>+0x04</code></td><td>Current output value</td></tr>
+        <tr><td><code>GPIO_OUT_W1TS</code></td><td><code>+0x08</code></td><td>Set bits (write 1 to set)</td></tr>
+        <tr><td><code>GPIO_OUT_W1TC</code></td><td><code>+0x0C</code></td><td>Clear bits (write 1 to clear)</td></tr>
+        <tr><td><code>GPIO_ENABLE_REG</code></td><td><code>+0x20</code></td><td>Output enable</td></tr>
+        <tr><td><code>GPIO_IN_REG</code></td><td><code>+0x3C</code></td><td>Input pin states</td></tr>
+      </tbody>
+    </table>
+
+    <h2>UART0</h2>
+    <p>
+      Writing a byte to <code>0x60000000</code> (UART0 FIFO) triggers the <code>onSerialData</code> callback,
+      which streams characters to the Serial Monitor. Reading from the same address pops from the receive
+      FIFO (used by <code>Serial.read()</code>). The UART status register always returns 0 (TX ready).
+    </p>
+
+    <h2>Key Source Files</h2>
+    <table>
+      <thead>
+        <tr><th>File</th><th>Role</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>simulation/RiscVCore.ts</code></td><td>RV32IMC interpreter (step, MMIO hooks)</td></tr>
+        <tr><td><code>simulation/Esp32C3Simulator.ts</code></td><td>ESP32-C3 peripherals, memory map, lifecycle</td></tr>
+        <tr><td><code>utils/esp32ImageParser.ts</code></td><td>Parses merged flash image, extracts segments</td></tr>
+      </tbody>
+    </table>
+
+    <div className="docs-callout">
+      <strong>Full details:</strong>{' '}
+      <a href={`${GITHUB_URL}/blob/master/docs/RISCV_EMULATION.md`} target="_blank" rel="noopener noreferrer">
+        docs/RISCV_EMULATION.md
+      </a>{' '}
+      in the repository.
+    </div>
+  </div>
+);
+
+const Esp32EmulationSection: React.FC = () => (
+  <div className="docs-section">
+    <span className="docs-label">// xtensa</span>
+    <h1>ESP32 Emulation (Xtensa)</h1>
+    <p>
+      ESP32 and ESP32-S3 boards use an <strong>Xtensa LX6 / LX7</strong> architecture. Because no
+      production-quality Xtensa emulator is available as pure JavaScript, Velxio uses a
+      <strong> QEMU-based backend</strong> for these boards — the lcgamboa fork with
+      libqemu-xtensa, compiled to a native binary and served by the FastAPI backend.
+    </p>
+
+    <div className="docs-callout">
+      <strong>Note:</strong> This section applies only to <strong>ESP32</strong> and <strong>ESP32-S3</strong> (Xtensa).
+      For ESP32-C3, XIAO ESP32-C3, and C3 SuperMini (RISC-V), see{' '}
+      <strong>RISC-V Emulation (ESP32-C3)</strong> in the sidebar — those boards run entirely in the browser.
+    </div>
+
+    <h2>How It Works</h2>
+    <ol>
+      <li>Arduino sketch is compiled by <code>arduino-cli</code> to an ESP32 <code>.bin</code> flash image.</li>
+      <li>Frontend sends the binary to the backend via WebSocket (<code>Esp32Bridge</code>).</li>
+      <li>Backend spawns a QEMU process with the lcgamboa Xtensa plugin, loads the image.</li>
+      <li>GPIO and UART events are forwarded over the WebSocket back to the browser.</li>
+      <li>Frontend updates component states (LEDs, display, etc.) in real time.</li>
+    </ol>
+
+    <h2>Supported Boards</h2>
+    <table>
+      <thead>
+        <tr><th>Board</th><th>CPU</th><th>Emulation</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ESP32</td><td>Xtensa LX6 dual-core @ 240 MHz</td><td>QEMU (lcgamboa)</td></tr>
+        <tr><td>ESP32-S3</td><td>Xtensa LX7 dual-core @ 240 MHz</td><td>QEMU (lcgamboa)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Peripheral Support</h2>
+    <ul>
+      <li><strong>GPIO</strong> — digital output / input, LED control</li>
+      <li><strong>UART</strong> — Serial Monitor via <code>Serial.print()</code></li>
+      <li><strong>I2C / SPI</strong> — peripheral communication</li>
+      <li><strong>RMT / NeoPixel</strong> — addressable LED strips</li>
+      <li><strong>LEDC / PWM</strong> — hardware PWM channels</li>
+      <li><strong>WiFi</strong> — partial (connection events forwarded)</li>
+    </ul>
+
+    <h2>Requirements</h2>
+    <p>
+      QEMU-based emulation requires the Velxio backend to be running. This means it works with
+      the <strong>hosted version</strong> at{' '}
+      <a href="https://velxio.dev" target="_blank" rel="noopener noreferrer">velxio.dev</a>{' '}
+      and with <strong>Docker self-hosting</strong>, but not in a pure static frontend deployment.
+    </p>
+
+    <div className="docs-callout">
+      <strong>Full details:</strong>{' '}
+      <a href={`${GITHUB_URL}/blob/master/docs/ESP32_EMULATION.md`} target="_blank" rel="noopener noreferrer">
+        docs/ESP32_EMULATION.md
+      </a>{' '}
+      in the repository.
+    </div>
+  </div>
+);
+
 const SECTION_MAP: Record<SectionId, React.FC> = {
   intro: IntroSection,
   'getting-started': GettingStartedSection,
   emulator: EmulatorSection,
+  'riscv-emulation': RiscVEmulationSection,
+  'esp32-emulation': Esp32EmulationSection,
   components: ComponentsSection,
   roadmap: RoadmapSection,
   architecture: ArchitectureSection,
