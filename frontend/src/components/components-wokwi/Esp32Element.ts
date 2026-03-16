@@ -315,6 +315,31 @@ const PINS_AITEWIN_C3 = [
   { name: '0',   x: 84, y: 105 },
 ];
 
+// ─── ADC pin map: GPIO → { adc bank, channel within bank, qemu chn index } ──────
+// chn is the index passed to qemu_picsimlab_set_apin():
+//   0-7  → ADC1 channels 0-7  (GPIO 36,37,38,39,32,33,34,35)
+//   8-17 → ADC2 channels 0-9  (GPIO 4,0,2,15,13,12,14,27,25,26)
+export const ESP32_ADC_PIN_MAP: Record<number, { adc: 1 | 2; ch: number; chn: number }> = {
+  36: { adc: 1, ch: 0, chn: 0  },
+  37: { adc: 1, ch: 1, chn: 1  },
+  38: { adc: 1, ch: 2, chn: 2  },
+  39: { adc: 1, ch: 3, chn: 3  },
+  32: { adc: 1, ch: 4, chn: 4  },
+  33: { adc: 1, ch: 5, chn: 5  },
+  34: { adc: 1, ch: 6, chn: 6  },
+  35: { adc: 1, ch: 7, chn: 7  },
+  4:  { adc: 2, ch: 0, chn: 8  },
+  0:  { adc: 2, ch: 1, chn: 9  },
+  2:  { adc: 2, ch: 2, chn: 10 },
+  15: { adc: 2, ch: 3, chn: 11 },
+  13: { adc: 2, ch: 4, chn: 12 },
+  12: { adc: 2, ch: 5, chn: 13 },
+  14: { adc: 2, ch: 6, chn: 14 },
+  27: { adc: 2, ch: 7, chn: 15 },
+  25: { adc: 2, ch: 8, chn: 16 },
+  26: { adc: 2, ch: 9, chn: 17 },
+};
+
 // ─── Board config by variant ──────────────────────────────────────────────────
 
 interface BoardConfig {

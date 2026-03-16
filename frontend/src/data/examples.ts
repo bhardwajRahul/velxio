@@ -2891,15 +2891,15 @@ void loop() {
   {
     id: 'esp32-7segment',
     title: 'ESP32: 7-Segment Counter',
-    description: 'Count 0–9 on a 7-segment display driven from GPIO 12, 13, 14, 22, 25, 26, 27 on the ESP32.',
+    description: 'Count 0–9 on a 7-segment display driven from GPIO 12, 13, 14, 25, 26, 27, 32 on the ESP32.',
     category: 'displays',
     difficulty: 'beginner',
     boardType: 'esp32',
     boardFilter: 'esp32',
     code: `// ESP32 — 7-Segment Display Counter 0-9
-// Segments: a=12, b=13, c=14, d=25, e=26, f=27, g=22
+// Segments: a=12, b=13, c=14, d=25, e=26, f=27, g=32
 
-const int SEG[7] = {12, 13, 14, 25, 26, 27, 22};
+const int SEG[7] = {12, 13, 14, 25, 26, 27, 32};
 
 const bool DIGITS[10][7] = {
   {1,1,1,1,1,1,0}, // 0
@@ -2942,7 +2942,7 @@ void loop() {
       { id: 'es-d',   start: { componentId: 'esp32', pinName: '25' },  end: { componentId: 'esp-seg1', pinName: 'D' },   color: '#44cc44' },
       { id: 'es-e',   start: { componentId: 'esp32', pinName: '26' },  end: { componentId: 'esp-seg1', pinName: 'E' },   color: '#4488ff' },
       { id: 'es-f',   start: { componentId: 'esp32', pinName: '27' },  end: { componentId: 'esp-seg1', pinName: 'F' },   color: '#aa44ff' },
-      { id: 'es-g',   start: { componentId: 'esp32', pinName: '22' },  end: { componentId: 'esp-seg1', pinName: 'G' },   color: '#ffffff' },
+      { id: 'es-g',   start: { componentId: 'esp32', pinName: '32' },  end: { componentId: 'esp-seg1', pinName: 'G' },   color: '#ffffff' },
       { id: 'es-gnd', start: { componentId: 'esp-seg1', pinName: 'COM' }, end: { componentId: 'esp32', pinName: 'GND' }, color: '#000000' },
     ],
   },

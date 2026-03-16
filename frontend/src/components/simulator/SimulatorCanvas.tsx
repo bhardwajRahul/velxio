@@ -1,5 +1,6 @@
-import { useSimulatorStore } from '../../store/useSimulatorStore';
+import { useSimulatorStore, getEsp32Bridge } from '../../store/useSimulatorStore';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { ESP32_ADC_PIN_MAP } from '../components-wokwi/Esp32Element';
 import { ComponentPickerModal } from '../ComponentPickerModal';
 import { ComponentPropertyDialog } from './ComponentPropertyDialog';
 import { DynamicComponent, createComponentFromMetadata } from '../DynamicComponent';
@@ -461,6 +462,13 @@ export const SimulatorCanvas = () => {
         }
       );
       unsubscribers.push(unsubscribe);
+
+      // PWM subscription: update LED opacity when the pin receives a LEDC duty cycle
+      const pwmUnsub = pinManager.onPwmChange(pin, (_p, duty) => {
+        const el = document.getElementById(component.id);
+        if (el) el.style.opacity = String(duty);  // duty is 0.0–1.0
+      });
+      unsubscribers.push(pwmUnsub);
     };
 
     components.forEach((component) => {
@@ -503,6 +511,70 @@ export const SimulatorCanvas = () => {
       unsubscribers.forEach(unsub => unsub());
     };
   }, [components, wires, boards, pinManager, updateComponentState]);
+
+  // ESP32 input components: forward button presses and potentiometer values to QEMU
+  useEffect(() => {
+    const cleanups: (() => void)[] = [];
+
+    components.forEach((component) => {
+      const connectedWires = wires.filter(
+        w => w.start.componentId === component.id || w.end.componentId === component.id
+      );
+
+      connectedWires.forEach(wire => {
+        const isStartSelf = wire.start.componentId === component.id;
+        const selfEndpoint  = isStartSelf ? wire.start : wire.end;
+        const otherEndpoint = isStartSelf ? wire.end   : wire.start;
+
+        if (!isBoardComponent(otherEndpoint.componentId)) return;
+
+        const boardId  = otherEndpoint.componentId;
+        const bridge   = getEsp32Bridge(boardId);
+        if (!bridge) return;  // not an ESP32 board
+
+        const boardInstance = boards.find(b => b.id === boardId);
+        const lookupKey = boardInstance ? boardInstance.boardKind : boardId;
+        const gpioPin = boardPinToNumber(lookupKey, otherEndpoint.pinName);
+        if (gpioPin === null) return;
+
+        // Delay lookup so the web component has time to render
+        const timeout = setTimeout(() => {
+          const el = document.getElementById(component.id);
+          if (!el) return;
+          const tag = el.tagName.toLowerCase();
+
+          // Push-button: forward press/release as GPIO level changes
+          if (tag === 'wokwi-pushbutton') {
+            const onPress   = () => bridge.sendPinEvent(gpioPin, true);
+            const onRelease = () => bridge.sendPinEvent(gpioPin, false);
+            el.addEventListener('button-press',   onPress);
+            el.addEventListener('button-release', onRelease);
+            cleanups.push(() => {
+              el.removeEventListener('button-press',   onPress);
+              el.removeEventListener('button-release', onRelease);
+            });
+          }
+
+          // Potentiometer: forward analog value as ADC millivolts
+          if (tag === 'wokwi-potentiometer' && selfEndpoint.pinName === 'SIG') {
+            const adcInfo = ESP32_ADC_PIN_MAP[gpioPin];
+            if (adcInfo) {
+              const onInput = (e: Event) => {
+                const pct = parseFloat((e.target as any).value ?? '0');  // 0–100
+                bridge.setAdc(adcInfo.chn, Math.round(pct / 100 * 3300));
+              };
+              el.addEventListener('input', onInput);
+              cleanups.push(() => el.removeEventListener('input', onInput));
+            }
+          }
+        }, 300);
+
+        cleanups.push(() => clearTimeout(timeout));
+      });
+    });
+
+    return () => cleanups.forEach(fn => fn());
+  }, [components, wires, boards]);
 
   // Handle keyboard delete
   useEffect(() => {

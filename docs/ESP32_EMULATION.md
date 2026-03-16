@@ -19,12 +19,15 @@
 6. [WiFi emulada](#6-wifi-emulada)
 7. [I2C emulado](#7-i2c-emulado)
 8. [RMT / NeoPixel (WS2812)](#8-rmt--neopixel-ws2812)
-9. [LEDC / PWM](#9-ledc--pwm)
+9. [LEDC / PWM y mapeo GPIO](#9-ledc--pwm-y-mapeo-gpio)
 10. [Compilar la librería manualmente](#10-compilar-la-librería-manualmente)
 11. [Tests](#11-tests)
 12. [Frontend — Eventos implementados](#12-frontend--eventos-implementados)
 13. [Limitaciones conocidas](#13-limitaciones-conocidas)
 14. [Variables de entorno](#14-variables-de-entorno)
+15. [GPIO Banks — Corrección GPIO32-39](#15-gpio-banks--corrección-gpio32-39)
+16. [Interacción UI — ADC, Botones y PWM Visual](#16-interacción-ui--adc-botones-y-pwm-visual)
+17. [Modificaciones al fork lcgamboa — Rebuild incremental](#17-modificaciones-al-fork-lcgamboa--rebuild-incremental)
 
 ---
 
@@ -485,7 +488,7 @@ Convierte callbacks de hardware en **eventos WebSocket** para el frontend:
 | `spi_event` | `{bus, event, response}` | Transacción SPI |
 | `rmt_event` | `{channel, config0, value, level0, dur0, level1, dur1}` | Pulso RMT |
 | `ws2812_update` | `{channel, pixels: [[r,g,b],...]}` | Frame NeoPixel completo |
-| `ledc_update` | `{channel, duty, duty_pct}` | PWM duty cycle |
+| `ledc_update` | `{channel, duty, duty_pct, gpio}` | PWM duty cycle + GPIO que maneja ese canal |
 | `error` | `{message: str}` | Error de boot |
 
 **Detección de crash y reboot:**
@@ -695,16 +698,80 @@ El evento emitido al frontend:
 
 ---
 
-## 9. LEDC / PWM
+## 9. LEDC / PWM y mapeo GPIO
 
-`qemu_picsimlab_get_internals(0)` retorna un puntero a un array de 16 `uint32_t` con el duty cycle de cada canal LEDC. Llamar periódicamente (cada ~50 ms):
+### 9.1 Polling de duty cycle
+
+`qemu_picsimlab_get_internals(0)` retorna un puntero a un array de 16 `uint32_t` con el duty cycle de cada canal LEDC (8 canales High-Speed + 8 Low-Speed). Se llama periódicamente (cada ~50 ms):
 
 ```python
 await esp_lib_manager.poll_ledc(client_id)
-# Emite: {"type": "ledc_update", "data": {"channel": 0, "duty": 4096, "duty_pct": 50.0}}
+# Emite: {"type": "ledc_update", "data": {"channel": 0, "duty": 4096, "duty_pct": 50.0, "gpio": 2}}
 ```
 
 El duty máximo típico es 8192 (timer de 13 bits). Para brillo de LED: `duty_pct / 100`.
+
+**Índices de señal LEDC en el multiplexor GPIO:**
+
+| Canal LEDC  | Señal (signal index) |
+|-------------|----------------------|
+| HS ch 0-7   | 72-79                |
+| LS ch 0-7   | 80-87                |
+
+### 9.2 Mapeo LEDC → GPIO (mecanismo out_sel)
+
+El problema original era que `ledc_update {channel: N}` llegaba al frontend pero no se sabía qué GPIO físico estaba controlado por ese canal — esa asociación se establece dinámicamente en firmware mediante `ledcAttachPin(gpio, channel)`.
+
+**Flujo completo de la solución:**
+
+1. **Firmware llama** `ledcAttachPin(gpio, ch)` — escribe en `GPIO_FUNCX_OUT_SEL_CFG_REG[gpio]` el índice de señal del canal LEDC (72-87).
+
+2. **QEMU detecta** la escritura en el registro `out_sel` y dispara un evento de sincronización (`psync_irq_handler`). El código modificado en `hw/gpio/esp32_gpio.c` codifica el índice de señal en los bits 8-15 del evento:
+   ```c
+   // Modificación en esp32_gpio.c (función psync_irq_handler / out_sel write):
+   // ANTES: solo el número de GPIO
+   qemu_set_irq(s->gpios_sync[0], (0x2000 | n));
+   // DESPUÉS: GPIO en bits 7:0, signal index en bits 15:8
+   qemu_set_irq(s->gpios_sync[0], (0x2000 | ((value & 0xFF) << 8) | (n & 0xFF)));
+   ```
+
+3. **El worker Python** (`esp32_worker.py`) decodifica el evento en `_on_dir_change(slot=-1, direction)`:
+   ```python
+   if slot == -1:
+       marker = direction & 0xF000
+       if marker == 0x2000:   # GPIO_FUNCX_OUT_SEL_CFG change
+           gpio_pin = direction & 0xFF
+           signal   = (direction >> 8) & 0xFF
+           if 72 <= signal <= 87:
+               ledc_ch = signal - 72   # canal 0-15
+               _ledc_gpio_map[ledc_ch] = gpio_pin
+   ```
+
+4. **`ledc_update` incluye `gpio`** — el polling incluye el campo `gpio` resuelto:
+   ```python
+   gpio = _ledc_gpio_map.get(ch, -1)
+   _emit({'type': 'ledc_update', 'channel': ch,
+          'duty': duty, 'duty_pct': round(duty / 8192 * 100, 1),
+          'gpio': gpio})   # -1 si aún no se ha llamado ledcAttachPin
+   ```
+
+5. **El store del frontend** (`useSimulatorStore.ts`) ruteará el PWM al GPIO correcto:
+   ```typescript
+   bridge.onLedcUpdate = (update) => {
+     const targetPin = (update.gpio !== undefined && update.gpio >= 0)
+       ? update.gpio
+       : update.channel;          // fallback: usar número de canal
+     boardPm.updatePwm(targetPin, update.duty_pct / 100);
+   };
+   ```
+
+6. **`SimulatorCanvas`** suscribe los componentes al PWM del pin correcto y ajusta la opacidad del elemento visual:
+   ```typescript
+   const pwmUnsub = pinManager.onPwmChange(pin, (_p, duty) => {
+     const el = document.getElementById(component.id);
+     if (el) el.style.opacity = String(duty);   // duty 0.0–1.0
+   });
+   ```
 
 ---
 
@@ -773,6 +840,49 @@ if os.name == 'nt':
     except Exception as copy_err:
         print(f'error copying {source}: {copy_err}', file=sys.stderr)
     continue
+```
+
+### 10.5 Rebuild incremental (solo un archivo modificado)
+
+Cuando se modifica un único archivo fuente de QEMU (p.ej. `esp32_gpio.c`) no hace falta recompilar toda la librería — basta con compilar el `.obj` modificado y relincar la DLL/SO.
+
+**Windows (MSYS2 MINGW64):**
+
+```bash
+cd wokwi-libs/qemu-lcgamboa/build
+
+# 1. Compilar solo el archivo modificado:
+ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj
+
+# 2. Relincar la DLL completa usando el response file (tiene todos los .obj y flags):
+/c/msys64/mingw64/bin/gcc.exe @dll_link.rsp
+
+# 3. Copiar la DLL nueva al backend:
+cp libqemu-xtensa.dll ../../backend/app/services/
+
+# Verificar tamaño (~43-44 MB):
+ls -lh libqemu-xtensa.dll
+```
+
+> `dll_link.rsp` es generado por ninja en el primer build completo y contiene el comando completo de linkado con todos los `.obj` y librerías de MSYS2. Es el archivo que permite relincar sin depender del sistema de build.
+
+**¿Qué pasa si ninja falla al compilar el `.obj`?**
+
+Algunos archivos tienen dependencias de headers pre-generados (p.ej. `version.h`, archivos de `windres`, o `config-host.h`). Si ninja reporta error en un archivo que NO se modificó, compilar solo el `.obj` del archivo que sí se cambió funciona siempre que ya exista un build completo previo.
+
+**Linux:**
+
+```bash
+cd wokwi-libs/qemu-lcgamboa/build
+
+# Compilar solo el .obj modificado:
+ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj
+
+# Relincar la .so:
+gcc -shared -o libqemu-xtensa.so @so_link.rsp
+
+# Copiar al backend:
+cp libqemu-xtensa.so ../../backend/app/services/
 ```
 
 ---
@@ -868,7 +978,7 @@ Todos los eventos del backend están conectados al frontend:
 | Evento | Componente | Estado |
 |--------|-----------|--------|
 | `gpio_change` | `PinManager.triggerPinChange()` → LEDs/componentes conectados | ✅ Implementado |
-| `ledc_update` | `PinManager.updatePwm()` → brillo variable en `LED.tsx` | ✅ Implementado |
+| `ledc_update` | `PinManager.updatePwm(gpio, duty)` → opacidad CSS de elemento conectado al GPIO | ✅ Implementado |
 | `ws2812_update` | `NeoPixel.tsx` — strip de LEDs RGB con canvas | ✅ Implementado |
 | `gpio_dir` | Callback `onPinDir` en `Esp32Bridge.ts` | ✅ Implementado |
 | `i2c_event` | Callback `onI2cEvent` en `Esp32Bridge.ts` | ✅ Implementado |
@@ -877,13 +987,22 @@ Todos los eventos del backend están conectados al frontend:
 | `system: reboot` | `onSystemEvent` en `Esp32Bridge.ts` | ✅ Implementado |
 
 **Métodos de envío disponibles en `Esp32Bridge` (frontend → backend):**
+
 ```typescript
 bridge.sendSerialBytes(bytes, uart?)   // Enviar datos serial al ESP32
-bridge.sendPinEvent(gpioPin, state)    // Simular input externo en un GPIO
+bridge.sendPinEvent(gpioPin, state)    // Simular input externo en un GPIO (botones)
 bridge.setAdc(channel, millivolts)     // Setear voltaje ADC (0-3300 mV)
 bridge.setI2cResponse(addr, response)  // Respuesta de dispositivo I2C
 bridge.setSpiResponse(response)        // Byte MISO de dispositivo SPI
 ```
+
+**Interacción de componentes UI con el ESP32 emulado:**
+
+- **`wokwi-pushbutton`** (cualquier GPIO) — eventos `button-press` / `button-release` → `sendPinEvent(gpio, true/false)`
+- **`wokwi-potentiometer`** (pin SIG → ADC GPIO) — evento `input` (0–100) → `setAdc(chn, mV)`
+- **`wokwi-led`** (GPIO con `ledcWrite`) — recibe `onPwmChange` → opacidad CSS proporcional al duty cycle
+
+La lógica de conexión vive en `SimulatorCanvas.tsx`: detecta el tag del elemento web component conectado al ESP32, registra el listener apropiado y traduce los eventos al protocolo del bridge. Ver sección 16 para más detalle.
 
 **Uso del componente NeoPixel:**
 ```tsx
@@ -911,6 +1030,7 @@ bridge.setSpiResponse(response)        // Byte MISO de dispositivo SPI
 | **Sin DAC** | GPIO25/GPIO26 analógico no expuesto por picsimlab | No disponible |
 | **Flash fija en 4MB** | Hardcoded en la machine esp32-picsimlab | Recompilar lib |
 | **arduino-esp32 3.x causa crash** | IDF 5.x maneja caché diferente al WiFi emulado | Usar 2.x (IDF 4.4.x) |
+| **ADC solo en pines definidos en `ESP32_ADC_PIN_MAP`** | El mapeo GPIO→canal ADC es estático en frontend | Actualizar `ESP32_ADC_PIN_MAP` en `Esp32Element.ts` |
 
 ---
 
@@ -946,3 +1066,248 @@ QEMU_ESP32_LIB=/opt/velxio/libqemu-xtensa.so uvicorn app.main:app --port 8001
 # Sin lib (fallback: solo UART serial via subprocess QEMU):
 QEMU_ESP32_BINARY=/usr/bin/qemu-system-xtensa uvicorn app.main:app --port 8001
 ```
+
+---
+
+## 15. GPIO Banks — Corrección GPIO32-39
+
+### 15.1 El problema
+
+El ESP32 divide sus GPIOs en dos bancos de registros:
+
+| Banco   | GPIOs      | Registro de output | Dirección    |
+|---------|------------|--------------------|--------------|
+| Banco 0 | GPIO 0-31  | `GPIO_OUT_REG`     | `0x3FF44004` |
+| Banco 1 | GPIO 32-39 | `GPIO_OUT1_REG`    | `0x3FF44010` |
+
+Antes de la corrección, el frontend solo monitorizaba `GPIO_OUT_REG` (banco 0). Cuando el firmware hacía `digitalWrite(32, HIGH)` o usaba GPIO32-39 para cualquier función, QEMU actualizaba `GPIO_OUT1_REG` pero el evento `gpio_change` nunca llegaba al frontend, y los componentes conectados a esos pines no respondían.
+
+### 15.2 La corrección
+
+El backend (`esp32_worker.py`) ya recibía correctamente los cambios de GPIO32-39 a través del callback `picsimlab_write_pin` — QEMU llama este callback para todos los GPIOs independientemente del banco. La corrección fue asegurarse de que el pinmap incluye los slots 33-40 (GPIOs 32-39):
+
+```python
+# Identity mapping: slot i → GPIO i-1 (para los 40 GPIOs del ESP32)
+_PINMAP = (ctypes.c_int16 * 41)(
+    40,           # pinmap[0] = count de GPIOs
+    *range(40)    # pinmap[1..40] = GPIO 0..39
+)
+```
+
+Con este pinmap completo, `picsimlab_write_pin(slot=33, value=1)` es correctamente traducido a `gpio_change {pin: 32, state: 1}` y llega al frontend.
+
+### 15.3 Verificación
+
+El ejemplo **"ESP32: 7-Segment Counter"** usa GPIO32 para el segmento G del display:
+
+```cpp
+// Segmentos: a=12, b=13, c=14, d=25, e=26, f=27, g=32
+const int SEG[7] = {12, 13, 14, 25, 26, 27, 32};
+```
+
+Si el contador 0-9 muestra todos los segmentos correctamente (incluyendo el segmento G en los dígitos que lo requieren), GPIO32-39 está funcionando.
+
+**GPIOs 34-39 son input-only** en el ESP32-WROOM-32 — no tienen driver de salida. El pinmap los incluye para que funcionen como entradas (ADC, botones), pero `digitalWrite()` sobre ellos no tiene efecto real en hardware.
+
+---
+
+## 16. Interacción UI — ADC, Botones y PWM Visual
+
+Esta sección documenta las tres capacidades de interacción bidireccional añadidas entre componentes visuales del canvas y el ESP32 emulado.
+
+### 16.1 ADC — Potenciómetro → `analogRead()`
+
+**Objetivo:** Cuando el usuario mueve un `wokwi-potentiometer` conectado a un pin ADC del ESP32, el valor leído por `analogRead()` en el firmware debe cambiar.
+
+**Flujo:**
+
+```text
+Usuario mueve potenciómetro (0-100%)
+  → evento DOM 'input' en <wokwi-potentiometer>
+  → SimulatorCanvas.tsx: onInput handler
+  → ESP32_ADC_PIN_MAP[gpioPin] → { adc, ch, chn }
+  → bridge.setAdc(chn, mV)           // mV = pct/100 * 3300
+  → WebSocket: {type: "esp32_adc_set", data: {channel: chn, millivolts: mV}}
+  → Backend: esp_lib_manager.set_adc(client_id, chn, mV)
+  → lib.qemu_picsimlab_set_apin(chn, raw)  // raw = mV * 4095 / 3300
+  → analogRead() en firmware devuelve raw (0-4095)
+```
+
+**Mapa de pines ADC** (`frontend/src/components/components-wokwi/Esp32Element.ts`):
+
+```typescript
+export const ESP32_ADC_PIN_MAP: Record<number, { adc: 1|2; ch: number; chn: number }> = {
+  // ADC1 (GPIOs de solo-entrada o entrada/salida):
+  36: { adc: 1, ch: 0, chn: 0  },   // VP
+  37: { adc: 1, ch: 1, chn: 1  },
+  38: { adc: 1, ch: 2, chn: 2  },
+  39: { adc: 1, ch: 3, chn: 3  },   // VN
+  32: { adc: 1, ch: 4, chn: 4  },
+  33: { adc: 1, ch: 5, chn: 5  },
+  34: { adc: 1, ch: 6, chn: 6  },
+  35: { adc: 1, ch: 7, chn: 7  },
+  // ADC2 (compartidos con WiFi — no usar con WiFi activo):
+  4:  { adc: 2, ch: 0, chn: 8  },
+  0:  { adc: 2, ch: 1, chn: 9  },
+  2:  { adc: 2, ch: 2, chn: 10 },
+  15: { adc: 2, ch: 3, chn: 11 },
+  13: { adc: 2, ch: 4, chn: 12 },
+  12: { adc: 2, ch: 5, chn: 13 },
+  14: { adc: 2, ch: 6, chn: 14 },
+  27: { adc: 2, ch: 7, chn: 15 },
+  25: { adc: 2, ch: 8, chn: 16 },
+  26: { adc: 2, ch: 9, chn: 17 },
+};
+```
+
+**Condición de activación:** el wire debe conectar el pin `SIG` del potenciómetro al GPIO ADC del ESP32. Los pines `VCC` y `GND` se ignoran para el ADC.
+
+### 16.2 GPIO Input — Botón → Interrupción ESP32
+
+**Objetivo:** Cuando el usuario presiona/suelta un `wokwi-pushbutton` conectado a un GPIO del ESP32, el firmware debe ver el cambio de nivel lógico (funciona con `digitalRead()`, `attachInterrupt()`, etc.).
+
+**Flujo:**
+
+```text
+Usuario hace click en <wokwi-pushbutton>
+  → evento DOM 'button-press' o 'button-release'
+  → SimulatorCanvas.tsx: onPress/onRelease handler
+  → bridge.sendPinEvent(gpioPin, true/false)
+  → WebSocket: {type: "esp32_gpio_in", data: {pin: gpioPin, state: 1/0}}
+  → Backend: esp_lib_manager.set_pin_state(client_id, gpioPin, value)
+  → lib.qemu_picsimlab_set_pin(slot, value)  // slot = gpioPin + 1
+  → ESP32 ve el cambio en el registro GPIO_IN_REG
+  → digitalRead(gpioPin) devuelve el nuevo valor
+  → attachInterrupt() dispara si estaba configurado
+```
+
+**Lógica de detección en SimulatorCanvas** (efecto que corre al cambiar `components` o `wires`):
+
+```typescript
+// Para cada componente no-ESP32:
+//   1. Buscar wires que conecten este componente a un pin del ESP32
+//   2. Resolver el número de GPIO del endpoint ESP32 (boardPinToNumber)
+//   3. Si el elemento es wokwi-pushbutton → registrar button-press/release
+//   4. Si el elemento es wokwi-potentiometer (pin SIG) → registrar input ADC
+```
+
+> El efecto usa `setTimeout(300ms)` para esperar que el DOM renderice los web components antes de llamar `getElementById` y `addEventListener`.
+
+### 16.3 PWM Visual — `ledcWrite()` → Brillo de LED
+
+**Objetivo:** Cuando el firmware usa `ledcWrite(channel, duty)`, el LED conectado al GPIO controlado por ese canal debe mostrar brillo proporcional al duty cycle.
+
+**El problema de mapeo:** QEMU sabe el duty de cada canal LEDC, pero no sabe qué GPIO lo usa — esa asociación se establece con `ledcAttachPin(gpio, ch)` que escribe en `GPIO_FUNCX_OUT_SEL_CFG_REG`. Ver sección 9.2 para el mecanismo completo.
+
+**Flujo visual:**
+
+```text
+ledcWrite(ch, duty) en firmware
+  → QEMU actualiza duty en array interno de LEDC
+  → poll_ledc() cada ~50ms lee el array
+  → ledc_update {channel, duty, duty_pct, gpio} enviado al frontend
+  → useSimulatorStore: bridge.onLedcUpdate → pinManager.updatePwm(gpio, duty/100)
+  → PinManager dispara callbacks registrados para ese pin
+  → SimulatorCanvas: onPwmChange → el.style.opacity = String(duty)
+  → El elemento visual (wokwi-led) muestra brillo proporcional
+```
+
+**Rango de valores:**
+
+- `duty` raw: 0–8191 (timer de 13 bits, el más común en ESP32)
+- `duty_pct`: 0.0–100.0 (calculado como `duty / 8192 * 100`)
+- `opacity` CSS: 0.0–1.0 (= `duty_pct / 100`)
+
+**Ejemplo de sketch compatible:**
+
+```cpp
+const int LED_PIN = 2;
+const int LEDC_CH  = 0;
+const int FREQ     = 5000;
+const int BITS     = 13;
+
+void setup() {
+  ledcSetup(LEDC_CH, FREQ, BITS);
+  ledcAttachPin(LED_PIN, LEDC_CH);
+}
+
+void loop() {
+  for (int duty = 0; duty < 8192; duty += 100) {
+    ledcWrite(LEDC_CH, duty);   // el LED en GPIO2 se ilumina gradualmente
+    delay(10);
+  }
+}
+```
+
+---
+
+## 17. Modificaciones al fork lcgamboa — Rebuild incremental
+
+Esta sección documenta todas las modificaciones realizadas al fork [lcgamboa/qemu](https://github.com/lcgamboa/qemu) para Velxio, y cómo recompilar solo los archivos modificados.
+
+### 17.1 Archivo modificado: `hw/gpio/esp32_gpio.c`
+
+**Commit lógico:** Codificar el índice de señal LEDC en el evento out_sel sync.
+
+**Problema:** Cuando el firmware llama `ledcAttachPin(gpio, ch)`, QEMU escribe el índice de señal (72-87) en `GPIO_FUNCX_OUT_SEL_CFG_REG[gpio]`. El evento de sincronización que dispara hacia el backend solo incluía el número de GPIO — el índice de señal (y por tanto el canal LEDC) se perdía.
+
+**Cambio:**
+
+```c
+// Archivo: hw/gpio/esp32_gpio.c
+// Función: psync_irq_handler (o equivalente que maneja out_sel writes)
+
+// ANTES (solo número de GPIO en bits 12:0):
+qemu_set_irq(s->gpios_sync[0], (0x2000 | n));
+
+// DESPUÉS (GPIO en bits 7:0, signal index en bits 15:8):
+qemu_set_irq(s->gpios_sync[0], (0x2000 | ((value & 0xFF) << 8) | (n & 0xFF)));
+```
+
+El marcador `0x2000` en bits [13:12] identifica este tipo de evento en el backend. El backend (`esp32_worker.py`) decodifica:
+
+```python
+marker   = direction & 0xF000   # → 0x2000
+gpio_pin = direction & 0xFF     # bits 7:0
+signal   = (direction >> 8) & 0xFF  # bits 15:8 → índice de señal LEDC
+```
+
+### 17.2 Cómo recompilar después de modificar `esp32_gpio.c`
+
+```bash
+# En MSYS2 MINGW64 (Windows):
+cd /e/Hardware/wokwi_clon/wokwi-libs/qemu-lcgamboa/build
+
+# Paso 1: Compilar solo el .obj modificado
+ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj
+
+# Paso 2: Relincar la DLL completa
+/c/msys64/mingw64/bin/gcc.exe @dll_link.rsp
+
+# Paso 3: Desplegar al backend
+cp libqemu-xtensa.dll /e/Hardware/wokwi_clon/backend/app/services/
+
+# Verificar:
+ls -lh libqemu-xtensa.dll
+# → aprox 43-44 MB
+```
+
+**Tiempo de compilación:** ~10 segundos (vs 15-30 minutos para un build completo).
+
+### 17.3 Por qué el build completo puede fallar en Windows
+
+El primer build completo (`bash build_libqemu-esp32-win.sh`) puede fallar con errores en archivos no modificados:
+
+- **`windres: version.rc: No such file`** — Generado dinámicamente por meson; solo ocurre en builds limpios. Ejecutar el script una vez desde cero.
+- **`gcrypt.h: No such file`** — Paquete MSYS2 no instalado. Fix: `pacman -S mingw-w64-x86_64-libgcrypt`
+- **`zlib.h: No such file`** — Paquete MSYS2 no instalado. Fix: `pacman -S mingw-w64-x86_64-zlib`
+- **`WinError 1314`** en `symlink-install-tree.py` — Windows no permite symlinks sin admin. Ver parche en sección 10.4.
+
+Una vez que hay un build completo exitoso (el `.dll` existe en `build/`), el rebuild incremental funciona siempre — basta con `ninja <archivo.obj>` + `gcc @dll_link.rsp`.
+
+### 17.4 Resumen de todos los archivos modificados en el fork
+
+- **`hw/gpio/esp32_gpio.c`** — Codificar signal index en evento out_sel (§17.1)
+- **`scripts/symlink-install-tree.py`** — Usar `shutil.copy2` en vez de `os.symlink` en Windows (§10.4)
+
+Todos los demás archivos del fork son idénticos al upstream de lcgamboa. No se modificaron archivos de la máquina `esp32-picsimlab`, del core Xtensa, ni de los periféricos ADC/UART/I2C/SPI/RMT.

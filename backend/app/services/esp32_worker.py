@@ -24,7 +24,7 @@ stdout        : JSON event lines (one per line, flushed immediately)
                {"type": "gpio_change",  "pin": N,  "state": V}
                {"type": "gpio_dir",     "pin": N,  "dir": V}
                {"type": "uart_tx",      "uart": N, "byte": V}
-               {"type": "ledc_update",  "channel": N, "duty": V, "duty_pct": F}
+               {"type": "ledc_update",  "channel": N, "duty": V, "duty_pct": F, "gpio": N|-1}
                {"type": "rmt_event",    "channel": N, ...}
                {"type": "ws2812_update","channel": N, "pixels": [...]}
                {"type": "i2c_event",    "bus": N, "addr": N, "event": N, "response": N}
@@ -208,6 +208,9 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     _crashed        = [False]
     _CRASH_STR      = b'Cache disabled but cached memory region accessed'
     _REBOOT_STR     = b'Rebooting...'
+    # LEDC channel → GPIO pin (populated from GPIO out_sel sync events)
+    # ESP32 signal indices: 72-79 = LEDC HS ch 0-7, 80-87 = LEDC LS ch 0-7
+    _ledc_gpio_map: dict[int, int] = {}
 
     # ── 5. ctypes callbacks (called from QEMU thread) ─────────────────────────
 
@@ -219,6 +222,17 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
 
     def _on_dir_change(slot: int, direction: int) -> None:
         if _stopped.is_set():
+            return
+        # slot == -1 means a sync event from GPIO/LEDC/IOMUX peripheral
+        if slot == -1:
+            marker = direction & 0xF000
+            if marker == 0x2000:  # GPIO_FUNCX_OUT_SEL_CFG change
+                gpio_pin = direction & 0xFF
+                signal   = (direction >> 8) & 0xFF
+                # Signal 72-79 = LEDC HS ch 0-7; 80-87 = LEDC LS ch 0-7
+                if 72 <= signal <= 87:
+                    ledc_ch = signal - 72  # ch 0-15
+                    _ledc_gpio_map[ledc_ch] = gpio_pin
             return
         gpio = int(_PINMAP[slot]) if 1 <= slot <= _GPIO_COUNT else slot
         _emit({'type': 'gpio_dir', 'pin': gpio, 'dir': direction})
@@ -317,9 +331,11 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 for ch in range(16):
                     duty = int(arr[ch])
                     if duty > 0:
+                        gpio = _ledc_gpio_map.get(ch, -1)
                         _emit({'type': 'ledc_update', 'channel': ch,
                                'duty': duty,
-                               'duty_pct': round(duty / 8192 * 100, 1)})
+                               'duty_pct': round(duty / 8192 * 100, 1),
+                               'gpio': gpio})
             except Exception:
                 pass
 

@@ -54,7 +54,7 @@ function getTabSessionId(): string {
 }
 
 export interface Ws2812Pixel { r: number; g: number; b: number }
-export interface LedcUpdate  { channel: number; duty: number; duty_pct: number }
+export interface LedcUpdate  { channel: number; duty: number; duty_pct: number; gpio?: number }
 
 export class Esp32Bridge {
   readonly boardId: string;

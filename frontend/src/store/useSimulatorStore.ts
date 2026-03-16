@@ -308,11 +308,15 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           set({ esp32CrashBoardId: id });
         };
         bridge.onLedcUpdate = (update) => {
-          // Route LEDC duty cycles to PinManager as PWM.
-          // LEDC channel N drives a GPIO; the mapping is firmware-defined.
+          // Route LEDC duty cycles to PinManager as PWM (0.0–1.0).
+          // If gpio is known (from GPIO out_sel sync), use the actual GPIO pin;
+          // otherwise fall back to the LEDC channel number.
           const boardPm = pinManagerMap.get(id);
-          if (boardPm && typeof boardPm.updatePwm === 'function') {
-            boardPm.updatePwm(update.channel, update.duty_pct);
+          if (boardPm) {
+            const targetPin = (update.gpio !== undefined && update.gpio >= 0)
+              ? update.gpio
+              : update.channel;
+            boardPm.updatePwm(targetPin, update.duty_pct / 100);
           }
         };
         bridge.onWs2812Update = (channel, pixels) => {
