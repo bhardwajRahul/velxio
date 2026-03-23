@@ -175,9 +175,9 @@ export const ArduinoMegaSimulatorPage: React.FC = () => {
           <div className="seo-internal-links">
             <Link to="/arduino-simulator">Arduino Simulator</Link>
             <Link to="/arduino-emulator">Arduino Emulator</Link>
-            <Link to="/atmega328p-simulator">ATmega328P (Uno/Nano)</Link>
+            <Link to="/esp32-simulator">ESP32 Simulator</Link>
+            <Link to="/raspberry-pi-pico-simulator">RP2040 Simulator</Link>
             <Link to="/examples">Example Projects</Link>
-            <Link to="/docs/intro">Documentation</Link>
           </div>
         </div>
       </main>
