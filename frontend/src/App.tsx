@@ -14,6 +14,11 @@ import { ArduinoSimulatorPage } from './pages/ArduinoSimulatorPage';
 import { ArduinoEmulatorPage } from './pages/ArduinoEmulatorPage';
 import { AtmegaSimulatorPage } from './pages/AtmegaSimulatorPage';
 import { ArduinoMegaSimulatorPage } from './pages/ArduinoMegaSimulatorPage';
+import { Esp32SimulatorPage } from './pages/Esp32SimulatorPage';
+import { Esp32S3SimulatorPage } from './pages/Esp32S3SimulatorPage';
+import { Esp32C3SimulatorPage } from './pages/Esp32C3SimulatorPage';
+import { RaspberryPiPicoSimulatorPage } from './pages/RaspberryPiPicoSimulatorPage';
+import { RaspberryPiSimulatorPage } from './pages/RaspberryPiSimulatorPage';
 import { useAuthStore } from './store/useAuthStore';
 import './App.css';
 
@@ -40,6 +45,11 @@ function App() {
         <Route path="/arduino-emulator" element={<ArduinoEmulatorPage />} />
         <Route path="/atmega328p-simulator" element={<AtmegaSimulatorPage />} />
         <Route path="/arduino-mega-simulator" element={<ArduinoMegaSimulatorPage />} />
+        <Route path="/esp32-simulator" element={<Esp32SimulatorPage />} />
+        <Route path="/esp32-s3-simulator" element={<Esp32S3SimulatorPage />} />
+        <Route path="/esp32-c3-simulator" element={<Esp32C3SimulatorPage />} />
+        <Route path="/raspberry-pi-pico-simulator" element={<RaspberryPiPicoSimulatorPage />} />
+        <Route path="/raspberry-pi-simulator" element={<RaspberryPiSimulatorPage />} />
         {/* Canonical project URL by ID */}
         <Route path="/project/:id" element={<ProjectByIdPage />} />
         {/* Legacy slug route — redirects to /project/:id */}

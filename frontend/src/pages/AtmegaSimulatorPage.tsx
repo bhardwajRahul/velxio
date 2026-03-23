@@ -179,9 +179,9 @@ export const AtmegaSimulatorPage: React.FC = () => {
           <div className="seo-internal-links">
             <Link to="/arduino-simulator">Arduino Simulator</Link>
             <Link to="/arduino-emulator">Arduino Emulator</Link>
-            <Link to="/arduino-mega-simulator">Arduino Mega 2560</Link>
+            <Link to="/esp32-simulator">ESP32 Simulator</Link>
+            <Link to="/raspberry-pi-pico-simulator">RP2040 Simulator</Link>
             <Link to="/examples">Example Sketches</Link>
-            <Link to="/docs/emulator">Emulator Architecture</Link>
           </div>
         </div>
       </main>
