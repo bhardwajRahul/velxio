@@ -14,14 +14,19 @@ export function getADC(avrSimulator: AnySimulator): any | null {
 }
 
 /**
- * Write an analog voltage to an ADC channel, supporting both AVR and RP2040.
+ * Write an analog voltage to an ADC channel, supporting AVR, RP2040, and ESP32.
  *
  * AVR:    pins 14-19 → ADC channels 0-5, voltage stored directly (0-5V)
  * RP2040: GPIO 26-29 → ADC channels 0-3, converted to 12-bit value (0-4095)
+ * ESP32:  GPIO 32-39 → ADC1 channels 4-11, sent via WebSocket bridge
  *
  * Returns true if the voltage was successfully injected.
  */
 export function setAdcVoltage(simulator: AnySimulator, pin: number, voltage: number): boolean {
+    // ESP32 BridgeShim: delegate to bridge via WebSocket
+    if (typeof (simulator as any).setAdcVoltage === 'function') {
+        return (simulator as any).setAdcVoltage(pin, voltage);
+    }
     // RP2040: GPIO26-29 → ADC channels 0-3
     if (simulator instanceof RP2040Simulator) {
         if (pin >= 26 && pin <= 29) {

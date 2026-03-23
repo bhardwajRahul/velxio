@@ -61,6 +61,21 @@ export class ComponentRegistry {
       }
 
       const data: ComponentMetadataCollection = await response.json();
+
+      // Inject Raspberry Pi 3 metadata
+      data.components.push({
+        id: 'raspberry-pi-3',
+        tagName: 'wokwi-raspberry-pi-3',
+        name: 'Raspberry Pi 3',
+        category: 'boards',
+        description: 'Raspberry Pi 3 Model B with 40-pin GPIO. Connects to backend QEMU simulator.',
+        thumbnail: '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect width="64" height="64" fill="#E60049" rx="4"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="10" fill="#FFF">RPi3</text></svg>',
+        properties: [],
+        defaultValues: {},
+        pinCount: 40,
+        tags: ['raspberry', 'pi', 'rp3', 'board', 'qemu', 'linux']
+      });
+
       this.processMetadata(data.components);
       this.loaded = true;
 

@@ -1,8 +1,8 @@
-# Velxio: Arduino Emulator
+# Velxio: Arduino & Embedded Board Emulator
 
 **Live at [velxio.dev](https://velxio.dev)**
 
-A fully local, open-source Arduino emulator. Write Arduino code, compile it, and simulate it with real AVR8 CPU emulation and 48+ interactive electronic components — all running in your browser.
+A fully local, open-source multi-board emulator. Write Arduino C++ or Python, compile it, and simulate it with real CPU emulation and 48+ interactive electronic components — all running in your browser.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-velxio.dev-007acc?style=for-the-badge)](https://velxio.dev)
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io%2Fdavidmonterocrespo24%2Fvelxio-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://github.com/davidmonterocrespo24/velxio/pkgs/container/velxio)
@@ -12,22 +12,21 @@ A fully local, open-source Arduino emulator. Write Arduino code, compile it, and
 [![Commercial License](https://img.shields.io/badge/Commercial%20License-Available-green?style=for-the-badge)](COMMERCIAL_LICENSE.md)
 
 ---
-<a href="https://www.producthunt.com/products/velxio?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-velxio" target="_blank" rel="noopener noreferrer"><img alt="Velxio - Arduino emulator running entirely in the browser | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1092514&amp;theme=dark&amp;t=1772998619179"></a>
 
-
+[![Product Hunt](https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1092514&theme=dark&t=1772998619179)](https://www.producthunt.com/products/velxio)
 
 ---
 
 ## Support the Project
 
-Velxio is free and open-source. Building and maintaining a full Arduino emulator takes a lot of time — if it saves you time or you enjoy the project, sponsoring me directly helps keep development going.
+Velxio is free and open-source. Building and maintaining a full multi-board emulator takes a lot of time — if it saves you time or you enjoy the project, sponsoring me directly helps keep development going.
 
 | Platform | Link |
-|---|---|
+| --- | --- |
 | **GitHub Sponsors** (preferred) | [github.com/sponsors/davidmonterocrespo24](https://github.com/sponsors/davidmonterocrespo24) |
 | **PayPal** | [paypal.me/odoonext](https://paypal.me/odoonext) |
 
-Your support helps cover server costs, library maintenance, and frees up time to add new boards, components, and features. Thank you! 
+Your support helps cover server costs, library maintenance, and frees up time to add new boards, components, and features. Thank you!
 
 ---
 
@@ -41,7 +40,7 @@ To self-host with Docker (single command):
 docker run -d -p 3080:80 ghcr.io/davidmonterocrespo24/velxio:master
 ```
 
-Then open **http://localhost:3080**.
+Then open <http://localhost:3080>.
 
 ---
 
@@ -65,44 +64,133 @@ Component Picker showing 48 available components with visual previews, search, a
 
 ---
 
+## Supported Boards
+
+<table>
+<tr>
+  <td align="center"><img src="docs/img/boards/pi-pico.png" width="140" alt="Raspberry Pi Pico"/><br/><b>Raspberry Pi Pico</b></td>
+  <td align="center"><img src="docs/img/boards/pi-pico-w.png" width="140" alt="Raspberry Pi Pico W"/><br/><b>Raspberry Pi Pico W</b></td>
+  <td align="center"><img src="docs/img/boards/esp32-devkit-c-v4.png" width="140" alt="ESP32 DevKit C"/><br/><b>ESP32 DevKit C</b></td>
+  <td align="center"><img src="docs/img/boards/esp32-s3.png" width="140" alt="ESP32-S3"/><br/><b>ESP32-S3</b></td>
+</tr>
+<tr>
+  <td align="center"><img src="docs/img/boards/esp32-c3.png" width="140" alt="ESP32-C3"/><br/><b>ESP32-C3</b></td>
+  <td align="center"><img src="docs/img/boards/xiao-esp32-c3.png" width="140" alt="Seeed XIAO ESP32-C3"/><br/><b>Seeed XIAO ESP32-C3</b></td>
+  <td align="center"><img src="docs/img/boards/esp32c3-supermini.png" width="140" alt="ESP32-C3 SuperMini"/><br/><b>ESP32-C3 SuperMini</b></td>
+  <td align="center"><img src="docs/img/boards/esp32-cam.png" width="140" alt="ESP32-CAM"/><br/><b>ESP32-CAM</b></td>
+</tr>
+<tr>
+  <td align="center"><img src="docs/img/boards/xiao-esp32-s3.png" width="140" alt="Seeed XIAO ESP32-S3"/><br/><b>Seeed XIAO ESP32-S3</b></td>
+  <td align="center"><img src="docs/img/boards/arduino-nano-esp32.png" width="140" alt="Arduino Nano ESP32"/><br/><b>Arduino Nano ESP32</b></td>
+  <td align="center"><img src="docs/img/boards/Raspberry_Pi_3.png" width="140" alt="Raspberry Pi 3B"/><br/><b>Raspberry Pi 3B</b></td>
+  <td align="center">Arduino Uno / Nano / Mega<br/>(ATmega328p / 2560)</td>
+</tr>
+</table>
+
+| Board | CPU | Engine | Language |
+| ----- | --- | ------ | -------- |
+| Arduino Uno | ATmega328p @ 16 MHz | avr8js (browser) | C++ (Arduino) |
+| Arduino Nano | ATmega328p @ 16 MHz | avr8js (browser) | C++ (Arduino) |
+| Arduino Mega | ATmega2560 @ 16 MHz | avr8js (browser) | C++ (Arduino) |
+| Raspberry Pi Pico | RP2040 @ 125 MHz | rp2040js (browser) | C++ (Arduino) |
+| Raspberry Pi Pico W | RP2040 @ 125 MHz | rp2040js (browser) | C++ (Arduino) |
+| ESP32 DevKit C | Xtensa LX6 @ 240 MHz | QEMU lcgamboa (backend) | C++ (Arduino) |
+| ESP32-S3 | Xtensa LX7 @ 240 MHz | QEMU lcgamboa (backend) | C++ (Arduino) |
+| ESP32-CAM | Xtensa LX6 @ 240 MHz | QEMU lcgamboa (backend) | C++ (Arduino) |
+| ESP32-C3 | RISC-V RV32IMC @ 160 MHz | RiscVCore.ts (browser) | C++ (Arduino) |
+| Seeed XIAO ESP32-C3 | RISC-V RV32IMC @ 160 MHz | RiscVCore.ts (browser) | C++ (Arduino) |
+| ESP32-C3 SuperMini | RISC-V RV32IMC @ 160 MHz | RiscVCore.ts (browser) | C++ (Arduino) |
+| Seeed XIAO ESP32-S3 | Xtensa LX7 @ 240 MHz | QEMU lcgamboa (backend) | C++ (Arduino) |
+| Arduino Nano ESP32 | Xtensa LX6 @ 240 MHz | QEMU lcgamboa (backend) | C++ (Arduino) |
+| Raspberry Pi 3B | ARM Cortex-A53 @ 1.2 GHz | QEMU raspi3b (backend) | Python |
+
+---
+
 ## Features
 
 ### Code Editing
-- **Monaco Editor** — Full C++ editor with syntax highlighting, autocomplete, minimap, and dark theme
-- **Multi-file workspace** — create, rename, delete, and switch between multiple `.ino` / `.h` / `.cpp` files
-- **Arduino compilation** via `arduino-cli` backend — compile sketches to `.hex` / `.uf2` files
+
+- **Monaco Editor** — Full C++ / Python editor with syntax highlighting, autocomplete, minimap, and dark theme
+- **Multi-file workspace** — create, rename, delete, and switch between multiple `.ino` / `.h` / `.cpp` / `.py` files
+- **Arduino compilation** via `arduino-cli` backend — compile sketches to `.hex` / `.bin` files
 - **Compile / Run / Stop / Reset** toolbar buttons with status messages
 - **Compilation console** — resizable output panel showing full compiler output, warnings, and errors
 
-### Multi-Board Support
-- **Arduino Uno** (ATmega328p) — full AVR8 emulation via avr8js
-- **Arduino Nano** (ATmega328p) — full AVR8 emulation
-- **Arduino Mega** (ATmega2560) — full AVR8 emulation
-- **Raspberry Pi Pico** (RP2040) — full RP2040 emulation via rp2040js, compiled with arduino-pico core
-- Board selector in the toolbar — switch boards without restarting
+### Multi-Board Simulation
 
-### AVR8 Simulation (Arduino Uno / Nano / Mega)
-- **Real ATmega328p emulation** at 16 MHz using avr8js
-- **Full GPIO support** — PORTB (pins 8-13), PORTC (A0-A5), PORTD (pins 0-7)
-- **Timer0/Timer1/Timer2** peripheral support (`millis()`, `delay()`, PWM via `analogWrite()`)
-- **USART (Serial)** — full transmit and receive support
-- **ADC** — `analogRead()` on pins A0-A5, voltage injection from UI components
-- **SPI** — hardware SPI peripheral (enables ILI9341, SD card, etc.)
+#### AVR8 (Arduino Uno / Nano / Mega)
+
+- **Real ATmega328p / ATmega2560 emulation** at 16 MHz via avr8js
+- **Full GPIO** — PORTB (pins 8–13), PORTC (A0–A5), PORTD (pins 0–7)
+- **Timer0/Timer1/Timer2** — `millis()`, `delay()`, PWM via `analogWrite()`
+- **USART** — full transmit and receive, auto baud-rate detection
+- **ADC** — `analogRead()` on A0–A5, voltage injection from potentiometers on canvas
+- **SPI** — hardware SPI peripheral (ILI9341, SD card, etc.)
 - **I2C (TWI)** — hardware I2C with virtual device bus
-- **~60 FPS simulation loop** with `requestAnimationFrame`
+- ~60 FPS simulation loop via `requestAnimationFrame`
 
-### RP2040 Simulation (Raspberry Pi Pico)
-- **Real RP2040 emulation** via rp2040js at 133 MHz
-- **UART0** serial output displayed in Serial Monitor
-- **ADC** — 12-bit, 3.3V reference on GPIO 26-29 (A0-A3)
+#### RP2040 (Raspberry Pi Pico / Pico W)
+
+- **Real RP2040 emulation** at 125 MHz via rp2040js — ARM Cortex-M0+
+- **All 30 GPIO pins** — input/output, event listeners, pin state injection
+- **UART0 + UART1** — serial output in Serial Monitor; Serial input from UI
+- **ADC** — 12-bit on GPIO 26–29 (A0–A3) + internal temperature sensor (ch4)
+- **I2C0 + I2C1** — master mode with virtual device bus (DS1307, TMP102, EEPROM)
+- **SPI0 + SPI1** — loopback default; custom handler supported
+- **PWM** — available on any GPIO pin
+- **WFI optimization** — `delay()` skips ahead in simulation time instead of busy-waiting
+- **Oscilloscope** — GPIO transition timestamps at ~8 ns resolution
+- Compiled with the [earlephilhower arduino-pico](https://github.com/earlephilhower/arduino-pico) core
+
+See [docs/RP2040_EMULATION.md](docs/RP2040_EMULATION.md) for full technical details.
+
+#### ESP32 / ESP32-S3 (Xtensa QEMU)
+
+- **Real Xtensa LX6/LX7 dual-core emulation** via [lcgamboa/qemu](https://github.com/lcgamboa/qemu)
+- **Full GPIO** — all 40 GPIO pins, direction tracking, state callbacks, GPIO32–39 fix
+- **UART0/1/2** — multi-UART serial, baud-rate detection
+- **ADC** — 12-bit on all ADC-capable pins (0–3300 mV injection from potentiometers)
+- **I2C** — synchronous bus with virtual device response
+- **SPI** — full-duplex with configurable MISO byte injection
+- **RMT / NeoPixel** — hardware RMT decoder, WS2812 24-bit GRB frame decoding
+- **LEDC/PWM** — 16-channel duty cycle readout, LEDC→GPIO mapping, LED brightness
+- **WiFi** — SLIRP NAT emulation (`WiFi.begin("PICSimLabWifi", "")`)
+- Requires arduino-esp32 **2.0.17** (IDF 4.4.x) — only version compatible with lcgamboa WiFi
+
+See [docs/ESP32_EMULATION.md](docs/ESP32_EMULATION.md) for setup and full technical details.
+
+#### ESP32-C3 / XIAO-C3 (RISC-V, in-browser)
+
+- **RV32IMC emulation** in TypeScript — no backend, no QEMU, no WebSocket
+- **GPIO 0–21** via W1TS/W1TC MMIO registers
+- **UART0** serial output in Serial Monitor
+- **Instant startup** — zero latency, works offline
+- **CI-testable** — same TypeScript runs in Vitest
+
+See [docs/RISCV_EMULATION.md](docs/RISCV_EMULATION.md) for full technical details.
+
+#### Raspberry Pi 3B (QEMU raspi3b)
+
+- **Full BCM2837 emulation** via `qemu-system-aarch64 -M raspi3b`
+- **Boots real Raspberry Pi OS** (Trixie) — runs Python scripts directly
+- **RPi.GPIO shim** — drop-in replacement for the GPIO library; sends pin events to the frontend over a text protocol
+- **GPIO 0–27** — output and input, event detection, PWM (binary state)
+- **Dual serial** — ttyAMA0 for user Serial Monitor, ttyAMA1 for GPIO protocol
+- **Virtual File System** — edit Python scripts in the UI, upload to Pi at boot
+- **Multi-board serial bridge** — Pi ↔ Arduino serial communication on the same canvas
+- **qcow2 overlay** — base SD image never modified; session changes are isolated
+
+See [docs/RASPBERRYPI3_EMULATION.md](docs/RASPBERRYPI3_EMULATION.md) for full technical details.
 
 ### Serial Monitor
-- **Live serial output** — characters as the sketch sends them via `Serial.print()`
+
+- **Live serial output** — characters as the sketch/script sends them
 - **Auto baud-rate detection** — reads hardware registers, no manual configuration needed
-- **Send data** to the Arduino RX pin from the UI
+- **Send data** to the RX pin from the UI
 - **Autoscroll** with toggle
 
 ### Component System (48+ Components)
+
 - **48 electronic components** from wokwi-elements
 - **Component picker** with search, category filters, and live previews
 - **Drag-and-drop** repositioning on the simulation canvas
@@ -110,16 +198,19 @@ Component Picker showing 48 available components with visual previews, search, a
 - **Property dialog** — pin roles, Arduino pin assignment, rotate & delete
 
 ### Wire System
+
 - **Wire creation** — click a pin to start, click another pin to connect
 - **Orthogonal routing** — no diagonal paths
 - **8 signal-type wire colors**: Red (VCC), Black (GND), Blue (Analog), Green (Digital), Purple (PWM), Gold (I2C), Orange (SPI), Cyan (USART)
 - **Segment-based wire editing** — drag segments perpendicular to their orientation
 
 ### Library Manager
+
 - Browse and install the full Arduino library index directly from the UI
 - Live search, installed tab, version display
 
 ### Auth & Project Persistence
+
 - **Email/password** and **Google OAuth** sign-in
 - **Project save** with name, description, and public/private visibility
 - **Project URL** — each project gets a permanent URL at `/project/:id`
@@ -127,7 +218,8 @@ Component Picker showing 48 available components with visual previews, search, a
 - **User profile** at `/:username` showing public projects
 
 ### Example Projects
-- 8 built-in examples (Blink, Traffic Light, Button Control, Fade LED, Serial Hello World, RGB LED, Simon Says, LCD 20×4)
+
+- Built-in examples including Blink, Traffic Light, Button Control, Fade LED, Serial Hello World, RGB LED, Simon Says, LCD 20×4, and Pi + Arduino serial control
 - One-click loading into the editor
 
 ---
@@ -145,9 +237,10 @@ docker run -d \
   ghcr.io/davidmonterocrespo24/velxio:master
 ```
 
-Open **http://localhost:3080**.
+Open <http://localhost:3080>.
 
 The `/app/data` volume contains:
+
 - `velxio.db` — SQLite database (users, projects metadata)
 - `projects/{id}/` — sketch files per project
 
@@ -163,7 +256,7 @@ docker compose -f docker-compose.prod.yml up -d
 #### Environment variables (`backend/.env`)
 
 | Variable | Default | Description |
-|---|---|---|
+| --- | --- | --- |
 | `SECRET_KEY` | *(required)* | JWT signing secret |
 | `DATABASE_URL` | `sqlite+aiosqlite:////app/data/velxio.db` | SQLite path |
 | `DATA_DIR` | `/app/data` | Directory for project files |
@@ -193,42 +286,53 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173**.
+Open <http://localhost:5173>.
 
 **arduino-cli setup (first time):**
+
 ```bash
 arduino-cli core update-index
 arduino-cli core install arduino:avr
-# For Raspberry Pi Pico:
+
+# For Raspberry Pi Pico / Pico W:
 arduino-cli config add board_manager.additional_urls \
   https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
 arduino-cli core install rp2040:rp2040
+
+# For ESP32 / ESP32-S3 / ESP32-C3:
+arduino-cli config add board_manager.additional_urls \
+  https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+arduino-cli core install esp32:esp32@2.0.17
 ```
 
 ---
 
 ## Project Structure
 
-```
+```text
 velxio/
 ├── frontend/                    # React + Vite + TypeScript
 │   └── src/
-│       ├── pages/               # LandingPage, EditorPage, ProjectByIdPage, ...
+│       ├── pages/               # LandingPage, EditorPage, UserProfilePage, ...
 │       ├── components/          # Editor, simulator canvas, modals, layout
-│       ├── simulation/          # AVRSimulator, RP2040Simulator, PinManager
-│       ├── store/               # Zustand stores (auth, editor, simulator, project)
+│       ├── simulation/          # AVRSimulator, RP2040Simulator, RiscVCore,
+│       │                        # RaspberryPi3Bridge, Esp32Bridge, PinManager
+│       ├── store/               # Zustand stores (auth, editor, simulator, project, vfs)
 │       └── services/            # API clients
 ├── backend/                     # FastAPI + Python
 │   └── app/
-│       ├── api/routes/          # compile, auth, projects, libraries
+│       ├── api/routes/          # compile, auth, projects, libraries, simulation (ws)
 │       ├── models/              # User, Project (SQLAlchemy)
-│       ├── services/            # arduino_cli, project_files
+│       ├── services/            # arduino_cli, esp32_worker, qemu_manager, gpio_shim
 │       └── core/                # config, security, dependencies
 ├── wokwi-libs/                  # Local clones of Wokwi repos
-│   ├── wokwi-elements/
-│   ├── avr8js/
-│   └── rp2040js/
+│   ├── wokwi-elements/          # Web Components for electronic parts
+│   ├── avr8js/                  # AVR8 CPU emulator
+│   ├── rp2040js/                # RP2040 emulator
+│   └── qemu-lcgamboa/           # QEMU fork for ESP32 Xtensa emulation
+├── img/                         # Raspberry Pi 3 boot images (kernel8.img, dtb, OS image)
 ├── deploy/                      # nginx.conf, entrypoint.sh
+├── docs/                        # Technical documentation
 ├── Dockerfile.standalone        # Single-container production image
 ├── docker-compose.yml           # Development compose
 └── docker-compose.prod.yml      # Production compose
@@ -239,14 +343,37 @@ velxio/
 ## Technologies
 
 | Layer | Stack |
-|---|---|
+| --- | --- |
 | Frontend | React 19, Vite 7, TypeScript 5.9, Monaco Editor, Zustand, React Router 7 |
 | Backend | FastAPI, SQLAlchemy 2.0 async, aiosqlite, uvicorn |
-| Simulation | avr8js (AVR8), rp2040js (RP2040), wokwi-elements (Web Components) |
+| AVR Simulation | avr8js (ATmega328p / ATmega2560) |
+| RP2040 Simulation | rp2040js (ARM Cortex-M0+) |
+| RISC-V Simulation | RiscVCore.ts (RV32IMC, custom TypeScript) |
+| ESP32 Simulation | QEMU 8.1.3 lcgamboa fork (Xtensa LX6/LX7) |
+| Raspberry Pi 3 Simulation | QEMU 8.1.3 (`qemu-system-aarch64 -M raspi3b`) + Raspberry Pi OS Trixie |
+| UI Components | wokwi-elements (Web Components) |
 | Compiler | arduino-cli (subprocess) |
 | Auth | JWT (httpOnly cookie), Google OAuth 2.0 |
 | Persistence | SQLite + disk volume (`/app/data/projects/{id}/`) |
 | Deploy | Docker, nginx, GitHub Actions → GHCR + Docker Hub |
+
+---
+
+## Documentation
+
+| Topic | Document |
+| --- | --- |
+| Getting Started | [docs/getting-started.md](docs/getting-started.md) |
+| Architecture Overview | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| Emulator Architecture | [docs/emulator.md](docs/emulator.md) |
+| Wokwi Libraries Integration | [docs/WOKWI_LIBS.md](docs/WOKWI_LIBS.md) |
+| RP2040 Emulation (Pico) | [docs/RP2040_EMULATION.md](docs/RP2040_EMULATION.md) |
+| Raspberry Pi 3 Emulation | [docs/RASPBERRYPI3_EMULATION.md](docs/RASPBERRYPI3_EMULATION.md) |
+| ESP32 Emulation (Xtensa) | [docs/ESP32_EMULATION.md](docs/ESP32_EMULATION.md) |
+| RISC-V Emulation (ESP32-C3) | [docs/RISCV_EMULATION.md](docs/RISCV_EMULATION.md) |
+| Components Reference | [docs/components.md](docs/components.md) |
+| MCP Server | [docs/MCP.md](docs/MCP.md) |
+| Roadmap | [docs/roadmap.md](docs/roadmap.md) |
 
 ---
 
@@ -258,7 +385,11 @@ velxio/
 
 **Serial Monitor shows nothing** — ensure `Serial.begin()` is called before `Serial.print()`.
 
-**Compilation errors** — check the compilation console; verify the correct core is installed.
+**ESP32 not starting** — verify `libqemu-xtensa.dll` (Windows) or `libqemu-xtensa.so` (Linux) is present in `backend/app/services/`.
+
+**Pi 3 takes too long to boot** — QEMU needs 2–5 seconds to initialize; the "booting" status in the UI is expected.
+
+**Compilation errors** — check the compilation console; verify the correct core is installed for the selected board.
 
 ---
 
@@ -272,7 +403,7 @@ Join the Discord server to ask questions, share projects, and follow updates:
 
 Suggestions, bug reports, and pull requests are welcome at [github.com/davidmonterocrespo24/velxio](https://github.com/davidmonterocrespo24/velxio).
 
-If you'd like to support the project financially, see the [Support the Project](#️-support-the-project) section above or sponsor directly at [github.com/sponsors/davidmonterocrespo24](https://github.com/sponsors/davidmonterocrespo24).
+If you'd like to support the project financially, see the [Support the Project](#support-the-project) section above or sponsor directly at [github.com/sponsors/davidmonterocrespo24](https://github.com/sponsors/davidmonterocrespo24).
 
 > **Note:** All contributors must sign a Contributor License Agreement (CLA) so that the dual-licensing model remains valid. A CLA check runs automatically on pull requests.
 
@@ -281,7 +412,7 @@ If you'd like to support the project financially, see the [Support the Project](
 Velxio uses a **dual-licensing** model:
 
 | Use case | License | Cost |
-|----------|---------|------|
+| --- | --- | --- |
 | Personal, educational, open-source (AGPLv3 compliant) | [AGPLv3](LICENSE) | Free |
 | Proprietary / closed-source product or SaaS | [Commercial License](COMMERCIAL_LICENSE.md) | Paid |
 
@@ -297,5 +428,7 @@ See [LICENSE](LICENSE) and [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for fu
 - [avr8js](https://github.com/wokwi/avr8js) — AVR8 emulator
 - [wokwi-elements](https://github.com/wokwi/wokwi-elements) — Electronic web components
 - [rp2040js](https://github.com/wokwi/rp2040js) — RP2040 emulator
+- [lcgamboa/qemu](https://github.com/lcgamboa/qemu) — QEMU fork for ESP32 Xtensa emulation
 - [arduino-cli](https://github.com/arduino/arduino-cli) — Arduino compiler
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) — Code editor
+- [QEMU](https://www.qemu.org) — Machine emulator (Raspberry Pi 3)

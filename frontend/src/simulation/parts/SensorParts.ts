@@ -12,51 +12,68 @@
  *  - stepper-motor (NEMA full-step decode)
  *  - led-ring (WS2812B NeoPixel ring)
  *  - neopixel-matrix (WS2812B NeoPixel matrix)
+ *  - pir-motion-sensor
+ *  - hc-sr04
  */
 
 import { PartSimulationRegistry } from './PartSimulationRegistry';
 import { setAdcVoltage } from './partUtils';
+import { registerSensorUpdate, unregisterSensorUpdate } from '../SensorUpdateRegistry';
 
 // ─── Tilt Switch ─────────────────────────────────────────────────────────────
 
 /**
  * Tilt switch — click the element to toggle between tilted (OUT HIGH) and
- * upright (OUT LOW). Starts upright (LOW).
+ * upright (OUT LOW). Also controllable via SensorControlPanel "Toggle tilt" button.
  */
 PartSimulationRegistry.register('tilt-switch', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pin = getArduinoPinHelper('OUT');
         if (pin === null) return () => {};
 
         let tilted = false;
 
-        const onClick = () => {
+        const triggerToggle = () => {
             tilted = !tilted;
             simulator.setPinState(pin, tilted);
-            console.log(`[TiltSwitch] pin ${pin} → ${tilted ? 'HIGH' : 'LOW'}`);
+            console.log(`[TiltSwitch] pin ${pin} → ${tilted ? 'HIGH (tilted)' : 'LOW (upright)'}`);
         };
 
         // Start LOW (upright)
         simulator.setPinState(pin, false);
-        element.addEventListener('click', onClick);
-        return () => element.removeEventListener('click', onClick);
+        element.addEventListener('click', triggerToggle);
+
+        // SensorControlPanel callback
+        registerSensorUpdate(componentId, (values) => {
+            if (values.toggle === true) triggerToggle();
+        });
+
+        return () => {
+            element.removeEventListener('click', triggerToggle);
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
 // ─── NTC Temperature Sensor ──────────────────────────────────────────────────
 
 /**
- * NTC thermistor sensor — injects a mid-range analog voltage on the OUT pin
- * representing room temperature (~25°C, ~2.5V on a 5V divider).
- * Listens to `input` events in case the element ever gains a drag slider.
+ * NTC thermistor sensor — injects analog voltage representing temperature.
+ * Default 25°C → 2.5V. SensorControlPanel slider adjusts temperature.
+ *
+ * Linear approximation: volts = clamp(2.5 - (temp - 25) * 0.02, 0, 5)
+ * (25°C = 2.5V; lower temp = higher voltage, higher temp = lower voltage)
  */
 PartSimulationRegistry.register('ntc-temperature-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pin = getArduinoPinHelper('OUT');
         if (pin === null) return () => {};
 
-        // Room temperature default (2.5V = mid-range)
-        setAdcVoltage(simulator, pin, 2.5);
+        const tempToVolts = (temp: number) =>
+            Math.max(0, Math.min(5, 2.5 - (temp - 25) * 0.02));
+
+        // Room temperature default
+        setAdcVoltage(simulator, pin, tempToVolts(25));
 
         const onInput = () => {
             const val = (element as any).value;
@@ -65,18 +82,29 @@ PartSimulationRegistry.register('ntc-temperature-sensor', {
             }
         };
         element.addEventListener('input', onInput);
-        return () => element.removeEventListener('input', onInput);
+
+        registerSensorUpdate(componentId, (values) => {
+            if ('temperature' in values) {
+                setAdcVoltage(simulator, pin, tempToVolts(values.temperature as number));
+            }
+        });
+
+        return () => {
+            element.removeEventListener('input', onInput);
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
 // ─── Gas Sensor (MQ-series) ──────────────────────────────────────────────────
 
 /**
- * Gas sensor — injects a low baseline voltage on AOUT (clean air),
- * shows power LED. When Arduino drives DOUT → updates threshold LED D0.
+ * Gas sensor — injects analog voltage on AOUT.
+ * Default 1.5V (clean air / low gas). SensorControlPanel slider adjusts level (0–1023).
+ * Higher value → higher voltage (more gas detected).
  */
 PartSimulationRegistry.register('gas-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pinAOUT = getArduinoPinHelper('AOUT');
         const pinDOUT = getArduinoPinHelper('DOUT');
         const pinManager = (simulator as any).pinManager;
@@ -110,18 +138,28 @@ PartSimulationRegistry.register('gas-sensor', {
         element.addEventListener('input', onInput);
         unsubscribers.push(() => element.removeEventListener('input', onInput));
 
-        return () => unsubscribers.forEach(u => u());
+        registerSensorUpdate(componentId, (values) => {
+            if ('gasLevel' in values && pinAOUT !== null) {
+                setAdcVoltage(simulator, pinAOUT, ((values.gasLevel as number) / 1023) * 5.0);
+            }
+        });
+
+        return () => {
+            unsubscribers.forEach(u => u());
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
 // ─── Flame Sensor ────────────────────────────────────────────────────────────
 
 /**
- * Flame sensor — injects a low baseline voltage on AOUT (no flame),
- * shows power LED. Arduino driving DOUT → updates signal LED.
+ * Flame sensor — injects analog voltage on AOUT.
+ * Default 4.5V (no flame). SensorControlPanel slider: 0 = no flame (high V),
+ * 1023 = intense flame (low V).
  */
 PartSimulationRegistry.register('flame-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pinAOUT = getArduinoPinHelper('AOUT');
         const pinDOUT = getArduinoPinHelper('DOUT');
         const pinManager = (simulator as any).pinManager;
@@ -132,7 +170,7 @@ PartSimulationRegistry.register('flame-sensor', {
         const unsubscribers: (() => void)[] = [];
 
         if (pinAOUT !== null) {
-            setAdcVoltage(simulator, pinAOUT, 1.5);
+            setAdcVoltage(simulator, pinAOUT, 4.5); // no flame = high voltage
         }
 
         if (pinDOUT !== null && pinManager) {
@@ -152,7 +190,18 @@ PartSimulationRegistry.register('flame-sensor', {
         element.addEventListener('input', onInput);
         unsubscribers.push(() => element.removeEventListener('input', onInput));
 
-        return () => unsubscribers.forEach(u => u());
+        registerSensorUpdate(componentId, (values) => {
+            if ('intensity' in values && pinAOUT !== null) {
+                // 0 = no flame → high voltage (4.5V); 1023 = flame → low voltage (0.2V)
+                const volts = 5.0 - ((values.intensity as number) / 1023) * 5.0;
+                setAdcVoltage(simulator, pinAOUT, volts);
+            }
+        });
+
+        return () => {
+            unsubscribers.forEach(u => u());
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
@@ -181,11 +230,11 @@ PartSimulationRegistry.register('heart-beat-sensor', {
 // ─── Big Sound Sensor ────────────────────────────────────────────────────────
 
 /**
- * Big sound sensor (FC-04) — injects mid-range analog on AOUT,
- * shows power LED (led2). Arduino driving DOUT → signal LED (led1).
+ * Big sound sensor (FC-04) — injects mid-range analog on AOUT.
+ * SensorControlPanel slider adjusts sound level (0–1023).
  */
 PartSimulationRegistry.register('big-sound-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pinAOUT = getArduinoPinHelper('AOUT');
         const pinDOUT = getArduinoPinHelper('DOUT');
         const pinManager = (simulator as any).pinManager;
@@ -216,18 +265,27 @@ PartSimulationRegistry.register('big-sound-sensor', {
         element.addEventListener('input', onInput);
         unsubscribers.push(() => element.removeEventListener('input', onInput));
 
-        return () => unsubscribers.forEach(u => u());
+        registerSensorUpdate(componentId, (values) => {
+            if ('soundLevel' in values && pinAOUT !== null) {
+                setAdcVoltage(simulator, pinAOUT, ((values.soundLevel as number) / 1023) * 5.0);
+            }
+        });
+
+        return () => {
+            unsubscribers.forEach(u => u());
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
 // ─── Small Sound Sensor ──────────────────────────────────────────────────────
 
 /**
- * Small sound sensor (KY-038) — injects mid-range analog on AOUT,
- * shows power LED. Arduino driving DOUT → signal LED.
+ * Small sound sensor (KY-038) — injects mid-range analog on AOUT.
+ * SensorControlPanel slider adjusts sound level (0–1023).
  */
 PartSimulationRegistry.register('small-sound-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pinAOUT = getArduinoPinHelper('AOUT');
         const pinDOUT = getArduinoPinHelper('DOUT');
         const pinManager = (simulator as any).pinManager;
@@ -258,7 +316,16 @@ PartSimulationRegistry.register('small-sound-sensor', {
         element.addEventListener('input', onInput);
         unsubscribers.push(() => element.removeEventListener('input', onInput));
 
-        return () => unsubscribers.forEach(u => u());
+        registerSensorUpdate(componentId, (values) => {
+            if ('soundLevel' in values && pinAOUT !== null) {
+                setAdcVoltage(simulator, pinAOUT, ((values.soundLevel as number) / 1023) * 5.0);
+            }
+        });
+
+        return () => {
+            unsubscribers.forEach(u => u());
+            unregisterSensorUpdate(componentId);
+        };
     },
 });
 
@@ -268,12 +335,6 @@ PartSimulationRegistry.register('small-sound-sensor', {
  * Stepper motor — monitors the 4 coil pins (A-, A+, B+, B-).
  * Uses a full-step lookup table to detect direction of rotation and
  * accumulates the shaft angle (1.8° per step = 200 steps per revolution).
- *
- * Full-step sequence (active-HIGH per coil):
- *   Step 0:  A+ = 1, B+ = 0, A- = 0, B- = 0
- *   Step 1:  A+ = 0, B+ = 1, A- = 0, B- = 0
- *   Step 2:  A+ = 0, B+ = 0, A- = 1, B- = 0
- *   Step 3:  A+ = 0, B+ = 0, A- = 0, B- = 1
  */
 PartSimulationRegistry.register('stepper-motor', {
     attachEvents: (element, simulator, getArduinoPinHelper) => {
@@ -308,12 +369,12 @@ PartSimulationRegistry.register('stepper-motor', {
                     return i;
                 }
             }
-            return -1; // energized coil pattern not in full-step table
+            return -1;
         }
 
         function onCoilChange() {
             const idx = coilToStepIndex();
-            if (idx < 0) return; // half-step or off state — ignore
+            if (idx < 0) return;
             if (prevStepIndex < 0) { prevStepIndex = idx; return; }
 
             const diff = (idx - prevStepIndex + 4) % 4;
@@ -357,14 +418,6 @@ PartSimulationRegistry.register('stepper-motor', {
 
 /**
  * Decode WS2812B bit-stream from DIN pin changes for NeoPixel devices.
- *
- * Protocol (800 kHz, 16 MHz AVR: 1 tick = 62.5 ns):
- *   - bit 0: HIGH for ~0.35µs (≤8 cycles); LOW for ~0.80µs
- *   - bit 1: HIGH for ~0.70µs (>8 cycles); LOW for ~0.40µs
- *   - RESET: LOW for >50µs (≥800 cycles)
- *
- * We measure HIGH pulse_width via cpu.cycles difference.
- * 8 bits (GRB order from WS2812B) → 1 byte; 3 bytes → 1 pixel.
  */
 function createNeopixelDecoder(
     simulator: any,
@@ -374,9 +427,8 @@ function createNeopixelDecoder(
     const pinManager = simulator.pinManager;
     if (!pinManager) return () => {};
 
-    const CPU_CYCLES_PER_US = 16; // 16 MHz
-    const RESET_CYCLES = 800;     // 50µs × 16 cycles/µs
-    const BIT1_THRESHOLD = 8;     // ~0.5µs threshold between bit-0 and bit-1
+    const RESET_CYCLES = 800;
+    const BIT1_THRESHOLD = 8;
 
     let lastRisingCycle = 0;
     let lastFallingCycle = 0;
@@ -392,10 +444,8 @@ function createNeopixelDecoder(
         const now: number = cpu?.cycles ?? 0;
 
         if (high) {
-            // Rising edge — check if preceding LOW was a RESET
             const lowDur = now - lastFallingCycle;
             if (lowDur > RESET_CYCLES) {
-                // RESET pulse received — flush and restart
                 pixelIndex = 0;
                 byteBuf = [];
                 bitBuf = 0;
@@ -404,12 +454,10 @@ function createNeopixelDecoder(
             lastRisingCycle = now;
             lastHigh = true;
         } else {
-            // Falling edge — measure HIGH pulse width
             if (lastHigh) {
                 const highDur = now - lastRisingCycle;
                 const bit = highDur > BIT1_THRESHOLD ? 1 : 0;
 
-                // WS2812B transmits MSB first
                 bitBuf = (bitBuf << 1) | bit;
                 bitsCollected++;
 
@@ -419,7 +467,6 @@ function createNeopixelDecoder(
                     bitsCollected = 0;
 
                     if (byteBuf.length === 3) {
-                        // WS2812B byte order is GRB
                         const g = byteBuf[0];
                         const r = byteBuf[1];
                         const b = byteBuf[2];
@@ -474,7 +521,6 @@ PartSimulationRegistry.register('neopixel-matrix', {
             (simulator as any),
             pinDIN,
             (index, r, g, b) => {
-                // cols is set by the element property (default 8)
                 const cols: number = el.cols ?? 8;
                 const row = Math.floor(index / cols);
                 const col = index % cols;
@@ -493,8 +539,7 @@ PartSimulationRegistry.register('neopixel-matrix', {
 // ─── Single NeoPixel (WS2812B) ───────────────────────────────────────────────
 
 /**
- * Single addressable RGB LED — decodes the WS2812B data stream on DIN
- * and updates the element's r/g/b properties (0–1 range).
+ * Single addressable RGB LED — decodes the WS2812B data stream on DIN.
  */
 PartSimulationRegistry.register('neopixel', {
     attachEvents: (element, simulator, getArduinoPinHelper) => {
@@ -520,11 +565,11 @@ PartSimulationRegistry.register('neopixel', {
 // ─── PIR Motion Sensor ───────────────────────────────────────────────────────
 
 /**
- * PIR motion sensor — click the element to simulate a motion event.
- * OUT pin goes HIGH for 3 seconds then returns LOW.
+ * PIR motion sensor — click the element OR press "Simulate motion" in the
+ * SensorControlPanel to trigger a 3-second HIGH pulse on OUT.
  */
 PartSimulationRegistry.register('pir-motion-sensor', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const pin = getArduinoPinHelper('OUT');
         if (pin === null) return () => {};
 
@@ -532,9 +577,9 @@ PartSimulationRegistry.register('pir-motion-sensor', {
 
         let timer: ReturnType<typeof setTimeout> | null = null;
 
-        const onClick = () => {
+        const triggerMotion = () => {
             if (timer !== null) clearTimeout(timer);
-            simulator.setPinState(pin, true); // motion detected → HIGH
+            simulator.setPinState(pin, true);
             console.log('[PIR] Motion detected → OUT HIGH');
             timer = setTimeout(() => {
                 simulator.setPinState(pin, false);
@@ -543,10 +588,16 @@ PartSimulationRegistry.register('pir-motion-sensor', {
             }, 3000);
         };
 
-        element.addEventListener('click', onClick);
+        element.addEventListener('click', triggerMotion);
+
+        registerSensorUpdate(componentId, (values) => {
+            if (values.trigger === true) triggerMotion();
+        });
+
         return () => {
-            element.removeEventListener('click', onClick);
+            element.removeEventListener('click', triggerMotion);
             if (timer !== null) clearTimeout(timer);
+            unregisterSensorUpdate(componentId);
         };
     },
 });
@@ -555,8 +606,6 @@ PartSimulationRegistry.register('pir-motion-sensor', {
 
 /**
  * Dual-coil relay — listens for COIL1/COIL2 pin state changes.
- * In a typical Arduino circuit the Arduino drives the coil and the relay
- * switches a separate load circuit; no electrical feedback is needed.
  */
 PartSimulationRegistry.register('ks2e-m-dc5', {
     onPinStateChange: (pinName, state, _element) => {
@@ -570,37 +619,85 @@ PartSimulationRegistry.register('ks2e-m-dc5', {
 
 /**
  * Ultrasonic sensor — monitors the TRIG pin.
- * When TRIG goes HIGH the sensor responds with an ECHO HIGH pulse
- * simulating an object at ~10 cm (≈582 µs echo width → 1 ms real-time).
+ * When TRIG goes HIGH, responds with an ECHO HIGH pulse whose duration
+ * encodes the configured distance (default 10 cm).
+ *
+ * Echo timing: echoMs = distanceCm / 17.15
+ * (speed of sound ~343 m/s; round-trip halves: 17150 cm/s)
  */
 PartSimulationRegistry.register('hc-sr04', {
-    attachEvents: (element, simulator, getArduinoPinHelper) => {
+    attachEvents: (element, simulator, getArduinoPinHelper, componentId) => {
         const trigPin = getArduinoPinHelper('TRIG');
         const echoPin = getArduinoPinHelper('ECHO');
         if (trigPin === null || echoPin === null) return () => {};
 
+        const el = element as any;
+        let distanceCm = parseFloat(el.distance) || 10; // default distance in cm
+
+        // ── ESP32 path: delegate protocol to backend QEMU worker ──
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const handledNatively = typeof (simulator as any).registerSensor === 'function'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            && (simulator as any).registerSensor('hc-sr04', trigPin, {
+                distance: distanceCm,
+                echo_pin: echoPin,
+            });
+
+        if (handledNatively) {
+            registerSensorUpdate(componentId, (values) => {
+                if ('distance' in values) {
+                    distanceCm = Math.max(2, Math.min(400, values.distance as number));
+                }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (simulator as any).updateSensor(trigPin, {
+                    distance: distanceCm,
+                    echo_pin: echoPin,
+                });
+            });
+
+            return () => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (simulator as any).unregisterSensor(trigPin);
+                unregisterSensorUpdate(componentId);
+            };
+        }
+
+        // ── AVR / RP2040 path: local pin scheduling ──
         simulator.setPinState(echoPin, false); // ECHO LOW initially
 
-        let echoTimer: ReturnType<typeof setTimeout> | null = null;
-
         const cleanup = simulator.pinManager.onPinChange(trigPin, (_: number, state: boolean) => {
-            if (state) {
-                // TRIG HIGH — fire ECHO pulse after ~1 ms
-                if (echoTimer !== null) clearTimeout(echoTimer);
-                echoTimer = setTimeout(() => {
-                    simulator.setPinState(echoPin, true); // ECHO HIGH
-                    console.log('[HC-SR04] ECHO HIGH (10 cm)');
-                    echoTimer = setTimeout(() => {
-                        simulator.setPinState(echoPin, false); // ECHO LOW
-                        echoTimer = null;
-                    }, 1); // 1 ms ≈ 582 µs → ~10 cm
+            if (!state) return; // only react on TRIG HIGH
+            if (typeof simulator.schedulePinChange === 'function') {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const clockHz: number = typeof (simulator as any).getClockHz === 'function'
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    ? (simulator as any).getClockHz()
+                    : 16_000_000;
+                const now = simulator.getCurrentCycles() as number;
+                const processingCycles = Math.round(600e-6 * clockHz); // 600 µs sensor overhead
+                const echoCycles = Math.round((distanceCm / 17150) * clockHz);
+                simulator.schedulePinChange(echoPin, true,  now + processingCycles);
+                simulator.schedulePinChange(echoPin, false, now + processingCycles + echoCycles);
+                console.log(`[HC-SR04] Scheduled ECHO (${distanceCm} cm, echo=${(echoCycles / (clockHz / 1e6)).toFixed(1)} µs)`);
+            } else {
+                // Fallback: best-effort async (works with delay()-based sketches, not pulseIn)
+                const echoMs = Math.max(1, distanceCm / 17.15);
+                setTimeout(() => {
+                    simulator.setPinState(echoPin, true);
+                    setTimeout(() => { simulator.setPinState(echoPin, false); }, echoMs);
                 }, 1);
+            }
+        });
+
+        registerSensorUpdate(componentId, (values) => {
+            if ('distance' in values) {
+                distanceCm = Math.max(2, Math.min(400, values.distance as number));
             }
         });
 
         return () => {
             cleanup();
-            if (echoTimer !== null) clearTimeout(echoTimer);
+            unregisterSensorUpdate(componentId);
         };
     },
 });

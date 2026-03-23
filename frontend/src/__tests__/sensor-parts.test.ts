@@ -197,9 +197,10 @@ describe('flame-sensor — attachEvents', () => {
     const sim = makeSimulator(adc);
     const el = makeElement() as any;
 
-    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }));
+    logic.attachEvents!(el, sim as any, pinMap({ AOUT: 14 }), 'flame-sensor-test');
 
-    expect(adc.channelValues[0]).toBeCloseTo(1.5, 2);
+    // No-flame baseline = 4.5V (inverse: no flame → high V, flame → low V)
+    expect(adc.channelValues[0]).toBeCloseTo(4.5, 2);
     expect(el.ledPower).toBe(true);
   });
 

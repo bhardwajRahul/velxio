@@ -205,6 +205,18 @@ class ArduinoCLIService:
         """Return True if the FQBN targets an RP2040/RP2350 board."""
         return any(p in fqbn for p in ("rp2040", "rp2350", "mbed_rp2040", "mbed_rp2350"))
 
+    def _is_esp32_board(self, fqbn: str) -> bool:
+        """Return True if the FQBN targets an ESP32 family board."""
+        return fqbn.startswith("esp32:")
+
+    def _is_esp32c3_board(self, fqbn: str) -> bool:
+        """Return True if the FQBN targets an ESP32-C3 (RISC-V) board.
+
+        ESP32-C3 places the bootloader at flash offset 0x0000, unlike Xtensa
+        boards (ESP32, ESP32-S3) which use 0x1000.
+        """
+        return "esp32c3" in fqbn or "xiao-esp32-c3" in fqbn or "aitewinrobot-esp32c3-supermini" in fqbn
+
     async def compile(self, files: list[dict], board_fqbn: str = "arduino:avr:uno") -> dict:
         """
         Compile Arduino sketch using arduino-cli.
@@ -258,13 +270,29 @@ class ArduinoCLIService:
 
             try:
                 # Run compilation using subprocess.run in a thread (Windows compatible)
-                cmd = [
-                    self.cli_path,
-                    "compile",
-                    "--fqbn", board_fqbn,
-                    "--output-dir", str(build_dir),
-                    str(sketch_dir)
-                ]
+                # ESP32 lcgamboa emulator requires DIO flash mode and
+                # IRAM-safe interrupt placement to avoid cache errors.
+                # Force these at compile time for all ESP32 targets.
+                cmd = [self.cli_path, "compile", "--fqbn", board_fqbn]
+                if self._is_esp32_board(board_fqbn):
+                    # FlashMode=dio: required by esp32-picsimlab QEMU machine
+                    # IRAM_ATTR on all interrupt handlers prevents cache crashes
+                    # when WiFi emulation disables the SPI flash cache on core 1.
+                    fqbn_dio = board_fqbn
+                    if 'FlashMode' not in board_fqbn:
+                        fqbn_dio = board_fqbn + ':FlashMode=dio'
+                    cmd[2] = '--fqbn'
+                    cmd.insert(3, fqbn_dio)
+                    cmd = cmd[:4]  # trim accidental duplicates
+                    cmd = [self.cli_path, "compile", "--fqbn", fqbn_dio,
+                           "--build-property",
+                           "build.extra_flags=-DARDUINO_ESP32_LCGAMBOA=1",
+                           "--output-dir", str(build_dir),
+                           str(sketch_dir)]
+                else:
+                    cmd = [self.cli_path, "compile", "--fqbn", board_fqbn,
+                           "--output-dir", str(build_dir),
+                           str(sketch_dir)]
                 print(f"Running command: {' '.join(cmd)}")
 
                 # Use subprocess.run in a thread for Windows compatibility
@@ -311,6 +339,63 @@ class ArduinoCLIService:
                             return {
                                 "success": False,
                                 "error": "RP2040 binary (.bin/.uf2) not found after compilation",
+                                "stdout": result.stdout,
+                                "stderr": result.stderr
+                            }
+                    elif self._is_esp32_board(board_fqbn):
+                        # ESP32 outputs individual .bin files that must be merged into a
+                        # single 4MB flash image for QEMU lcgamboa to boot correctly.
+                        bin_file        = build_dir / "sketch.ino.bin"
+                        bootloader_file = build_dir / "sketch.ino.bootloader.bin"
+                        partitions_file = build_dir / "sketch.ino.partitions.bin"
+                        merged_file     = build_dir / "sketch.ino.merged.bin"
+
+                        print(f"[ESP32] Build dir contents: {[f.name for f in build_dir.iterdir()]}")
+
+                        # Merge individual .bin files into a single 4MB flash image in pure Python.
+                        # Flash layout differs by chip:
+                        #   ESP32 / ESP32-S3 (Xtensa): 0x1000 bootloader | 0x8000 partitions | 0x10000 app
+                        #   ESP32-C3 (RISC-V):         0x0000 bootloader | 0x8000 partitions | 0x10000 app
+                        # QEMU lcgamboa requires exactly 2/4/8/16 MB flash — raw app binary won't boot.
+                        if not merged_file.exists() and bin_file.exists() and bootloader_file.exists() and partitions_file.exists():
+                            print("[ESP32] Merging binaries into 4MB flash image (pure Python)...")
+                            try:
+                                FLASH_SIZE = 4 * 1024 * 1024  # 4 MB
+                                flash = bytearray(b'\xff' * FLASH_SIZE)
+                                bootloader_offset = 0x0000 if self._is_esp32c3_board(board_fqbn) else 0x1000
+                                for offset, path in [
+                                    (bootloader_offset, bootloader_file),
+                                    (0x8000,            partitions_file),
+                                    (0x10000,           bin_file),
+                                ]:
+                                    data = path.read_bytes()
+                                    flash[offset:offset + len(data)] = data
+                                merged_file.write_bytes(bytes(flash))
+                                print(f"[ESP32] Merged image: {merged_file.stat().st_size} bytes (bootloader @ 0x{bootloader_offset:04X})")
+                            except Exception as e:
+                                print(f"[ESP32] Merge failed: {e} — falling back to raw app binary")
+
+                        target_file = merged_file if merged_file.exists() else (bin_file if bin_file.exists() else None)
+
+                        if target_file:
+                            raw_bytes = target_file.read_bytes()
+                            binary_b64 = base64.b64encode(raw_bytes).decode('ascii')
+                            print(f"[ESP32] Binary file: {target_file.name}, size: {len(raw_bytes)} bytes")
+                            print("=== ESP32 Compilation successful ===\n")
+                            return {
+                                "success": True,
+                                "hex_content": None,
+                                "binary_content": binary_b64,
+                                "binary_type": "bin",
+                                "stdout": result.stdout,
+                                "stderr": result.stderr
+                            }
+                        else:
+                            print(f"[ESP32] Binary file not found. Files: {list(build_dir.iterdir())}")
+                            print("=== ESP32 Compilation failed: binary not found ===\n")
+                            return {
+                                "success": False,
+                                "error": "ESP32 binary (.bin) not found after compilation",
                                 "stdout": result.stdout,
                                 "stderr": result.stderr
                             }

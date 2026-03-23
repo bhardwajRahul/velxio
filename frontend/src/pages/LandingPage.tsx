@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { AppHeader } from '../components/layout/AppHeader';
+import raspberryPi3Svg from '../assets/Raspberry_Pi_3_illustration.svg';
 import './LandingPage.css';
 
 const GITHUB_URL = 'https://github.com/davidmonterocrespo24/velxio';
@@ -312,14 +314,108 @@ const BoardMega = () => (
   </svg>
 );
 
+const BoardATtiny85 = () => (
+  <svg viewBox="0 0 60 50" className="board-svg" style={{ maxWidth: '100px' }}>
+    {/* PCB - small square DIP board */}
+    <rect x="2" y="2" width="56" height="46" rx="2" fill="#1a3a1a" stroke="#0d2a0d" strokeWidth="1.5" />
+    {/* ATtiny85 DIP-8 chip center */}
+    <rect x="18" y="12" width="24" height="28" rx="1" fill="#111" stroke="#2a2a2a" strokeWidth="1" />
+    {/* Notch */}
+    <path d="M28 12 Q30 9 32 12" fill="#222" stroke="#333" strokeWidth="0.5" />
+    {/* DIP pins left */}
+    {[0,1,2,3].map((i) => (
+      <rect key={`l${i}`} x="8" y={15 + i * 6} width="10" height="3.5" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* DIP pins right */}
+    {[0,1,2,3].map((i) => (
+      <rect key={`r${i}`} x="42" y={15 + i * 6} width="10" height="3.5" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* Chip label */}
+    <text x="30" y="26" textAnchor="middle" fill="#333" fontFamily="monospace" fontSize="4">ATtiny</text>
+    <text x="30" y="32" textAnchor="middle" fill="#333" fontFamily="monospace" fontSize="4">85</text>
+    {/* Status LED */}
+    <circle cx="50" cy="8" r="2" fill="#00ff88" opacity="0.85" />
+    <text x="30" y="46" textAnchor="middle" fill="#00aa55" fontFamily="monospace" fontSize="3.5">AVR · 8KB · DIP-8</text>
+  </svg>
+);
+
+const BoardCH32V003 = () => (
+  <svg viewBox="0 0 60 80" className="board-svg" style={{ maxWidth: '90px' }}>
+    {/* PCB */}
+    <rect x="2" y="2" width="56" height="76" rx="2" fill="#0a2a0a" stroke="#061a06" strokeWidth="1.5" />
+    {/* CH32V003 chip */}
+    <rect x="18" y="22" width="24" height="22" rx="1" fill="#1a1a1a" stroke="#2a2a2a" strokeWidth="1" />
+    {[0,1,2,3].map((i) => (
+      <rect key={`cl${i}`} x="14" y={25 + i * 4.5} width="4" height="2.5" rx="0.4" fill="#888" />
+    ))}
+    {[0,1,2,3].map((i) => (
+      <rect key={`cr${i}`} x="42" y={25 + i * 4.5} width="4" height="2.5" rx="0.4" fill="#888" />
+    ))}
+    <text x="30" y="31" textAnchor="middle" fill="#363636" fontFamily="monospace" fontSize="3.5">CH32</text>
+    <text x="30" y="37" textAnchor="middle" fill="#363636" fontFamily="monospace" fontSize="3.5">V003</text>
+    {/* Pins left */}
+    {[0,1,2,3,4,5,6].map((i) => (
+      <rect key={`pl${i}`} x="0" y={8 + i * 9} width="4" height="5" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* Pins right */}
+    {[0,1,2,3,4,5,6].map((i) => (
+      <rect key={`pr${i}`} x="56" y={8 + i * 9} width="4" height="5" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* USB */}
+    <rect x="20" y="70" width="20" height="7" rx="2" fill="#555" stroke="#444" strokeWidth="1" />
+    {/* LED */}
+    <circle cx="48" cy="14" r="2" fill="#00ff44" opacity="0.85" />
+    <text x="30" y="79" textAnchor="middle" fill="#00aa44" fontFamily="monospace" fontSize="3.5">RV32EC · 48 MHz</text>
+  </svg>
+);
+
+const BoardEsp32C3 = () => (
+  <svg viewBox="0 0 60 104" className="board-svg" style={{ maxWidth: '110px' }}>
+    {/* PCB */}
+    <rect x="2" y="2" width="56" height="100" rx="3" fill="#0d5e27" stroke="#084d1f" strokeWidth="1.5" />
+    {/* Antenna tab */}
+    <rect x="19" y="0" width="22" height="10" rx="2" fill="#0d5e27" stroke="#084d1f" strokeWidth="1" />
+    <rect x="25" y="1" width="10" height="6" rx="1" fill="#aaa" />
+    {/* ESP32-C3 chip */}
+    <rect x="16" y="35" width="28" height="28" rx="2" fill="#1a1a1a" stroke="#2a2a2a" strokeWidth="1" />
+    {[0,1,2,3,4].map((i) => (
+      <rect key={`cl${i}`} x="12" y={39 + i * 4.5} width="4" height="2.5" rx="0.4" fill="#888" />
+    ))}
+    {[0,1,2,3,4].map((i) => (
+      <rect key={`cr${i}`} x="44" y={39 + i * 4.5} width="4" height="2.5" rx="0.4" fill="#888" />
+    ))}
+    <text x="30" y="48" textAnchor="middle" fill="#363636" fontFamily="monospace" fontSize="4">ESP32</text>
+    <text x="30" y="54" textAnchor="middle" fill="#363636" fontFamily="monospace" fontSize="4">-C3</text>
+    {/* Left header pins */}
+    {[0,1,2,3,4,5,6,7,8,9,10].map((i) => (
+      <rect key={`pl${i}`} x="0" y={10 + i * 8} width="5" height="4" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* Right header pins */}
+    {[0,1,2,3,4,5,6,7,8,9,10].map((i) => (
+      <rect key={`pr${i}`} x="55" y={10 + i * 8} width="5" height="4" rx="0.5" fill="#d4a017" />
+    ))}
+    {/* USB-C */}
+    <rect x="20" y="95" width="20" height="7" rx="2.5" fill="#555" stroke="#444" strokeWidth="1" />
+    <rect x="23" y="97" width="14" height="3" rx="1" fill="#333" />
+    {/* WS2812B RGB LED */}
+    <rect x="21" y="22" width="7" height="7" rx="0.5" fill="#111" stroke="#2a2a2a" strokeWidth="0.5" />
+    <circle cx="24.5" cy="25.5" r="2" fill="#22ff66" opacity="0.75" />
+    {/* Power LED */}
+    <circle cx="40" cy="24" r="2" fill="#ff4444" opacity="0.9" />
+    <circle cx="40" cy="24" r="4" fill="rgba(255,68,68,0.08)" />
+    {/* Board label */}
+    <text x="30" y="102" textAnchor="middle" fill="#00cc55" fontFamily="monospace" fontSize="4">ESP32-C3 DevKit</text>
+  </svg>
+);
+
 /* ── Features ─────────────────────────────────────────── */
 const features = [
-  { icon: <IcoCpu />,     title: 'Real AVR8 Emulation',   desc: 'Full ATmega328p at 16 MHz — timers, USART, ADC, SPI, I2C and PWM all wired.' },
-  { icon: <IcoLayers />,  title: '48+ Components',         desc: 'LEDs, LCDs, TFT displays, servos, buzzers, sensors and more from wokwi-elements.' },
-  { icon: <IcoCode />,    title: 'Monaco Editor',          desc: 'VS Code-grade C++ editor with syntax highlighting, autocomplete and minimap.' },
-  { icon: <IcoZap />,     title: 'arduino-cli Backend',    desc: 'Compile sketches locally in seconds. No cloud. No latency. No limits.' },
-  { icon: <IcoMonitor />, title: 'Serial Monitor',         desc: 'Live TX/RX with auto baud-rate detection, send data and autoscroll.' },
-  { icon: <IcoBook />,    title: 'Library Manager',        desc: 'Browse and install the full Arduino library index directly from the UI.' },
+  { icon: <IcoCpu />,     title: '5 Emulation Engines',          desc: 'AVR8 (ATmega), RP2040 (ARM Cortex-M0+), RV32IMC (ESP32-C3 in-browser), Xtensa LX6/LX7 (ESP32 via QEMU), and ARM Cortex-A53 (Raspberry Pi 3 Linux).' },
+  { icon: <IcoLayers />,  title: '48+ Visual Components',        desc: 'LEDs, LCDs, ILI9341 TFT displays, servos, buzzers, ultrasonic sensors, keypads, and more from wokwi-elements.' },
+  { icon: <IcoCode />,    title: 'Monaco Editor',                desc: 'VS Code-grade C++ editor with full syntax highlighting, IntelliSense-style autocomplete, minimap, and multi-file workspace.' },
+  { icon: <IcoZap />,     title: 'Local arduino-cli Compiler',   desc: 'Compile and flash sketches locally in seconds. No cloud, no latency, no account required. Full offline support.' },
+  { icon: <IcoMonitor />, title: 'Serial Monitor',               desc: 'Real-time TX/RX with auto baud-rate detection, message history, send commands, and autoscroll.' },
+  { icon: <IcoBook />,    title: 'Library Manager',              desc: 'Search and install any library from the full Arduino library index — directly inside the editor, no terminal needed.' },
 ];
 
 /* ── Sponsor SVG icon ─────────────────────────────────── */
@@ -405,53 +501,19 @@ const UserMenu: React.FC = () => {
 
 /* ── Component ────────────────────────────────────────── */
 export const LandingPage: React.FC = () => {
-  const user = useAuthStore((s) => s.user);
-  const isLoading = useAuthStore((s) => s.isLoading);
-
   return (
     <div className="landing">
-      {/* Nav */}
-      <nav className="landing-nav">
-        <div className="landing-nav-brand">
-          <IcoChip />
-          <span>Velxio</span>
-        </div>
-        <div className="landing-nav-links">
-          <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="nav-link">
-            <IcoGitHub /> GitHub
-          </a>
-          <Link to="/docs" className="nav-link">Docs</Link>
-          <Link to="/examples" className="nav-link">Examples</Link>
-          {isLoading ? (
-            <div className="nav-auth-skeleton" />
-          ) : user ? (
-            <UserMenu />
-          ) : (
-            <>
-              <Link to="/login" className="nav-link">Sign in</Link>
-              <Link to="/editor" className="nav-btn-primary">Launch Editor</Link>
-            </>
-          )}
-        </div>
-      </nav>
+      <AppHeader />
 
       {/* Hero */}
       <section className="landing-hero">
         <div className="hero-left">
-          <div className="hero-eyebrow">
-            <span className="eyebrow-tag">OPEN SOURCE</span>
-            <span className="eyebrow-dot" />
-            <span className="eyebrow-tag">FREE</span>
-            <span className="eyebrow-dot" />
-            <span className="eyebrow-tag">LOCAL</span>
-          </div>
           <h1 className="hero-title">
-            Arduino Simulator<br />
-            <span className="hero-accent">in your browser</span>
+            Emulate Hardware.<br />
+            <span className="hero-accent">In your browser.</span>
           </h1>
           <p className="hero-subtitle">
-            Write, compile, and simulate Arduino projects with no hardware required.
-            Real AVR8 emulation running entirely on your machine.
+            Write, compile, and simulate 17+ boards across 5 CPU architectures — no hardware, no cloud, no limits. Real emulation running entirely on your machine.
           </p>
           <div className="hero-ctas">
             <Link to="/editor" className="cta-primary">
@@ -463,66 +525,188 @@ export const LandingPage: React.FC = () => {
               View on GitHub
             </a>
           </div>
-          <div className="hero-specs">
-            <span className="spec-pill">ATmega328p</span>
-            <span className="spec-sep">/</span>
-            <span className="spec-pill">RP2040</span>
-            <span className="spec-sep">/</span>
-            <span className="spec-pill">16 MHz</span>
-            <span className="spec-sep">/</span>
-            <span className="spec-pill">48+ components</span>
-          </div>
+          
         </div>
         <div className="hero-right">
-          <CircuitSchematic />
+          <img src="/image.png" alt="Velxio simulator preview" className="hero-preview-img" />
         </div>
       </section>
 
       {/* Boards */}
       <section className="landing-section">
         <div className="section-header">
-          <span className="section-label">// boards</span>
-          <h2 className="section-title">Supported Hardware</h2>
-          <p className="section-sub">Pick your target board. The emulator adapts its register map and timing.</p>
+          <span className="section-label">Supported Hardware</span>
+          <h2 className="section-title">Every architecture.<br />One tool.</h2>
+          <p className="section-sub">17 boards across 5 CPU architectures — AVR, ARM, RISC-V, Xtensa, and Linux. All running locally, no cloud needed.</p>
         </div>
-        <div className="boards-grid">
-          <div className="board-card">
-            <BoardUno />
-            <div className="board-info">
-              <span className="board-name">Arduino Uno</span>
-              <span className="board-chip">ATmega328p · AVR8 · 16 MHz</span>
-            </div>
+
+        {/* ── AVR8 · avr8js ────────────────────────────────────────── */}
+        <div className="board-group">
+          <div className="board-group-header" style={{ '--grp-color': '#0071e3' } as React.CSSProperties}>
+            <span className="board-group-engine">avr8js</span>
+            <span className="board-group-label">AVR8 · ATmega · 16 MHz</span>
           </div>
-          <div className="board-card">
-            <BoardNano />
-            <div className="board-info">
-              <span className="board-name">Arduino Nano</span>
-              <span className="board-chip">ATmega328p · AVR8 · 16 MHz</span>
+          <div className="boards-row">
+            <div className="board-card-sm">
+              <div className="board-img-box"><BoardUno /></div>
+              <span className="board-name-sm">Arduino Uno</span>
+              <span className="board-chip-sm">ATmega328p · 32 KB</span>
             </div>
-          </div>
-          <div className="board-card">
-            <BoardMega />
-            <div className="board-info">
-              <span className="board-name">Arduino Mega</span>
-              <span className="board-chip">ATmega2560 · AVR8 · 16 MHz</span>
+            <div className="board-card-sm">
+              <div className="board-img-box"><BoardNano /></div>
+              <span className="board-name-sm">Arduino Nano</span>
+              <span className="board-chip-sm">ATmega328p · 32 KB</span>
             </div>
-          </div>
-          <div className="board-card">
-            <BoardPico />
-            <div className="board-info">
-              <span className="board-name">Raspberry Pi Pico</span>
-              <span className="board-chip">RP2040 · Dual-core ARM · 133 MHz</span>
+            <div className="board-card-sm">
+              <div className="board-img-box"><BoardMega /></div>
+              <span className="board-name-sm">Arduino Mega 2560</span>
+              <span className="board-chip-sm">ATmega2560 · 256 KB</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box"><BoardATtiny85 /></div>
+              <span className="board-name-sm">ATtiny85</span>
+              <span className="board-chip-sm">AVR · 8 KB · DIP-8</span>
             </div>
           </div>
         </div>
+
+        {/* ── RP2040 · rp2040js ────────────────────────────────────── */}
+        <div className="board-group">
+          <div className="board-group-header" style={{ '--grp-color': '#a8192a' } as React.CSSProperties}>
+            <span className="board-group-engine">rp2040js</span>
+            <span className="board-group-label">RP2040 · Dual ARM Cortex-M0+ · 133 MHz</span>
+          </div>
+          <div className="boards-row">
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/pi-pico.svg" alt="Raspberry Pi Pico" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">Raspberry Pi Pico</span>
+              <span className="board-chip-sm">RP2040 · 264 KB RAM</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/pi-pico-w.svg" alt="Raspberry Pi Pico W" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">Raspberry Pi Pico W</span>
+              <span className="board-chip-sm">RP2040 + WiFi</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── RISC-V · RV32IMC · Browser ───────────────────────────── */}
+        <div className="board-group">
+          <div className="board-group-header" style={{ '--grp-color': '#4a9e6b' } as React.CSSProperties}>
+            <span className="board-group-engine">RV32IMC · Browser</span>
+            <span className="board-group-label">RISC-V · 160 MHz · no backend needed</span>
+          </div>
+          <div className="boards-row">
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32-c3.svg" alt="ESP32-C3" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32-C3 DevKit</span>
+              <span className="board-chip-sm">RV32IMC · 4 MB flash</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/xiao-esp32-c3.svg" alt="XIAO ESP32-C3" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">XIAO ESP32-C3</span>
+              <span className="board-chip-sm">RV32IMC · compact</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32c3-supermini.svg" alt="ESP32-C3 SuperMini" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32-C3 SuperMini</span>
+              <span className="board-chip-sm">RV32IMC · mini form</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box"><BoardCH32V003 /></div>
+              <span className="board-name-sm">CH32V003 (RISC-V)</span>
+              <span className="board-chip-sm">RV32EC · 48 MHz</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Xtensa LX6/LX7 · QEMU ────────────────────────────────── */}
+        <div className="board-group">
+          <div className="board-group-header" style={{ '--grp-color': '#c8701a' } as React.CSSProperties}>
+            <span className="board-group-engine">QEMU · Xtensa</span>
+            <span className="board-group-label">Xtensa LX6/LX7 · 240 MHz · backend required</span>
+          </div>
+          <div className="boards-row">
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32-devkit-c-v4.svg" alt="ESP32 DevKit V1" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32 DevKit V1</span>
+              <span className="board-chip-sm">LX6 · 4 MB flash</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32-devkit-c-v4.svg" alt="ESP32 DevKit C V4" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32 DevKit C V4</span>
+              <span className="board-chip-sm">LX6 · 4 MB flash</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32-cam.svg" alt="ESP32-CAM" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32-CAM</span>
+              <span className="board-chip-sm">LX6 · camera module</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/esp32-s3.svg" alt="ESP32-S3" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">ESP32-S3 DevKit</span>
+              <span className="board-chip-sm">LX7 · 4 MB flash</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/xiao-esp32-s3.svg" alt="XIAO ESP32-S3" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">XIAO ESP32-S3</span>
+              <span className="board-chip-sm">LX7 · compact</span>
+            </div>
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src="/boards/arduino-nano-esp32.svg" alt="Arduino Nano ESP32" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">Arduino Nano ESP32</span>
+              <span className="board-chip-sm">LX7 · Nano form</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── ARM · Linux · QEMU ───────────────────────────────────── */}
+        <div className="board-group">
+          <div className="board-group-header" style={{ '--grp-color': '#a8304d' } as React.CSSProperties}>
+            <span className="board-group-engine">QEMU · ARM</span>
+            <span className="board-group-label">ARM Cortex-A53 · Linux · backend required</span>
+          </div>
+          <div className="boards-row">
+            <div className="board-card-sm">
+              <div className="board-img-box">
+                <img src={raspberryPi3Svg} alt="Raspberry Pi 3B" className="board-img-sm" />
+              </div>
+              <span className="board-name-sm">Raspberry Pi 3B</span>
+              <span className="board-chip-sm">Cortex-A53 · 1.2 GHz · Linux</span>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       {/* Features */}
       <section className="landing-section landing-section-alt">
         <div className="section-header">
-          <span className="section-label">// features</span>
-          <h2 className="section-title">Everything you need</h2>
-          <p className="section-sub">A complete IDE and simulator, running locally with no external dependencies.</p>
+          <span className="section-label">Features</span>
+          <h2 className="section-title">Everything you need.</h2>
+          <p className="section-sub">A complete IDE, compiler, and multi-architecture simulator — running locally with no external services required.</p>
         </div>
         <div className="features-grid">
           {features.map((f) => (

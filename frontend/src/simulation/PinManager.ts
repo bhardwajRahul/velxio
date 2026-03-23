@@ -73,14 +73,20 @@ export class PinManager {
         if (callbacks) {
           callbacks.forEach(cb => cb(arduinoPin, newState));
         }
-
-        console.log(`Pin ${arduinoPin} (${portName}${bit}): ${oldState ? 'HIGH' : 'LOW'} → ${newState ? 'HIGH' : 'LOW'}`);
       }
     }
   }
 
   getPinState(arduinoPin: number): boolean {
     return this.pinStates.get(arduinoPin) || false;
+  }
+
+  /**
+   * Set a single pin state and notify listeners.
+   * Alias for triggerPinChange — used by ESP32-C3, RISC-V, and RP2040 simulators.
+   */
+  setPinState(pin: number, state: boolean): void {
+    this.triggerPinChange(pin, state);
   }
 
   /**

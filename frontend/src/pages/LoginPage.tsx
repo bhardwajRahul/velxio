@@ -28,38 +28,43 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Sign in</h1>
+    <div className="ap-page">
+      <div className="ap-card">
+        <h1 className="ap-card-title">Sign in</h1>
+        <p className="ap-card-sub">to continue to Velxio</p>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && <div className="ap-error">{error}</div>}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <label style={styles.label}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={styles.input}
-            autoFocus
-          />
-          <label style={styles.label}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={styles.input}
-          />
-          <button type="submit" disabled={loading} style={styles.primaryBtn}>
+        <form onSubmit={handleSubmit} className="ap-form">
+          <div className="ap-field">
+            <label className="ap-label">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="ap-input"
+              autoFocus
+            />
+          </div>
+          <div className="ap-field">
+            <label className="ap-label">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="ap-input"
+            />
+          </div>
+          <button type="submit" disabled={loading} className="ap-btn-primary">
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <div style={styles.divider}><span>or</span></div>
+        <div className="ap-divider">or</div>
 
-        <button onClick={initiateGoogleLogin} style={styles.googleBtn}>
+        <button onClick={initiateGoogleLogin} className="ap-btn-white">
           <svg width="18" height="18" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
             <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -69,25 +74,10 @@ export const LoginPage: React.FC = () => {
           Continue with Google
         </button>
 
-        <p style={styles.footer}>
-          Don't have an account? <Link to="/register" style={styles.link}>Sign up</Link>
+        <p className="ap-footer">
+          Don't have an account? <Link to="/register" className="ap-link">Sign up</Link>
         </p>
       </div>
     </div>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  page: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1e1e1e' },
-  card: { background: '#252526', border: '1px solid #3c3c3c', borderRadius: 8, padding: '2rem', width: 360, display: 'flex', flexDirection: 'column', gap: 12 },
-  title: { color: '#ccc', margin: 0, fontSize: 22, fontWeight: 600, textAlign: 'center' },
-  form: { display: 'flex', flexDirection: 'column', gap: 8 },
-  label: { color: '#9d9d9d', fontSize: 13 },
-  input: { background: '#3c3c3c', border: '1px solid #555', borderRadius: 4, padding: '8px 10px', color: '#ccc', fontSize: 14, outline: 'none' },
-  primaryBtn: { marginTop: 8, background: '#0e639c', border: 'none', borderRadius: 4, color: '#fff', padding: '9px', fontSize: 14, cursor: 'pointer', fontWeight: 500 },
-  divider: { textAlign: 'center', color: '#555', fontSize: 13, position: 'relative' },
-  googleBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: '#fff', border: 'none', borderRadius: 4, color: '#333', padding: '9px', fontSize: 14, cursor: 'pointer', fontWeight: 500 },
-  footer: { color: '#9d9d9d', fontSize: 13, textAlign: 'center', margin: 0 },
-  link: { color: '#4fc3f7' },
-  error: { background: '#5a1d1d', border: '1px solid #f44747', borderRadius: 4, color: '#f44747', padding: '8px 12px', fontSize: 13 },
 };

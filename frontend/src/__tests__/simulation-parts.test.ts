@@ -71,7 +71,10 @@ function makeSimulator(adc?: ReturnType<typeof makeADC> | null) {
     pinManager,
     getADC:      vi.fn().mockReturnValue(adc ?? null),
     setPinState: vi.fn(),
-    cpu: { data: new Uint8Array(512).fill(0) },
+    isRunning:   vi.fn().mockReturnValue(true),
+    getCurrentCycles: vi.fn().mockReturnValue(1000),
+    getClockHz:  vi.fn().mockReturnValue(16_000_000),
+    cpu: { data: new Uint8Array(512).fill(0), cycles: 1000 },
   };
 }
 

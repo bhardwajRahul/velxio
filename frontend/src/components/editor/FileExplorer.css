@@ -173,3 +173,106 @@
 .ctx-delete:hover:not(:disabled) {
   color: #ef5350 !important;
 }
+
+/* ─── Board-grouped FileExplorer ─────────────────── */
+
+.fe-board-section {
+  margin-bottom: 2px;
+}
+
+.fe-board-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 6px 5px 4px;
+  cursor: pointer;
+  color: #aaa;
+  border-radius: 3px;
+  margin: 0 4px;
+  user-select: none;
+  position: relative;
+}
+
+.fe-board-header:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ddd;
+}
+
+.fe-board-header-active {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e2e2;
+}
+
+.fe-collapse-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.fe-collapse-btn:hover {
+  opacity: 1;
+}
+
+.fe-board-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.fe-board-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fe-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.fe-board-new-btn {
+  background: none;
+  border: none;
+  color: #9d9d9d;
+  cursor: pointer;
+  padding: 1px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.fe-board-header:hover .fe-board-new-btn,
+.fe-board-header-active .fe-board-new-btn {
+  opacity: 1;
+}
+
+.fe-board-new-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.fe-board-files {
+  /* files are indented to show hierarchy */
+}
+
+.fe-file-item {
+  padding-left: 26px !important;
+}

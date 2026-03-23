@@ -42,7 +42,19 @@ export function calculatePinPosition(
   }
 
   // Find the specific pin
-  const pin = pinInfo.find((p: any) => p.name === pinName);
+  let pin = pinInfo.find((p: any) => p.name === pinName);
+  // Fallback: try numbered variant (e.g. GND → GND.1) for pins that have suffix variants
+  if (!pin && !pinName.includes('.')) {
+    pin = pinInfo.find((p: any) => p.name === `${pinName}.1`);
+  }
+  // Fallback: GP-prefix → match description field (e.g. 'GP15' → description 'GPIO15')
+  // Needed for Nano RP2040 Connect which uses D-prefix pin names but GPIO descriptions
+  if (!pin && pinName.startsWith('GP')) {
+    const gpioNum = parseInt(pinName.substring(2), 10);
+    if (!isNaN(gpioNum)) {
+      pin = pinInfo.find((p: any) => p.description === `GPIO${gpioNum}`);
+    }
+  }
   if (!pin) {
     console.warn(`[pinPositionCalculator] Pin ${pinName} not found on component ${componentId}`);
     console.warn(`Available pins:`, pinInfo.map((p: any) => p.name));

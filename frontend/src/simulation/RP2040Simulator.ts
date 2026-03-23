@@ -49,6 +49,9 @@ export class RP2040Simulator {
   private speed = 1.0;
   private gpioUnsubscribers: Array<() => void> = [];
   private flashCopy: Uint8Array | null = null;
+  private totalCycles = 0;
+  private scheduledPinChanges: Array<{ cycle: number; pin: number; state: boolean }> = [];
+  private pioStepAccum = 0;
 
   /** Serial output callback — fires for each byte the Pico sends on UART0 */
   public onSerialData: ((char: string) => void) | null = null;
@@ -165,6 +168,23 @@ export class RP2040Simulator {
     // For 27°C: V = 0.706V → ADC = 0.706/3.3 * 4095 ≈ 876
     this.rp2040.adc.channelValues[4] = 876;
 
+    // ── Patch PIO to use synchronous stepping instead of setTimeout ──
+    // rp2040js PIO uses setTimeout(() => this.run(), 0) which deadlocks
+    // when the CPU busy-waits for PIO FIFO space (e.g. pio_sm_put_blocking).
+    // We step PIO synchronously in the execute loop instead.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const pio of (this.rp2040 as any).pio) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pio.run = function (this: any) {
+        if (this.runTimer) {
+          clearTimeout(this.runTimer);
+          this.runTimer = null;
+        }
+        // No-op: execute loop calls pio.step() synchronously
+      };
+    }
+    this.pioStepAccum = 0;
+
     // ── Set up GPIO listeners ────────────────────────────────────────
     this.setupGpioListeners();
   }
@@ -227,13 +247,13 @@ export class RP2040Simulator {
       if (!gpio) continue;
 
       const unsub = gpio.addListener((state: GPIOPinState) => {
-        const isHigh = state === GPIOPinState.High;
+        const isHigh = state === GPIOPinState.High || state === GPIOPinState.InputPullUp;
         this.pinManager.triggerPinChange(pin, isHigh);
         if (this.onPinChangeWithTime && this.rp2040) {
-          // Use clock cycles if available, otherwise 0
+          // IClock interface exposes `nanos` (not `timeUs`)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const clk = (this.rp2040 as any).clock;
-          const timeMs = clk ? clk.timeUs / 1000 : 0;
+          const timeMs = clk ? (clk.nanos as number) / 1_000_000 : 0;
           this.onPinChangeWithTime(pin, isHigh, timeMs);
         }
       });
@@ -252,7 +272,6 @@ export class RP2040Simulator {
     this.running = true;
     console.log('[RP2040] Starting simulation at 125 MHz...');
 
-    let frameCount = 0;
     const execute = () => {
       if (!this.running || !this.rp2040) return;
 
@@ -263,13 +282,38 @@ export class RP2040Simulator {
 
       try {
         let cyclesDone = 0;
+        const pioDiv = this.getPIOClockDiv();
         while (cyclesDone < cyclesTarget) {
           if (core.waiting) {
             if (clock) {
               const jump: number = clock.nanosToNextAlarm;
-              if (jump <= 0) break; // no pending alarms
-              clock.tick(jump);
-              cyclesDone += Math.ceil(jump / CYCLE_NANOS);
+              if (jump <= 0) {
+                // No clock alarms — step PIO so it can unblock the CPU
+                // (e.g. PIO consuming FIFO data may generate an interrupt)
+                this.stepPIO();
+                break;
+              }
+              const jumped = Math.ceil(jump / CYCLE_NANOS);
+              const pioSteps = Math.floor(jumped / pioDiv);
+              // Advance clock incrementally per PIO step so GPIO transitions
+              // get accurate timestamps (not all lumped at the end of the jump).
+              const nanoPerPioStep = pioDiv * CYCLE_NANOS;
+              const maxSteps = Math.min(pioSteps, 50000);
+              let nanosStepped = 0;
+              for (let i = 0; i < maxSteps; i++) {
+                clock.tick(nanoPerPioStep);
+                nanosStepped += nanoPerPioStep;
+                this.totalCycles += pioDiv;
+                this.stepPIO();
+              }
+              // Tick any remaining nanoseconds not covered by PIO steps
+              const remaining = jump - nanosStepped;
+              if (remaining > 0) {
+                clock.tick(remaining);
+                this.totalCycles += Math.ceil(remaining / CYCLE_NANOS);
+              }
+              cyclesDone += jumped;
+              this.flushScheduledPinChanges();
             } else {
               break;
             }
@@ -277,13 +321,17 @@ export class RP2040Simulator {
             const cycles: number = core.executeInstruction();
             if (clock) clock.tick(cycles * CYCLE_NANOS);
             cyclesDone += cycles;
+            this.totalCycles += cycles;
+            // Step PIO synchronously at the PIO clock rate
+            this.pioStepAccum += cycles;
+            while (this.pioStepAccum >= pioDiv) {
+              this.pioStepAccum -= pioDiv;
+              this.stepPIO();
+            }
+            this.flushScheduledPinChanges();
           }
         }
 
-        frameCount++;
-        if (frameCount % 60 === 0) {
-          console.log(`[RP2040] Frame ${frameCount}, PC: 0x${core.PC.toString(16)}`);
-        }
       } catch (error) {
         console.error('[RP2040] Simulation error:', error);
         this.stop();
@@ -308,6 +356,8 @@ export class RP2040Simulator {
 
   reset(): void {
     this.stop();
+    this.totalCycles = 0;
+    this.scheduledPinChanges = [];
     if (this.rp2040 && this.flashCopy) {
       this.initMCU(this.flashCopy);
       // Re-register any previously added I2C devices
@@ -326,6 +376,58 @@ export class RP2040Simulator {
 
   getSpeed(): number {
     return this.speed;
+  }
+
+  /** Returns the CPU clock frequency in Hz. */
+  getClockHz(): number {
+    return F_CPU;
+  }
+
+  /** Returns total CPU cycles executed since last reset/load. */
+  getCurrentCycles(): number {
+    return this.totalCycles;
+  }
+
+  /**
+   * Schedule a GPIO pin state change at a specific future cycle count.
+   * Enables cycle-accurate protocol simulation (e.g. HC-SR04 echo timing).
+   */
+  schedulePinChange(pin: number, state: boolean, atCycle: number): void {
+    let i = this.scheduledPinChanges.length;
+    while (i > 0 && this.scheduledPinChanges[i - 1].cycle > atCycle) i--;
+    this.scheduledPinChanges.splice(i, 0, { cycle: atCycle, pin, state });
+  }
+
+  /** Get the PIO clock divider from the first enabled state machine. */
+  private getPIOClockDiv(): number {
+    if (!this.rp2040) return 64;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const pio of (this.rp2040 as any).pio) {
+      if (pio.stopped) continue;
+      for (const m of pio.machines) {
+        if (m.enabled) {
+          return Math.max(1, m.clockDivInt || 1);
+        }
+      }
+    }
+    return 64; // default
+  }
+
+  /** Step PIO state machines synchronously (prevents setTimeout deadlock). */
+  private stepPIO(): void {
+    if (!this.rp2040) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pio = (this.rp2040 as any).pio;
+    if (pio[0] && !pio[0].stopped) pio[0].step();
+    if (pio[1] && !pio[1].stopped) pio[1].step();
+  }
+
+  private flushScheduledPinChanges(): void {
+    if (this.scheduledPinChanges.length === 0) return;
+    while (this.scheduledPinChanges.length > 0 && this.scheduledPinChanges[0].cycle <= this.totalCycles) {
+      const { pin, state } = this.scheduledPinChanges.shift()!;
+      this.setPinState(pin, state);
+    }
   }
 
   /**
@@ -388,4 +490,12 @@ export class RP2040Simulator {
       spi.completeTransmit(response);
     };
   }
+
+  // ── Generic sensor registration (board-agnostic API) ──────────────────────
+  // RP2040 handles all sensor protocols locally via schedulePinChange,
+  // so these return false / no-op — the sensor runs its own frontend logic.
+
+  registerSensor(_type: string, _pin: number, _props: Record<string, unknown>): boolean { return false; }
+  updateSensor(_pin: number, _props: Record<string, unknown>): void {}
+  unregisterSensor(_pin: number): void {}
 }

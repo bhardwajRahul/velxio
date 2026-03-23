@@ -1,37 +1,34 @@
-/**
- * WireLayer Component
- *
- * SVG layer that renders all wires below components.
- * Positioned absolutely with full canvas coverage.
- *
- * Features:
- * - Automatic offset calculation for overlapping wires
- * - Visual separation of parallel wires
- */
-
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
 import { WireRenderer } from './WireRenderer';
 import { WireInProgressRenderer } from './WireInProgressRenderer';
-import { calculateWireOffsets, applyOffsetToWire } from '../../utils/wireOffsetCalculator';
 
-export const WireLayer: React.FC = () => {
-  const { wires, wireInProgress, selectedWireId } = useSimulatorStore();
+export interface SegmentHandle {
+  segIndex: number;
+  axis: 'horizontal' | 'vertical';
+  mx: number; // midpoint X
+  my: number; // midpoint Y
+}
 
-  // Calculate automatic offsets for overlapping wires
-  const wireOffsets = useMemo(() => {
-    return calculateWireOffsets(wires);
-  }, [wires]);
+interface WireLayerProps {
+  hoveredWireId: string | null;
+  /** Segment drag preview: overrides the path of a specific wire */
+  segmentDragPreview: { wireId: string; overridePath: string } | null;
+  /** Handles to render for the selected wire */
+  segmentHandles: SegmentHandle[];
+  /** Called when user starts dragging a handle (passes segIndex) */
+  onHandleMouseDown: (e: React.MouseEvent, segIndex: number) => void;
+}
 
-  // Apply offsets to wires for rendering
-  // Priority: manual offset > automatic offset > 0
-  const offsetWires = useMemo(() => {
-    return wires.map(wire => {
-      const automaticOffset = wireOffsets.get(wire.id) || 0;
-      const finalOffset = wire.manualOffset !== undefined ? wire.manualOffset : automaticOffset;
-      return applyOffsetToWire(wire, finalOffset);
-    });
-  }, [wires, wireOffsets]);
+export const WireLayer: React.FC<WireLayerProps> = ({
+  hoveredWireId,
+  segmentDragPreview,
+  segmentHandles,
+  onHandleMouseDown,
+}) => {
+  const wires = useSimulatorStore((s) => s.wires);
+  const wireInProgress = useSimulatorStore((s) => s.wireInProgress);
+  const selectedWireId = useSimulatorStore((s) => s.selectedWireId);
 
   return (
     <svg
@@ -42,29 +39,40 @@ export const WireLayer: React.FC = () => {
         left: 0,
         width: '100%',
         height: '100%',
-        overflow: 'visible',  // Allow wires to render outside the SVG viewport (e.g. negative coords)
-        pointerEvents: 'auto',  // Enable pointer events for control points
-        zIndex: 1,  // Below components (which have zIndex: 2)
+        overflow: 'visible',
+        pointerEvents: 'none',
+        zIndex: 35,
       }}
     >
-      {/* Transparent background - allows click-through when not clicking on wires */}
-      <rect
-        width="100%"
-        height="100%"
-        fill="transparent"
-        style={{ pointerEvents: 'none' }}
-      />
-
-      {/* Render all wires with automatic offsets */}
-      {offsetWires.map((wire, index) => (
+      {wires.map((wire) => (
         <WireRenderer
           key={wire.id}
           wire={wire}
           isSelected={wire.id === selectedWireId}
+          isHovered={wire.id === hoveredWireId}
+          overridePath={
+            segmentDragPreview?.wireId === wire.id
+              ? segmentDragPreview.overridePath
+              : undefined
+          }
         />
       ))}
 
-      {/* Render wire being created (Phase 2) */}
+      {/* Segment handles for the selected wire */}
+      {segmentHandles.map((handle) => (
+        <circle
+          key={handle.segIndex}
+          cx={handle.mx}
+          cy={handle.my}
+          r={7}
+          fill="white"
+          stroke="#007acc"
+          strokeWidth={2}
+          style={{ pointerEvents: 'all', cursor: handle.axis === 'horizontal' ? 'ns-resize' : 'ew-resize' }}
+          onMouseDown={(e) => onHandleMouseDown(e, handle.segIndex)}
+        />
+      ))}
+
       {wireInProgress && (
         <WireInProgressRenderer wireInProgress={wireInProgress} />
       )}

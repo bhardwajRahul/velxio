@@ -8,7 +8,8 @@
  * NOT gate:      A    → Y
  */
 
-import { PartSimulationRegistry, PartSimulationLogic } from './PartSimulationRegistry';
+import { PartSimulationRegistry } from './PartSimulationRegistry';
+import type { PartSimulationLogic } from './PartSimulationRegistry';
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 

@@ -5,6 +5,8 @@ interface LEDProps {
   id?: string;
   color?: 'red' | 'green' | 'blue' | 'yellow' | 'white' | 'orange';
   value?: boolean;
+  /** PWM brightness 0.0–1.0. When set, overrides value for intermediate brightness. */
+  brightness?: number;
   label?: string;
   x?: number;
   y?: number;
@@ -15,6 +17,7 @@ export const LED = ({
   id,
   color = 'red',
   value = false,
+  brightness,
   label,
   x = 0,
   y = 0,
@@ -24,14 +27,20 @@ export const LED = ({
 
   useEffect(() => {
     if (ledRef.current) {
-      // Set properties directly on DOM element (Web Component API)
-      (ledRef.current as any).value = value;
-      (ledRef.current as any).color = color;
-      if (label) {
-        (ledRef.current as any).label = label;
+      const el = ledRef.current as any;
+      // If brightness given, use it (wokwi-led supports 0.0–1.0 via `value` float)
+      if (brightness !== undefined) {
+        el.value = brightness > 0;
+        // wokwi-led doesn't natively support float brightness; we simulate via opacity
+        (ledRef.current as HTMLElement).style.opacity = String(brightness);
+      } else {
+        el.value = value;
+        (ledRef.current as HTMLElement).style.opacity = '';
       }
+      el.color = color;
+      if (label) el.label = label;
     }
-  }, [value, color, label]);
+  }, [value, brightness, color, label]);
 
   useEffect(() => {
     if (ledRef.current && onPinClick) {

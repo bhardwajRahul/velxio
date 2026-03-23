@@ -21,6 +21,7 @@
 import { PartSimulationRegistry } from './PartSimulationRegistry';
 import { VirtualDS1307, VirtualBMP280, VirtualDS3231, VirtualPCF8574 } from '../I2CBusManager';
 import type { I2CDevice } from '../I2CBusManager';
+import { registerSensorUpdate, unregisterSensorUpdate } from '../SensorUpdateRegistry';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -310,7 +311,7 @@ class VirtualMPU6050 implements I2CDevice {
 }
 
 PartSimulationRegistry.register('mpu6050', {
-  attachEvents: (element, simulator, _getPin) => {
+  attachEvents: (element, simulator, _getPin, componentId) => {
     const sim  = simulator as any;
     if (typeof sim.addI2CDevice !== 'function') return () => {};
     const el   = element as any;
@@ -318,7 +319,28 @@ PartSimulationRegistry.register('mpu6050', {
     const addr = (el.ad0 === true || el.ad0 === 'true') ? 0x69 : 0x68;
     const device = new VirtualMPU6050(addr);
     sim.addI2CDevice(device);
-    return () => removeI2CDevice(sim, device.address);
+
+    // Helper: write a signed 16-bit value to two consecutive registers (H, L)
+    const writeI16 = (regH: number, raw: number) => {
+      const v = Math.max(-32768, Math.min(32767, Math.round(raw))) & 0xFFFF;
+      device.registers[regH]     = (v >> 8) & 0xFF;
+      device.registers[regH + 1] =  v       & 0xFF;
+    };
+
+    registerSensorUpdate(componentId, (values) => {
+      if ('accelX' in values) writeI16(0x3B, (values.accelX as number) * 16384);
+      if ('accelY' in values) writeI16(0x3D, (values.accelY as number) * 16384);
+      if ('accelZ' in values) writeI16(0x3F, (values.accelZ as number) * 16384);
+      if ('gyroX'  in values) writeI16(0x43, (values.gyroX  as number) * 131);
+      if ('gyroY'  in values) writeI16(0x45, (values.gyroY  as number) * 131);
+      if ('gyroZ'  in values) writeI16(0x47, (values.gyroZ  as number) * 131);
+      if ('temp'   in values) writeI16(0x41, ((values.temp as number) - 36.53) * 340);
+    });
+
+    return () => {
+      removeI2CDevice(sim, device.address);
+      unregisterSensorUpdate(componentId);
+    };
   },
 });
 
@@ -362,38 +384,134 @@ function buildDHT22Payload(element: HTMLElement): Uint8Array {
 }
 
 /**
- * Drive 40 bits on the DATA pin as fast as synchronous setPinState allows.
- * Each bit produces: LOW → then HIGH if bit=1, LOW if bit=0.
- * This saturates the timing but ensures the pin is toggled correctly.
+ * Schedule the full DHT22 waveform on DATA using cycle-accurate pin changes.
+ *
+ * DHT22 protocol (after MCU releases DATA HIGH):
+ *  - 80 µs LOW  → 80 µs HIGH  (response preamble)
+ *  - 40 bits, each: 50 µs LOW + (26 µs HIGH = '0', 70 µs HIGH = '1')
+ *  - Line released HIGH after last bit
+ *
+ * At 16 MHz: 1 µs = 16 cycles
+ *  - 80 µs = 1280 cycles, 50 µs = 800 cycles, 26 µs = 416 cycles, 70 µs = 1120 cycles
  */
-function driveDHT22Response(simulator: any, pin: number, element: HTMLElement): void {
+function scheduleDHT22Response(simulator: any, pin: number, element: HTMLElement): void {
+  if (typeof simulator.schedulePinChange !== 'function') {
+    // Fallback: synchronous drive (legacy / non-AVR simulators)
+    const payload = buildDHT22Payload(element);
+    simulator.setPinState(pin, false);
+    simulator.setPinState(pin, true);
+    for (const byte of payload) {
+      for (let b = 7; b >= 0; b--) {
+        const bit = (byte >> b) & 1;
+        simulator.setPinState(pin, false);
+        simulator.setPinState(pin, !!bit);
+      }
+    }
+    simulator.setPinState(pin, true);
+    return;
+  }
+
   const payload = buildDHT22Payload(element);
-  // Response preamble: drive LOW (response start)
-  simulator.setPinState(pin, false);
-  // Then HIGH (ready)
-  simulator.setPinState(pin, true);
-  // Transmit 40 bits MSB first
+  const now = simulator.getCurrentCycles() as number;
+
+  // Scale timing by CPU clock — AVR runs at 16 MHz, RP2040 at 125 MHz.
+  const clockHz: number = typeof simulator.getClockHz === 'function'
+      ? simulator.getClockHz()
+      : 16_000_000;
+  const us = (microseconds: number) => Math.round(microseconds * clockHz / 1_000_000);
+
+  const RESPONSE_START = us(20);  // DHT22 response start (~20 µs after MCU releases)
+  const LOW80  = us(80);  // 80 µs LOW preamble
+  const HIGH80 = us(80);  // 80 µs HIGH preamble
+  const LOW50  = us(50);  // 50 µs LOW marker before each bit
+  const HIGH0  = us(26);  // 26 µs HIGH → bit '0'
+  const HIGH1  = us(70);  // 70 µs HIGH → bit '1'
+
+  let t = now + RESPONSE_START;
+
+  // Preamble: 80 µs LOW
+  simulator.schedulePinChange(pin, false, t);
+  t += LOW80;
+  // Preamble: 80 µs HIGH
+  simulator.schedulePinChange(pin, true, t);
+  t += HIGH80;
+
+  // 40 data bits, MSB first — schedule LOW then advance, schedule HIGH then advance
   for (const byte of payload) {
     for (let b = 7; b >= 0; b--) {
       const bit = (byte >> b) & 1;
-      simulator.setPinState(pin, false);  // 50 µs LOW marker
-      simulator.setPinState(pin, !!bit);  // HIGH duration encodes 0 or 1
+      simulator.schedulePinChange(pin, false, t);
+      t += LOW50;
+      simulator.schedulePinChange(pin, true, t);
+      t += bit ? HIGH1 : HIGH0;
     }
   }
-  // Line idle HIGH
-  simulator.setPinState(pin, true);
+
+  // Final release
+  simulator.schedulePinChange(pin, false, t);
+  t += LOW50;
+  simulator.schedulePinChange(pin, true, t);
 }
 
 PartSimulationRegistry.register('dht22', {
-  attachEvents: (element, simulator, getPin) => {
-    const pin = getPin('DATA');
+  attachEvents: (element, simulator, getPin, componentId) => {
+    // wokwi-dht22 element uses 'SDA' as the data pin name (not 'DATA')
+    const pin = getPin('SDA') ?? getPin('DATA');
     if (pin === null) return () => {};
 
+    // Ask the simulator if it handles sensor protocols natively (e.g. ESP32
+    // delegates to backend QEMU).  If so, we only forward property updates.
+    const el = element as any;
+    const temperature = el.temperature ?? 25.0;
+    const humidity = el.humidity ?? 50.0;
+
+    const handledNatively = typeof (simulator as any).registerSensor === 'function'
+      && (simulator as any).registerSensor('dht22', pin, { temperature, humidity });
+
+    if (handledNatively) {
+      registerSensorUpdate(componentId, (values) => {
+        if ('temperature' in values) el.temperature = values.temperature as number;
+        if ('humidity'    in values) el.humidity    = values.humidity    as number;
+        (simulator as any).updateSensor(pin, {
+          temperature: el.temperature ?? 25.0,
+          humidity: el.humidity ?? 50.0,
+        });
+      });
+
+      return () => {
+        (simulator as any).unregisterSensor(pin);
+        unregisterSensorUpdate(componentId);
+      };
+    }
+
     let wasLow = false;
+    // Prevent DHT22's own scheduled pin changes from re-triggering the response.
+    // After the MCU releases DATA HIGH and we begin responding, we ignore all
+    // pin-change callbacks until the full waveform has been emitted.
+    // DHT22 response is ~5 ms; gate for ~12.5 ms scaled to the CPU clock.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const clockHz: number = typeof (simulator as any).getClockHz === 'function'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ? (simulator as any).getClockHz()
+        : 16_000_000;
+    const RESPONSE_GATE_CYCLES = Math.round(12_500 * clockHz / 1_000_000);
+    let responseEndCycle = 0;
+    let responseEndTimeMs = 0; // time-based fallback for ESP32 (no cycle counter)
+
+    const getCycles = (): number =>
+      typeof (simulator as any).getCurrentCycles === 'function'
+        ? ((simulator as any).getCurrentCycles() as number)
+        : -1;
 
     const unsub = (simulator as any).pinManager.onPinChange(
       pin,
       (_: number, state: boolean) => {
+        // While DHT22 is driving the line, ignore our own scheduled changes.
+        const now = getCycles();
+        if (now >= 0 && now < responseEndCycle) return;
+        // Time-based fallback for ESP32 (no cycle counter available)
+        if (now < 0 && Date.now() < responseEndTimeMs) return;
+
         if (!state) {
           // MCU drove DATA LOW — start signal detected
           wasLow = true;
@@ -402,7 +520,10 @@ PartSimulationRegistry.register('dht22', {
         if (wasLow) {
           // MCU released DATA HIGH — begin DHT22 response
           wasLow = false;
-          driveDHT22Response(simulator, pin, element);
+          const cur = getCycles();
+          responseEndCycle = cur >= 0 ? cur + RESPONSE_GATE_CYCLES : 0;
+          responseEndTimeMs = Date.now() + 20; // 20ms gate for non-cycle simulators
+          scheduleDHT22Response(simulator, pin, element);
         }
       },
     );
@@ -410,9 +531,17 @@ PartSimulationRegistry.register('dht22', {
     // Idle state: DATA HIGH (pulled up)
     simulator.setPinState(pin, true);
 
+    // SensorControlPanel: update temperature / humidity on the element
+    registerSensorUpdate(componentId, (values) => {
+      const el = element as any;
+      if ('temperature' in values) el.temperature = values.temperature as number;
+      if ('humidity'    in values) el.humidity    = values.humidity    as number;
+    });
+
     return () => {
       unsub();
       simulator.setPinState(pin, true);
+      unregisterSensorUpdate(componentId);
     };
   },
 });
@@ -768,7 +897,7 @@ PartSimulationRegistry.register('microsd-card', {
  * compensated readings.
  */
 PartSimulationRegistry.register('bmp280', {
-  attachEvents: (element, simulator, _getPin) => {
+  attachEvents: (element, simulator, _getPin, componentId) => {
     const sim = simulator as any;
     if (typeof sim.addI2CDevice !== 'function') return () => {};
 
@@ -780,7 +909,17 @@ PartSimulationRegistry.register('bmp280', {
     if (el.pressure    !== undefined) dev.pressureHPa   = parseFloat(el.pressure);
 
     sim.addI2CDevice(dev);
-    return () => removeI2CDevice(sim, dev.address);
+
+    // SensorControlPanel: update temperature / pressure in real-time
+    registerSensorUpdate(componentId, (values) => {
+      if ('temperature' in values) dev.temperatureC = values.temperature as number;
+      if ('pressure'    in values) dev.pressureHPa  = values.pressure    as number;
+    });
+
+    return () => {
+      removeI2CDevice(sim, dev.address);
+      unregisterSensorUpdate(componentId);
+    };
   },
 });
 

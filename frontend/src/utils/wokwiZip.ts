@@ -293,10 +293,8 @@ export async function importFromWokwiZip(file: File): Promise<ImportResult> {
       id: `wire-${i}-${Date.now()}`,
       start: { componentId: startId, pinName: normalizedStartPin, x: 0, y: 0 },
       end: { componentId: endId, pinName: normalizedEndPin, x: 0, y: 0 },
-      controlPoints: [],
+      waypoints: [],
       color: colorToHex(color),
-      signalType: 'digital' as const,
-      isValid: true,
     };
   });
 

@@ -114,3 +114,47 @@ void loop() {
 | LED doesn't blink | Check the browser console for port listener errors; verify pin assignment in the component property dialog. |
 | Serial Monitor is empty | Ensure `Serial.begin()` is called inside `setup()` before any `Serial.print()`. |
 | Compilation errors | Check the compilation console at the bottom of the editor for full `arduino-cli` output. |
+
+---
+
+## Community & Links
+
+- **GitHub:** [github.com/davidmonterocrespo24/velxio](https://github.com/davidmonterocrespo24/velxio) — source code, issues, pull requests
+- **Discord:** [YOUR_DISCORD_INVITE_URL] — ask questions, share projects, report issues
+- **Live Demo:** [velxio.dev](https://velxio.dev)
+
+---
+
+## Documentation
+
+### Orientation
+
+- [Introduction](./intro.md) — What is Velxio and why use it
+- [Getting Started](./getting-started.md) — This page
+
+### Architecture & Internals
+
+- [Architecture](./ARCHITECTURE.md) — High-level project architecture
+- [Emulator Architecture](./emulator.md) — How CPU emulation works layer by layer
+- [Wokwi Libraries Integration](./WOKWI_LIBS.md) — Local wokwi-elements, avr8js, rp2040js
+
+### Boards & Emulation
+
+- [RP2040 Emulation](./RP2040_EMULATION.md) — Raspberry Pi Pico / Pico W in-browser emulator (ARM Cortex-M0+)
+- [Raspberry Pi 3 Emulation](./RASPBERRYPI3_EMULATION.md) — BCM2837 / QEMU raspi3b, Python + GPIO shim
+- [ESP32 Emulation](./ESP32_EMULATION.md) — Full Xtensa QEMU emulation (GPIO, ADC, PWM, WiFi, I2C, SPI, RMT)
+- [RISC-V Emulation](./RISCV_EMULATION.md) — ESP32-C3 / XIAO-C3 in-browser emulator
+
+### Components & Examples
+
+- [Components Reference](./components.md) — All 48+ supported electronic components
+- [Example Projects](./examples/README.md) — Built-in example gallery
+
+### API & Integrations
+
+- [MCP Server](./MCP.md) — Model Context Protocol server for AI agent integration
+
+### Project Status
+
+- [Roadmap](./roadmap.md) — Implemented, in-progress, and planned features
+- [Setup Complete](./SETUP_COMPLETE.md) — Feature implementation status log

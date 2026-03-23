@@ -1,31 +1,88 @@
 /**
- * Serial Monitor — shows Arduino Serial output and allows sending data back.
- * Connects to the AVRSimulator USART via the Zustand store.
+ * Serial Monitor — multi-board tabbed view.
+ * Each board has its own tab with serial output, input, and clear button.
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
+import type { BoardKind } from '../../types/board';
+import { BOARD_KIND_LABELS } from '../../types/board';
+
+// Short labels for tabs
+const BOARD_SHORT_LABEL: Record<BoardKind, string> = {
+  'arduino-uno':       'Uno',
+  'arduino-nano':      'Nano',
+  'arduino-mega':      'Mega',
+  'raspberry-pi-pico': 'Pico',
+  'raspberry-pi-3':    'Pi 3B',
+  'esp32':    'ESP32',
+  'esp32-s3': 'ESP32-S3',
+  'esp32-c3': 'ESP32-C3',
+};
+
+const BOARD_ICON: Record<BoardKind, string> = {
+  'arduino-uno':       '⬤',
+  'arduino-nano':      '▪',
+  'arduino-mega':      '▬',
+  'raspberry-pi-pico': '◆',
+  'raspberry-pi-3':    '⬛',
+  'esp32':    '⬡',
+  'esp32-s3': '⬡',
+  'esp32-c3': '⬡',
+};
+
+const BOARD_COLOR: Record<BoardKind, string> = {
+  'arduino-uno':       '#4fc3f7',
+  'arduino-nano':      '#4fc3f7',
+  'arduino-mega':      '#4fc3f7',
+  'raspberry-pi-pico': '#ce93d8',
+  'raspberry-pi-3':    '#ef9a9a',
+  'esp32':    '#a5d6a7',
+  'esp32-s3': '#a5d6a7',
+  'esp32-c3': '#a5d6a7',
+};
 
 export const SerialMonitor: React.FC = () => {
-  const serialOutput = useSimulatorStore((s) => s.serialOutput);
-  const serialBaudRate = useSimulatorStore((s) => s.serialBaudRate);
-  const running = useSimulatorStore((s) => s.running);
-  const serialWrite = useSimulatorStore((s) => s.serialWrite);
-  const clearSerialOutput = useSimulatorStore((s) => s.clearSerialOutput);
+  const boards = useSimulatorStore((s) => s.boards);
+  const activeBoardId = useSimulatorStore((s) => s.activeBoardId);
+  const serialWriteToBoard = useSimulatorStore((s) => s.serialWriteToBoard);
+  const clearBoardSerialOutput = useSimulatorStore((s) => s.clearBoardSerialOutput);
+
+  // Active tab defaults to activeBoardId, updates when active board changes
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  // Track last-seen serial output length per board for unread dots
+  const [lastSeenLen, setLastSeenLen] = useState<Record<string, number>>({});
 
   const [inputValue, setInputValue] = useState('');
   const [lineEnding, setLineEnding] = useState<'none' | 'nl' | 'cr' | 'both'>('nl');
   const [autoscroll, setAutoscroll] = useState(true);
   const outputRef = useRef<HTMLPreElement>(null);
 
-  // Auto-scroll to bottom when new output arrives
+  // Sync active tab to activeBoardId when it changes
+  useEffect(() => {
+    if (activeBoardId) setActiveTabId(activeBoardId);
+  }, [activeBoardId]);
+
+  // Fallback: if activeTab is gone, pick first board
+  const resolvedTabId = (boards.find((b) => b.id === activeTabId) ? activeTabId : boards[0]?.id) ?? null;
+  const activeBoard = boards.find((b) => b.id === resolvedTabId);
+
+  // Mark tab as read when it becomes active
+  useEffect(() => {
+    if (resolvedTabId && activeBoard) {
+      setLastSeenLen((prev) => ({ ...prev, [resolvedTabId]: activeBoard.serialOutput.length }));
+    }
+  }, [resolvedTabId, activeBoard?.serialOutput.length]);
+
+  // Auto-scroll when output changes on the visible tab
   useEffect(() => {
     if (autoscroll && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
-  }, [serialOutput, autoscroll]);
+  }, [activeBoard?.serialOutput, autoscroll]);
 
   const handleSend = useCallback(() => {
+    if (!resolvedTabId) return;
     if (!inputValue && lineEnding === 'none') return;
     let text = inputValue;
     switch (lineEnding) {
@@ -33,9 +90,9 @@ export const SerialMonitor: React.FC = () => {
       case 'cr':   text += '\r';   break;
       case 'both': text += '\r\n'; break;
     }
-    serialWrite(text);
+    serialWriteToBoard(resolvedTabId, text);
     setInputValue('');
-  }, [inputValue, lineEnding, serialWrite]);
+  }, [resolvedTabId, inputValue, lineEnding, serialWriteToBoard]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -44,14 +101,56 @@ export const SerialMonitor: React.FC = () => {
     }
   }, [handleSend]);
 
+  const handleTabClick = (boardId: string) => {
+    setActiveTabId(boardId);
+    const board = boards.find((b) => b.id === boardId);
+    if (board) {
+      setLastSeenLen((prev) => ({ ...prev, [boardId]: board.serialOutput.length }));
+    }
+  };
+
+  if (boards.length === 0) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <span style={styles.title}>Serial Monitor</span>
+        </div>
+        <pre style={styles.output}>Add a board to start the serial monitor.</pre>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <span style={styles.title}>Serial Monitor</span>
-        <div style={styles.headerControls}>
-          {serialBaudRate > 0 && (
-            <span style={styles.baudRate}>{serialBaudRate.toLocaleString()} baud</span>
+      {/* Tab strip */}
+      <div style={styles.tabStrip}>
+        {boards.map((board) => {
+          const isActive = board.id === resolvedTabId;
+          const color = BOARD_COLOR[board.boardKind];
+          const hasUnread = (board.serialOutput.length) > (lastSeenLen[board.id] ?? 0);
+          return (
+            <button
+              key={board.id}
+              style={{
+                ...styles.tab,
+                ...(isActive ? { ...styles.tabActive, borderBottomColor: color, color } : {}),
+              }}
+              onClick={() => handleTabClick(board.id)}
+              title={BOARD_KIND_LABELS[board.boardKind]}
+            >
+              <span style={{ fontSize: 9, marginRight: 3, color: isActive ? color : '#888' }}>
+                {BOARD_ICON[board.boardKind]}
+              </span>
+              {BOARD_SHORT_LABEL[board.boardKind]}
+              {hasUnread && !isActive && <span style={styles.unreadDot} />}
+            </button>
+          );
+        })}
+
+        {/* Right-side controls */}
+        <div style={styles.tabControls}>
+          {activeBoard?.serialBaudRate != null && activeBoard.serialBaudRate > 0 && (
+            <span style={styles.baudRate}>{activeBoard.serialBaudRate.toLocaleString()} baud</span>
           )}
           <label style={styles.autoscrollLabel}>
             <input
@@ -62,7 +161,11 @@ export const SerialMonitor: React.FC = () => {
             />
             Autoscroll
           </label>
-          <button onClick={clearSerialOutput} style={styles.clearBtn} title="Clear output">
+          <button
+            onClick={() => resolvedTabId && clearBoardSerialOutput(resolvedTabId)}
+            style={styles.clearBtn}
+            title="Clear output for this board"
+          >
             Clear
           </button>
         </div>
@@ -70,7 +173,8 @@ export const SerialMonitor: React.FC = () => {
 
       {/* Output area */}
       <pre ref={outputRef} style={styles.output}>
-        {serialOutput || (running ? 'Waiting for serial data...\n' : 'Start simulation to see serial output.\n')}
+        {activeBoard?.serialOutput ||
+          (activeBoard?.running ? 'Waiting for serial data...\n' : 'Start simulation to see serial output.\n')}
       </pre>
 
       {/* Input row */}
@@ -82,7 +186,7 @@ export const SerialMonitor: React.FC = () => {
           onKeyDown={handleKeyDown}
           placeholder="Type message to send..."
           style={styles.input}
-          disabled={!running}
+          disabled={!activeBoard?.running}
         />
         <select
           value={lineEnding}
@@ -94,7 +198,7 @@ export const SerialMonitor: React.FC = () => {
           <option value="cr">Carriage return</option>
           <option value="both">Both NL &amp; CR</option>
         </select>
-        <button onClick={handleSend} disabled={!running} style={styles.sendBtn}>
+        <button onClick={handleSend} disabled={!activeBoard?.running} style={styles.sendBtn}>
           Send
         </button>
       </div>
@@ -111,25 +215,56 @@ const styles: Record<string, React.CSSProperties> = {
     borderTop: '1px solid #333',
     fontFamily: 'monospace',
     fontSize: 13,
+    minHeight: 0,
   },
-  header: {
+  tabStrip: {
     display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '4px 8px',
     background: '#252526',
     borderBottom: '1px solid #333',
-    minHeight: 28,
+    minHeight: 32,
+    flexShrink: 0,
+    overflow: 'hidden',
+  },
+  tab: {
+    background: 'none',
+    border: 'none',
+    borderBottom: '2px solid transparent',
+    color: '#999',
+    padding: '5px 12px',
+    cursor: 'pointer',
+    fontSize: 11,
+    fontWeight: 600,
+    fontFamily: 'inherit',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 2,
+    whiteSpace: 'nowrap',
+    position: 'relative',
+  },
+  tabActive: {
+    background: 'rgba(255,255,255,0.04)',
+  },
+  tabControls: {
+    marginLeft: 'auto',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    paddingRight: 8,
+    flexShrink: 0,
+  },
+  unreadDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: '#4fc3f7',
+    flexShrink: 0,
+    marginLeft: 3,
   },
   title: {
     color: '#cccccc',
     fontWeight: 600,
     fontSize: 12,
-  },
-  headerControls: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
   },
   baudRate: {
     color: '#569cd6',
@@ -180,6 +315,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 4,
     background: '#252526',
     borderTop: '1px solid #333',
+    flexShrink: 0,
   },
   input: {
     flex: 1,

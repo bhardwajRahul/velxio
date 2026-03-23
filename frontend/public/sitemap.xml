@@ -38,6 +38,20 @@
   </url>
 
   <url>
+    <loc>https://velxio.dev/docs/riscv-emulation</loc>
+    <lastmod>2026-03-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
+    <loc>https://velxio.dev/docs/esp32-emulation</loc>
+    <lastmod>2026-03-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
     <loc>https://velxio.dev/docs/components</loc>
     <lastmod>2026-03-11</lastmod>
     <changefreq>monthly</changefreq>
@@ -81,9 +95,9 @@
 
   <url>
     <loc>https://velxio.dev/examples</loc>
-    <lastmod>2026-03-06</lastmod>
+    <lastmod>2026-03-15</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.8</priority>
   </url>
 
   <url>

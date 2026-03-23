@@ -2,11 +2,16 @@
  * Editor Page — main editor + simulator with resizable panels
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { CodeEditor } from '../components/editor/CodeEditor';
 import { EditorToolbar } from '../components/editor/EditorToolbar';
 import { FileTabs } from '../components/editor/FileTabs';
 import { FileExplorer } from '../components/editor/FileExplorer';
+
+// Lazy-load Pi workspace so xterm.js isn't in the main bundle
+const RaspberryPiWorkspace = lazy(() =>
+  import('../components/raspberry-pi/RaspberryPiWorkspace').then((m) => ({ default: m.RaspberryPiWorkspace }))
+);
 import { CompilationConsole } from '../components/editor/CompilationConsole';
 import { SimulatorCanvas } from '../components/simulator/SimulatorCanvas';
 import { SerialMonitor } from '../components/simulator/SerialMonitor';
@@ -44,6 +49,11 @@ export const EditorPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const resizingRef = useRef(false);
   const serialMonitorOpen = useSimulatorStore((s) => s.serialMonitorOpen);
+  const activeBoardId = useSimulatorStore((s) => s.activeBoardId);
+  const activeBoardKind = useSimulatorStore((s) =>
+    s.boards.find((b) => b.id === s.activeBoardId)?.boardKind
+  );
+  const isRaspberryPi3 = activeBoardKind === 'raspberry-pi-3';
   const oscilloscopeOpen = useOscilloscopeStore((s) => s.open);
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [compileLogs, setCompileLogs] = useState<CompilationLog[]>([]);
@@ -219,12 +229,18 @@ export const EditorPage: React.FC = () => {
               </div>
             </div>
 
-            {/* File tabs */}
-            <FileTabs />
+            {/* File tabs — hidden when Pi workspace is active */}
+            {!isRaspberryPi3 && <FileTabs />}
 
-            {/* Monaco editor */}
+            {/* Editor area: Pi workspace or Monaco editor */}
             <div className="editor-wrapper" style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-              <CodeEditor />
+              {isRaspberryPi3 && activeBoardId ? (
+                <Suspense fallback={<div style={{ color: '#666', padding: 16, fontSize: 12 }}>Loading Pi workspace…</div>}>
+                  <RaspberryPiWorkspace boardId={activeBoardId} />
+                </Suspense>
+              ) : (
+                <CodeEditor />
+              )}
             </div>
 
             {/* Console */}

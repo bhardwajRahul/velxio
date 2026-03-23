@@ -152,6 +152,126 @@
   white-space: nowrap;
 }
 
+/* ── Compile All / Run All buttons ─────────────── */
+.tb-btn-compile-all {
+  color: #80cbc4;
+}
+.tb-btn-compile-all:hover:not(:disabled) {
+  background: rgba(128, 203, 196, 0.12);
+  color: #a7ffeb;
+}
+
+.tb-btn-run-all {
+  color: #aed581;
+}
+.tb-btn-run-all:hover:not(:disabled) {
+  background: rgba(174, 213, 129, 0.12);
+  color: #ccff90;
+}
+
+/* ── Board context pill ─────────────────────────── */
+.tb-board-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  border-radius: 20px;
+  border: 1px solid;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.85;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+  max-width: 170px;
+  overflow: hidden;
+}
+
+.tb-board-pill-icon {
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.tb-board-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-board-pill-running {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4caf50;
+  flex-shrink: 0;
+  animation: pulse-run 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-run {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Overflow (…) menu ──────────────────────────── */
+.tb-overflow-wrap {
+  position: relative;
+}
+
+.tb-btn-overflow {
+  color: #9d9d9d;
+}
+.tb-btn-overflow:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #ccc;
+}
+.tb-btn-overflow-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.tb-overflow-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  background: #2a2a2c;
+  border: 1px solid #3a3a3c;
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 180px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tb-overflow-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: #ccc;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 0.12s, color 0.12s;
+}
+
+.tb-overflow-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.tb-overflow-item svg {
+  flex-shrink: 0;
+  color: #00b8d4;
+}
+
 /* ── Error detail bar (for long compiler errors) ── */
 .toolbar-error-detail {
   background: #1a0000;
