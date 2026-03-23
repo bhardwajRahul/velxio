@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'What Arduino boards can I simulate?',
-    a: 'Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560, ATtiny85, Raspberry Pi Pico (RP2040), ESP32-C3 (RISC-V), ESP32 (Xtensa via QEMU), and more — 17 boards across 5 CPU architectures.',
+    a: 'Velxio supports 19 boards: Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560, ATtiny85, Arduino Leonardo, Arduino Pro Mini (AVR8) — plus Raspberry Pi Pico (RP2040), ESP32-C3 / XIAO ESP32-C3 / CH32V003 (RISC-V), ESP32 / ESP32-S3 / ESP32-CAM (Xtensa via QEMU), and Raspberry Pi 3B (Linux via QEMU).',
   },
   {
     q: 'Can I simulate LEDs, sensors, and displays?',

@@ -8,9 +8,9 @@
          PRIMARY SEO
          Replace https://velxio.dev with your real domain
     ═══════════════════════════════════════════════ -->
-    <title>Velxio — Free Local Arduino Emulator | AVR8 · RP2040 · 48+ Components</title>
-    <meta name="description" content="Velxio is a free, open-source Arduino emulator that runs entirely in your browser. Real AVR8 emulation at 16 MHz, 48+ electronic components, Monaco Editor, Serial Monitor, and Library Manager — no cloud, no latency." />
-    <meta name="keywords" content="arduino emulator, arduino simulator, avr8 emulator, avr simulator, rp2040 emulator, arduino online, wokwi alternative, arduino ide browser, arduino simulator free, attmega328p simulator, raspberry pi pico emulator, arduino uno simulator, electronics simulator, velxio" />
+    <title>Velxio — Free Multi-Board Emulator | Arduino · ESP32 · RP2040 · RISC-V · Raspberry Pi</title>
+    <meta name="description" content="Velxio is a free, open-source multi-board emulator running in your browser. 19 boards across 5 CPU architectures: Arduino Uno/Nano/Mega (AVR8), ESP32 / ESP32-S3 (Xtensa QEMU), ESP32-C3 / CH32V003 (RISC-V), Raspberry Pi Pico (RP2040), and Raspberry Pi 3 (Linux ARM). 48+ components, Monaco Editor, Serial Monitor — no cloud, no account." />
+    <meta name="keywords" content="arduino emulator, arduino simulator, arduino simulator free, avr8 emulator, avr simulator, atmega328p simulator, atmega2560 simulator, attiny85 simulator, arduino uno simulator, arduino mega simulator, arduino nano simulator, rp2040 emulator, raspberry pi pico simulator, esp32 emulator, esp32 simulator, esp32-c3 simulator, esp32-s3 emulator, risc-v simulator, ch32v003, raspberry pi 3 emulator, wokwi alternative, arduino ide browser, arduino online, electronics simulator, velxio" />
     <meta name="author" content="David Montero Crespo" />
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <link rel="canonical" href="https://velxio.dev/" />
@@ -36,8 +36,8 @@
     ═══════════════════════════════════════════════ -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Velxio" />
-    <meta property="og:title" content="Velxio — Free Local Arduino Emulator" />
-    <meta property="og:description" content="Write, compile, and simulate Arduino sketches entirely in your browser. Real AVR8 CPU at 16 MHz, 48+ electronic components, Serial Monitor, and Library Manager. Free &amp; open source." />
+    <meta property="og:title" content="Velxio — Free Multi-Board Emulator | Arduino · ESP32 · RP2040 · RISC-V" />
+    <meta property="og:description" content="Simulate 19 boards in your browser for free: Arduino Uno/Nano/Mega, ESP32 / ESP32-S3 (Xtensa), ESP32-C3 / CH32V003 (RISC-V), Raspberry Pi Pico (RP2040), and Raspberry Pi 3 Linux. 48+ components, real CPU emulation, no cloud." />
     <meta property="og:url" content="https://velxio.dev/" />
     <meta property="og:image" content="https://velxio.dev/og-image.png" />
     <meta property="og:image:type" content="image/png" />
@@ -52,8 +52,8 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@velxio_app" />
     <meta name="twitter:creator" content="@velxio_app" />
-    <meta name="twitter:title" content="Velxio — Free Local Arduino Emulator" />
-    <meta name="twitter:description" content="Write, compile, and simulate Arduino sketches entirely in your browser. Real AVR8 CPU at 16 MHz, 48+ components, Serial Monitor, Library Manager. Free &amp; open source." />
+    <meta name="twitter:title" content="Velxio — Free Multi-Board Emulator | Arduino · ESP32 · RP2040 · RISC-V" />
+    <meta name="twitter:description" content="Simulate 19 boards in your browser: Arduino Uno/Mega, ESP32/ESP32-S3 (QEMU), ESP32-C3/CH32V003 (RISC-V), Raspberry Pi Pico, Raspberry Pi 3 Linux. 48+ components, free &amp; open-source." />
     <meta name="twitter:image" content="https://velxio.dev/og-image.png" />
     <meta name="twitter:image:alt" content="Velxio Arduino Emulator — Real AVR8, 48+ Components, Monaco Editor" />
 
@@ -119,8 +119,8 @@
           "@type": "SoftwareApplication",
           "@id": "https://velxio.dev/#app",
           "name": "Velxio",
-          "alternateName": ["Velxio Arduino Emulator", "Velxio AVR Simulator"],
-          "description": "Free, open-source Arduino emulator running entirely in the browser. Features real ATmega328p (AVR8) emulation at 16 MHz, RP2040 emulation, 48+ interactive electronic components, Monaco Editor, Serial Monitor with baud-rate detection, arduino-cli compilation backend, and Library Manager.",
+          "alternateName": ["Velxio Arduino Emulator", "Velxio AVR Simulator", "Velxio ESP32 Emulator", "Velxio Multi-Board Simulator"],
+          "description": "Free, open-source multi-board emulator running entirely in the browser. 19 boards across 5 CPU architectures: ATmega328p/2560/ATtiny85 (AVR8 via avr8js), RP2040 ARM Cortex-M0+ (rp2040js), ESP32-C3/CH32V003 RISC-V RV32IMC (browser), ESP32/ESP32-S3 Xtensa LX6/LX7 (QEMU), and Raspberry Pi 3B ARM Cortex-A53 (QEMU Linux). Features 48+ interactive electronic components, Monaco Editor, Serial Monitor, arduino-cli compilation, and Library Manager.",
           "url": "https://velxio.dev/",
           "applicationCategory": "DeveloperApplication",
           "applicationSubCategory": "Electronics Simulator",
@@ -135,17 +135,21 @@
             "availability": "https://schema.org/InStock"
           },
           "featureList": [
-            "Real ATmega328p AVR8 emulation at 16 MHz",
-            "RP2040 (Raspberry Pi Pico) emulation",
-            "48+ electronic web components",
-            "Monaco Code Editor with C++ syntax highlighting",
-            "arduino-cli compilation backend",
-            "Serial Monitor with auto baud-rate detection",
-            "Library Manager for Arduino libraries",
-            "Multi-file workspace",
-            "Wire system with orthogonal routing",
+            "Real AVR8 emulation: Arduino Uno (ATmega328p), Nano, Mega 2560 (ATmega2560), ATtiny85, Leonardo (ATmega32u4), Pro Mini at 16 MHz",
+            "RP2040 emulation: Raspberry Pi Pico and Pico W (ARM Cortex-M0+ at 133 MHz via rp2040js)",
+            "RISC-V emulation: ESP32-C3 DevKit, XIAO ESP32-C3, ESP32-C3 SuperMini, CH32V003 (RV32IMC/RV32EC browser-native)",
+            "ESP32 / ESP32-S3 / ESP32-CAM / Nano ESP32 emulation (Xtensa LX6/LX7 via QEMU)",
+            "Raspberry Pi 3B emulation: full ARM Cortex-A53 Linux (Raspberry Pi OS via QEMU raspi3b)",
+            "48+ electronic web components: LEDs, resistors, servos, sensors, TFT displays, NeoPixel, LCD",
+            "Monaco Code Editor with C++ / Python syntax highlighting and autocomplete",
+            "arduino-cli compilation backend — produces real .hex / .bin / .uf2 files",
+            "Serial Monitor with auto baud-rate detection and send",
+            "Library Manager for the full Arduino library index",
+            "Multi-file workspace (.ino, .h, .cpp, .py)",
+            "Wire system with orthogonal routing and 8 signal-type colors",
             "ILI9341 TFT display simulation",
-            "I2C, SPI, USART, ADC, PWM support"
+            "I2C, SPI, USART, ADC, PWM support across all emulated boards",
+            "Multi-board canvas: mix Arduino + ESP32 + Raspberry Pi on the same simulation"
           ],
           "screenshot": "https://velxio.dev/og-image.png",
           "downloadUrl": "https://hub.docker.com/r/davidmonterocrespo24/velxio",
@@ -163,7 +167,7 @@
             "name": "David Montero Crespo",
             "url": "https://github.com/davidmonterocrespo24"
           },
-          "keywords": "arduino emulator, avr8 simulator, rp2040 emulator, arduino online ide, electronics simulator, wokwi alternative",
+          "keywords": "arduino emulator, arduino simulator, avr8 simulator, atmega328p emulator, atmega2560, attiny85, esp32 emulator, esp32 simulator, esp32-c3 simulator, esp32-s3 emulator, rp2040 emulator, raspberry pi pico emulator, raspberry pi 3 emulator, risc-v simulator, wokwi alternative",
           "inLanguage": "en-US"
         },
         {
@@ -188,7 +192,7 @@
               "name": "Is Velxio free?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Yes, Velxio is completely free and open source under the MIT License."
+                "text": "Yes. Velxio is completely free and open-source under the GNU AGPLv3 license. No account required, no cloud subscription. Run it at velxio.dev or self-host with one Docker command."
               }
             },
             {
@@ -204,7 +208,7 @@
               "name": "What boards does Velxio support?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Velxio supports Arduino Uno (ATmega328p) with full AVR8 emulation and Raspberry Pi Pico (RP2040) emulation. More boards are planned."
+                "text": "Velxio supports 19 boards across 5 CPU architectures: (1) AVR8 — Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560 (ATmega2560), ATtiny85, Arduino Leonardo (ATmega32u4), Arduino Pro Mini; (2) RP2040 — Raspberry Pi Pico and Raspberry Pi Pico W; (3) RISC-V — ESP32-C3 DevKit, Seeed XIAO ESP32-C3, ESP32-C3 SuperMini, CH32V003 (RV32EC); (4) Xtensa (QEMU) — ESP32 DevKit V1/C V4, ESP32-S3, ESP32-CAM, Seeed XIAO ESP32-S3, Arduino Nano ESP32; (5) ARM Cortex-A53 (QEMU Linux) — Raspberry Pi 3B running Raspberry Pi OS."
               }
             },
             {
@@ -235,7 +239,7 @@
     <div id="root-seo" aria-hidden="true">
       <header style="font-family:sans-serif;background:#0d1117;color:#e6edf3;padding:1.5rem 2rem;">
         <a href="/" style="text-decoration:none;color:inherit;">
-          <h1 style="margin:0;font-size:1.5rem;">Velxio &mdash; Free Local Arduino Emulator</h1>
+          <h1 style="margin:0;font-size:1.5rem;">Velxio — Free Multi-Board Emulator | Arduino · ESP32 · RP2040 · RISC-V · Raspberry Pi</h1>
         </a>
         <nav style="margin-top:.75rem;">
           <a href="/editor" style="color:#58a6ff;margin-right:1.5rem;">Editor</a>
@@ -250,14 +254,26 @@
         </nav>
       </header>
       <main style="font-family:sans-serif;background:#0d1117;color:#e6edf3;padding:2rem;">
-        <h2>The free, open-source Arduino emulator that runs in your browser</h2>
-        <p>Write Arduino code, compile it, and simulate it with real AVR8 CPU emulation and 48+ interactive electronic components &mdash; all running locally in your browser. No cloud, no latency, no account required.</p>
+        <h2>Free multi-board emulator running in your browser — 19 boards, 5 CPU architectures</h2>
+        <p>Simulate Arduino, ESP32, Raspberry Pi Pico, RISC-V, and Raspberry Pi 3 code in your browser with real CPU emulation. 48+ interactive electronic components, Monaco Editor, Serial Monitor, arduino-cli compiler, and Library Manager — no cloud, no latency, no account required.</p>
         <h3>Features</h3>
         <ul>
-          <li>Real ATmega328p (AVR8) emulation at 16 MHz via avr8js</li>
-          <li>Raspberry Pi Pico (RP2040) emulation via rp2040js</li>
-          <li>48+ wokwi interactive electronic components (LEDs, resistors, buttons, sensors&hellip;)</li>
-          <li>Monaco Code Editor with full C++ / Arduino syntax highlighting</li>
+          <li>Real AVR8 emulation: Arduino Uno (ATmega328p), Nano, Mega 2560, ATtiny85, Leonardo, Pro Mini at 16 MHz via avr8js</li>
+          <li>Raspberry Pi Pico &amp; Pico W (RP2040, ARM Cortex-M0+ at 133 MHz) via rp2040js</li>
+          <li>ESP32-C3 / XIAO ESP32-C3 / SuperMini / CH32V003 (RISC-V RV32IMC/EC) &mdash; browser-native, no backend needed</li>
+          <li>ESP32 / ESP32-S3 / ESP32-CAM / Arduino Nano ESP32 (Xtensa LX6/LX7 at 240 MHz) via QEMU lcgamboa</li>
+          <li>Raspberry Pi 3B (ARM Cortex-A53, full Linux) via QEMU raspi3b &mdash; runs Python scripts with RPi.GPIO</li>
+          <li>48+ wokwi interactive electronic components (LEDs, resistors, buttons, sensors, TFT displays, NeoPixel&hellip;)</li>
+          <li>Monaco Code Editor with full C++ / Python syntax highlighting</li>
+          <li>arduino-cli compilation backend &mdash; produces real .hex / .uf2 / .bin files</li>
+          <li>Serial Monitor with auto baud-rate detection and send</li>
+          <li>Library Manager for Arduino libraries</li>
+          <li>Multi-file workspace (.ino, .h, .cpp, .py)</li>
+          <li>Wire system with orthogonal routing</li>
+          <li>ILI9341 TFT display simulation</li>
+          <li>I2C, SPI, USART, ADC, PWM support</li>
+          <li>Multi-board canvas: mix Arduino + ESP32 + Raspberry Pi in one simulation</li>
+        </ul>
           <li>arduino-cli compilation backend &mdash; produces real .hex / .uf2 files</li>
           <li>Serial Monitor with auto baud-rate detection and send</li>
           <li>Library Manager for Arduino libraries</li>
@@ -269,8 +285,24 @@
         </ul>
         <h3>Supported Boards</h3>
         <ul>
-          <li>Arduino Uno (ATmega328p) &mdash; full AVR8 emulation</li>
-          <li>Raspberry Pi Pico (RP2040) &mdash; RP2040 emulation</li>
+          <li>Arduino Uno (ATmega328P) &mdash; full AVR8 emulation at 16 MHz</li>
+          <li>Arduino Nano (ATmega328P) &mdash; full AVR8 emulation at 16 MHz</li>
+          <li>Arduino Mega 2560 (ATmega2560) &mdash; 256 KB flash, 54 digital pins, 4 serial ports</li>
+          <li>ATtiny85 &mdash; AVR, 8 KB flash, DIP-8, all 6 I/O pins emulated</li>
+          <li>Arduino Leonardo (ATmega32u4) &mdash; USB HID capable AVR</li>
+          <li>Arduino Pro Mini (ATmega328P) &mdash; 3.3 V / 5 V variants</li>
+          <li>Raspberry Pi Pico (RP2040) &mdash; ARM Cortex-M0+ at 133 MHz</li>
+          <li>Raspberry Pi Pico W (RP2040) &mdash; ARM Cortex-M0+ + WiFi</li>
+          <li>ESP32-C3 DevKit (RISC-V RV32IMC) &mdash; 160 MHz, browser-native</li>
+          <li>Seeed XIAO ESP32-C3 (RISC-V RV32IMC) &mdash; compact, browser-native</li>
+          <li>ESP32-C3 SuperMini (RISC-V RV32IMC) &mdash; mini form factor</li>
+          <li>CH32V003 (RISC-V RV32EC) &mdash; 48 MHz, ultra-compact DIP-8</li>
+          <li>ESP32 DevKit V1 / C V4 (Xtensa LX6) &mdash; 240 MHz, WiFi, QEMU</li>
+          <li>ESP32-S3 (Xtensa LX7) &mdash; 240 MHz, dual-core, QEMU</li>
+          <li>ESP32-CAM (Xtensa LX6) &mdash; camera module, QEMU</li>
+          <li>Seeed XIAO ESP32-S3 (Xtensa LX7) &mdash; compact, QEMU</li>
+          <li>Arduino Nano ESP32 (Xtensa LX6) &mdash; Arduino form factor, QEMU</li>
+          <li>Raspberry Pi 3B (ARM Cortex-A53) &mdash; full Linux OS via QEMU raspi3b, runs Python</li>
         </ul>
         <h3>Get Started</h3>
         <p>

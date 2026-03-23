@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Which Arduino boards can Velxio emulate?',
-    a: 'Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560 (ATmega2560), ATtiny85 (AVR), Raspberry Pi Pico (RP2040), and multiple ESP32/RISC-V boards. 17 boards across 5 CPU architectures.',
+    a: 'Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560 (ATmega2560), ATtiny85 (AVR8), Arduino Leonardo (ATmega32u4), Arduino Pro Mini, Raspberry Pi Pico and Pico W (RP2040), and multiple ESP32/RISC-V boards. 19 boards across 5 CPU architectures.',
   },
   {
     q: 'What peripherals are emulated?',
@@ -132,11 +132,11 @@ export const ArduinoEmulatorPage: React.FC = () => {
         {/* Supported boards */}
         <section className="seo-section">
           <h2>Supported boards</h2>
-          <p className="lead">17 boards across 5 CPU architectures — AVR, ARM Cortex-M0+, RISC-V, Xtensa LX6/LX7, and ARM Cortex-A53.</p>
+          <p className="lead">19 boards across 5 CPU architectures — AVR8, ARM Cortex-M0+, RISC-V, Xtensa LX6/LX7, and ARM Cortex-A53.</p>
           <div className="seo-grid">
             <div className="seo-card">
               <h3>AVR8 — avr8js</h3>
-              <p>Arduino Uno, Arduino Nano, Arduino Mega 2560, ATtiny85, Arduino Leonardo, Arduino Pro Mini.</p>
+              <p>Arduino Uno (ATmega328P), Arduino Nano, Arduino Mega 2560 (ATmega2560), ATtiny85, Arduino Leonardo (ATmega32u4), Arduino Pro Mini.</p>
             </div>
             <div className="seo-card">
               <h3>RP2040 — rp2040js</h3>
@@ -148,7 +148,11 @@ export const ArduinoEmulatorPage: React.FC = () => {
             </div>
             <div className="seo-card">
               <h3>Xtensa — QEMU</h3>
-              <p>ESP32 DevKit V1, ESP32 DevKit C V4, ESP32-CAM, ESP32-S3 — Xtensa LX6/LX7 at 240 MHz.</p>
+              <p>ESP32 DevKit V1/C V4, ESP32-S3, ESP32-CAM, Seeed XIAO ESP32-S3, Arduino Nano ESP32 — Xtensa LX6/LX7 at 240 MHz.</p>
+            </div>
+            <div className="seo-card">
+              <h3>ARM Cortex-A53 — QEMU</h3>
+              <p>Raspberry Pi 3B — quad-core 1.2 GHz, full Linux, Python 3. Run real OS-level programs in the browser.</p>
             </div>
           </div>
         </section>

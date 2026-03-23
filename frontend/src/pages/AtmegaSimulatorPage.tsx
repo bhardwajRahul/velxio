@@ -133,7 +133,7 @@ export const AtmegaSimulatorPage: React.FC = () => {
         {/* Compatible boards */}
         <section className="seo-section">
           <h2>ATmega328P boards in Velxio</h2>
-          <p className="lead">The ATmega328P powers several popular Arduino boards — all selectable in Velxio.</p>
+          <p className="lead">The ATmega328P powers several popular Arduino boards — all selectable in Velxio. The broader AVR8 family also includes ATmega2560 (Mega) and ATtiny85.</p>
           <div className="seo-grid">
             <div className="seo-card">
               <h3>Arduino Uno R3</h3>
@@ -145,7 +145,15 @@ export const AtmegaSimulatorPage: React.FC = () => {
             </div>
             <div className="seo-card">
               <h3>Arduino Pro Mini</h3>
-              <p>Bare-bones ATmega328P without USB chip. Available at 3.3 V/8 MHz and 5 V/16 MHz variants.</p>
+              <p>Bare-bones ATmega328P without USB chip. Available at 3.3 V/8 MHz and 5 V/16 MHz variants.</p>
+            </div>
+            <div className="seo-card">
+              <h3>ATtiny85</h3>
+              <p>Ultra-compact 8-pin AVR. 8 KB flash, 6 I/O pins (PB0–PB5), USI (Wire), Timer0/1, 10-bit ADC. Ideal for embedded minimal projects.</p>
+            </div>
+            <div className="seo-card">
+              <h3>Arduino Mega 2560</h3>
+              <p>ATmega2560 with 256 KB flash, 54 digital pins, 16 analog inputs, and 4 hardware USART channels.</p>
             </div>
           </div>
         </section>
