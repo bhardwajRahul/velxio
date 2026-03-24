@@ -64,6 +64,14 @@ Library Manager loads the full Arduino library index on open — browse and inst
 
 Component Picker showing 48 available components with visual previews, search, and category filters.
 
+![Raspberry Pi 3 connected to Arduino on the same canvas](docs/img5.png)
+
+Multi-board simulation — Raspberry Pi 3 and Arduino running simultaneously on the same canvas, connected via serial. Mix different architectures in a single circuit.
+
+![ESP32 with HC-SR04 ultrasonic sensor](docs/img6.png)
+
+ESP32 simulation with an HC-SR04 ultrasonic distance sensor — real Xtensa emulation via QEMU with trigger/echo GPIO timing.
+
 ---
 
 ## Supported Boards
