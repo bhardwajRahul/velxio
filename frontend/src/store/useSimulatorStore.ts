@@ -112,6 +112,23 @@ class Esp32BridgeShim {
   }
 }
 
+// ── Shared LEDC update handler (used by addBoard, setBoardType, initSimulator) ─
+function makeLedcUpdateHandler(boardId: string) {
+  return (update: { channel: number; duty_pct: number; gpio?: number }) => {
+    const boardPm = pinManagerMap.get(boardId);
+    if (!boardPm) return;
+    const dutyCycle = update.duty_pct / 100;
+    if (update.gpio !== undefined && update.gpio >= 0) {
+      boardPm.updatePwm(update.gpio, dutyCycle);
+    } else {
+      // gpio unknown (QEMU doesn't expose gpio_out_sel for LEDC):
+      // broadcast to ALL PWM listeners. Components filter by duty range
+      // (servo accepts 0.01–0.20, LEDs use 0–1.0).
+      boardPm.broadcastPwm(dutyCycle);
+    }
+  };
+}
+
 // ── Runtime Maps (outside Zustand — not serialisable) ─────────────────────
 const simulatorMap = new Map<string, AVRSimulator | RP2040Simulator | RiscVSimulator | Esp32C3Simulator | Esp32BridgeShim>();
 const pinManagerMap = new Map<string, PinManager>();
@@ -390,18 +407,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
             return { boards, ...(isActive ? { running: false } : {}) };
           });
         };
-        bridge.onLedcUpdate = (update) => {
-          // Route LEDC duty cycles to PinManager as PWM (0.0–1.0).
-          // If gpio is known (from GPIO out_sel sync), use the actual GPIO pin;
-          // otherwise fall back to the LEDC channel number.
-          const boardPm = pinManagerMap.get(id);
-          if (boardPm) {
-            const targetPin = (update.gpio !== undefined && update.gpio >= 0)
-              ? update.gpio
-              : update.channel;
-            boardPm.updatePwm(targetPin, update.duty_pct / 100);
-          }
-        };
+        bridge.onLedcUpdate = makeLedcUpdateHandler(id);
         bridge.onWs2812Update = (channel, pixels) => {
           // Forward WS2812 pixel data to any DOM element with id=`ws2812-{id}-{channel}`
           // (set by NeoPixel components rendered in SimulatorCanvas).
@@ -767,15 +773,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
             return { boards, ...(isActive ? { running: false } : {}) };
           });
         };
-        bridge.onLedcUpdate = (update) => {
-          const boardPm = pinManagerMap.get(boardId);
-          if (boardPm && typeof boardPm.updatePwm === 'function') {
-            const targetPin = (update.gpio !== undefined && update.gpio >= 0)
-              ? update.gpio
-              : update.channel;
-            boardPm.updatePwm(targetPin, update.duty_pct / 100);
-          }
-        };
+        bridge.onLedcUpdate = makeLedcUpdateHandler(boardId);
         bridge.onWs2812Update = (channel, pixels) => {
           const eventTarget = document.getElementById(`ws2812-${boardId}-${channel}`);
           if (eventTarget) {
@@ -863,15 +861,7 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
             return { boards, ...(isActive ? { running: false } : {}) };
           });
         };
-        bridge.onLedcUpdate = (update) => {
-          const boardPm = pinManagerMap.get(boardId);
-          if (boardPm && typeof boardPm.updatePwm === 'function') {
-            const targetPin = (update.gpio !== undefined && update.gpio >= 0)
-              ? update.gpio
-              : update.channel;
-            boardPm.updatePwm(targetPin, update.duty_pct / 100);
-          }
-        };
+        bridge.onLedcUpdate = makeLedcUpdateHandler(boardId);
         esp32BridgeMap.set(boardId, bridge);
         const shim = new Esp32BridgeShim(bridge, pm);
         shim.onSerialData = serialCallback;

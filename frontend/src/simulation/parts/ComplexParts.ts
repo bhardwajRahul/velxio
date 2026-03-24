@@ -71,9 +71,12 @@ PartSimulationRegistry.register('potentiometer', {
         const isESP32 = typeof (simulator as any).setAdcVoltage === 'function';
         const refVoltage = (isRP2040 || isESP32) ? 3.3 : 5.0;
 
+        console.log(`[Pot] attached: pin=${pin} isESP32=${isESP32} refV=${refVoltage}`);
+
         const onInput = () => {
             const raw = parseInt((element as any).value || '0', 10);
             const volts = (raw / 1023.0) * refVoltage;
+            console.log(`[Pot] onInput: raw=${raw} volts=${volts.toFixed(3)} pin=${pin}`);
             setAdcVoltage(simulator, pin, volts);
         };
 
@@ -335,11 +338,14 @@ PartSimulationRegistry.register('servo', {
                 // 544µs = 2.72%, 2400µs = 12.0%
                 const MIN_DC = MIN_PULSE_US / 20000; // 0.0272
                 const MAX_DC = MAX_PULSE_US / 20000; // 0.12
+                console.log(`[Servo:ESP32] registering onPwmChange on pin=${pinSIG}`);
                 const unsubscribe = pinManager.onPwmChange(pinSIG, (_pin, dutyCycle) => {
+                    console.log(`[Servo:ESP32] onPwmChange pin=${_pin} dutyCycle=${dutyCycle.toFixed(4)}`);
                     if (dutyCycle < 0.01 || dutyCycle > 0.20) return; // ignore out-of-range
                     const angle = Math.round(
                         ((dutyCycle - MIN_DC) / (MAX_DC - MIN_DC)) * 180
                     );
+                    console.log(`[Servo:ESP32] angle=${angle}`);
                     el.angle = Math.max(0, Math.min(180, angle));
                 });
                 return () => { unsubscribe(); };

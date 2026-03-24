@@ -130,6 +130,18 @@ export class PinManager {
     }
   }
 
+  /**
+   * Broadcast PWM duty to ALL registered PWM listeners.
+   * Used when the LEDC channel→GPIO mapping is unknown (gpio=-1).
+   * Components filter by duty range (e.g., servo accepts 0.01-0.20).
+   */
+  broadcastPwm(dutyCycle: number): void {
+    this.pwmListeners.forEach((callbacks, pin) => {
+      this.pwmValues.set(pin, dutyCycle);
+      callbacks.forEach(cb => cb(pin, dutyCycle));
+    });
+  }
+
   getPwmValue(pin: number): number {
     return this.pwmValues.get(pin) ?? 0;
   }

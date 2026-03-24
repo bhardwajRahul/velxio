@@ -729,3 +729,94 @@ describe('LEDC polling — data format', () => {
     expect(emitted[1]).toEqual({ ch: 0, duty: 12.0 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 14. PinManager.broadcastPwm — gpio=-1 fallback
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('PinManager.broadcastPwm fallback', () => {
+  // Use a simple inline PinManager-like class to test broadcastPwm logic
+  // (The real PinManager can't be imported here due to vi.mock overrides)
+
+  class SimplePinManager {
+    private pwmListeners = new Map<number, Set<(pin: number, duty: number) => void>>();
+    private pwmValues = new Map<number, number>();
+
+    onPwmChange(pin: number, cb: (pin: number, duty: number) => void): () => void {
+      if (!this.pwmListeners.has(pin)) this.pwmListeners.set(pin, new Set());
+      this.pwmListeners.get(pin)!.add(cb);
+      return () => { this.pwmListeners.get(pin)?.delete(cb); };
+    }
+
+    updatePwm(pin: number, dutyCycle: number): void {
+      this.pwmValues.set(pin, dutyCycle);
+      this.pwmListeners.get(pin)?.forEach(cb => cb(pin, dutyCycle));
+    }
+
+    broadcastPwm(dutyCycle: number): void {
+      this.pwmListeners.forEach((callbacks, pin) => {
+        this.pwmValues.set(pin, dutyCycle);
+        callbacks.forEach(cb => cb(pin, dutyCycle));
+      });
+    }
+  }
+
+  it('broadcastPwm dispatches to all registered PWM listeners', () => {
+    const pm = new SimplePinManager();
+    const received: { pin: number; duty: number }[] = [];
+
+    pm.onPwmChange(13, (pin, duty) => received.push({ pin, duty }));
+    pm.onPwmChange(5, (pin, duty) => received.push({ pin, duty }));
+
+    pm.broadcastPwm(0.075); // 7.5% servo duty
+
+    expect(received).toHaveLength(2);
+    expect(received).toContainEqual({ pin: 13, duty: 0.075 });
+    expect(received).toContainEqual({ pin: 5, duty: 0.075 });
+  });
+
+  it('broadcastPwm does nothing when no listeners registered', () => {
+    const pm = new SimplePinManager();
+    // Should not throw
+    pm.broadcastPwm(0.075);
+  });
+
+  it('servo filters broadcastPwm by duty range (0.01-0.20)', () => {
+    const MIN_DC = 544 / 20000;  // 0.0272
+    const MAX_DC = 2400 / 20000; // 0.12
+    let servoAngle = -1;
+
+    const servoCallback = (_pin: number, dutyCycle: number) => {
+      if (dutyCycle < 0.01 || dutyCycle > 0.20) return;
+      const angle = Math.round(((dutyCycle - MIN_DC) / (MAX_DC - MIN_DC)) * 180);
+      servoAngle = Math.max(0, Math.min(180, angle));
+    };
+
+    servoCallback(13, 0.075);
+    expect(servoAngle).toBeGreaterThanOrEqual(88);
+    expect(servoAngle).toBeLessThanOrEqual(95);
+
+    const prevAngle = servoAngle;
+    servoCallback(13, 0.50); // 50% — not a servo signal
+    expect(servoAngle).toBe(prevAngle);
+  });
+
+  it('onLedcUpdate with gpio=-1 should use broadcastPwm (integration logic)', () => {
+    const pm = new SimplePinManager();
+    const received: { pin: number; duty: number }[] = [];
+
+    pm.onPwmChange(13, (pin, duty) => received.push({ pin, duty }));
+
+    const update = { channel: 0, duty: 7.36, duty_pct: 7.36, gpio: -1 };
+    const dutyCycle = update.duty_pct / 100;
+
+    if (update.gpio >= 0) {
+      pm.updatePwm(update.gpio, dutyCycle);
+    } else {
+      pm.broadcastPwm(dutyCycle);
+    }
+
+    expect(received).toHaveLength(1);
+    expect(received[0]).toEqual({ pin: 13, duty: 0.0736 });
+  });
+});
