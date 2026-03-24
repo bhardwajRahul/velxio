@@ -1,13 +1,20 @@
 #!/bin/bash
 set -e
 
-# Seed arduino-cli data into the mounted volume if it's empty
-# (first deploy or after volume prune). The base cores (avr, rp2040, esp32)
-# were installed at build time and saved to /root/.arduino15-base.
+# If the arduino-cli volume is empty (first deploy or after prune),
+# re-install the base cores. This is fast (~30s) since package index is cached.
 if [ ! -f /root/.arduino15/arduino-cli.yaml ]; then
-    echo "📦 Seeding arduino-cli cores into volume..."
-    cp -a /root/.arduino15-base/* /root/.arduino15/ 2>/dev/null || \
-    cp -a /root/.arduino15-base/. /root/.arduino15/
+    echo "📦 Installing arduino-cli base cores into volume..."
+    arduino-cli config init 2>/dev/null || true
+    arduino-cli config add board_manager.additional_urls \
+        https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json 2>/dev/null || true
+    arduino-cli config add board_manager.additional_urls \
+        https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json 2>/dev/null || true
+    arduino-cli core update-index
+    arduino-cli core install arduino:avr
+    arduino-cli core install rp2040:rp2040
+    arduino-cli core install esp32:esp32
+    echo "✅ Base cores installed"
 fi
 
 # Start FastAPI backend in the background on port 8001
