@@ -69,6 +69,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgcrypt20 \
     libslirp0 \
     libpixman-1-0 \
+    libfdt1 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
