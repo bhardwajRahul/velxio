@@ -97,3 +97,4 @@ test/esp32-emulator/out_*/
 
 # Google Cloud service account credentials
 velxio-ba3355a41944.json
+marketing/*

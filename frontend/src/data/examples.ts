@@ -670,7 +670,7 @@ void drawStaticUI() {
   tft.setTextSize(3);
   tft.setTextColor(tft.color565(255, 220, 0));
   tft.setCursor(20, 10);
-  tft.print("WOKWI TFT");
+  tft.print("VELXIO TFT");
 
   // Subtitle
   tft.setTextSize(2);
@@ -760,7 +760,7 @@ void setup() {
   // Print a message to the LCD.
   lcd.print("Hello, Arduino!");
   lcd.setCursor(0, 1);
-  lcd.print("Wokwi Emulator");
+  lcd.print("Velxio Emulator");
   lcd.setCursor(0, 2);
   lcd.print("LCD 2004 Test");
 }
@@ -2034,7 +2034,6 @@ void loop() {
 // Blinks the built-in LED (GPIO2) and an external LED (GPIO4)
 // Requires arduino-esp32 2.0.17 (IDF 4.4.x) — see docs/ESP32_EMULATION.md
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -2042,7 +2041,6 @@ void loop() {
 #define LED_EXT_PIN     4   // External red LED
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -2092,12 +2090,10 @@ void loop() {
 // Echoes anything received on Serial (UART0) back to the sender.
 // Open the Serial Monitor, type something, and see it echoed back.
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -2937,7 +2933,6 @@ void loop() {
     code: `// ESP32 — 7-Segment Display Counter 0-9
 // Segments: a=12, b=13, c=14, d=25, e=26, f=27, g=32
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -2957,7 +2952,6 @@ const bool DIGITS[10][7] = {
 };
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -3757,7 +3751,6 @@ void loop() {
 // Wiring: DATA → GPIO4  |  VCC → 3V3  |  GND → GND
 
 #include <DHT.h>
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -3768,7 +3761,6 @@ DHT dht(DHT_PIN, DHT_TYPE);
 
 // Disable hardware Timer Group WDTs (QEMU emulation is slower than real time)
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -3818,7 +3810,6 @@ void loop() {
     code: `// ESP32 — HC-SR04 Ultrasonic Distance Sensor
 // Wiring: TRIG → D18  |  ECHO → D19  |  VCC → 3V3  |  GND → GND
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -3826,7 +3817,6 @@ void loop() {
 #define ECHO_PIN 19
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -3882,7 +3872,6 @@ void loop() {
 // Requires: Adafruit MPU6050, Adafruit Unified Sensor libraries
 // Wiring: SDA → D21  |  SCL → D22  |  VCC → 3V3  |  GND → GND
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 #include <Adafruit_MPU6050.h>
@@ -3892,7 +3881,6 @@ void loop() {
 Adafruit_MPU6050 mpu;
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -3948,7 +3936,6 @@ void loop() {
     code: `// ESP32 — PIR Motion Sensor
 // Wiring: OUT → D5  |  VCC → 3V3  |  GND → GND
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -3959,7 +3946,6 @@ bool prevMotion = false;
 unsigned long detections = 0;
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -4015,7 +4001,6 @@ void loop() {
 // Pot  : SIG → D34  |  VCC → 3V3  |  GND → GND
 
 #include <ESP32Servo.h>
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -4026,7 +4011,6 @@ Servo myServo;
 
 // Disable hardware Timer Group WDTs (QEMU emulation is slower than real time)
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -4075,7 +4059,6 @@ void loop() {
 // Wiring: HORZ → D35 | VERT → D34 | SEL → D15
 //         VCC → 3V3  | GND → GND
 
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -4084,7 +4067,6 @@ void loop() {
 #define JOY_BTN  15  // GPIO with pull-up
 
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;
@@ -4139,7 +4121,6 @@ void loop() {
 // Wiring: DATA → GPIO3  |  VCC → 3V3  |  GND → GND
 
 #include <DHT.h>
-#include <esp_task_wdt.h>
 #include <soc/timer_group_struct.h>
 #include <soc/timer_group_reg.h>
 
@@ -4150,7 +4131,6 @@ DHT dht(DHT_PIN, DHT_TYPE);
 
 // Disable hardware Timer Group WDTs (QEMU emulation is slower than real time)
 void disableAllWDT() {
-  esp_task_wdt_deinit();
   TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
   TIMERG0.wdt_config0.en = 0;
   TIMERG0.wdt_wprotect = 0;

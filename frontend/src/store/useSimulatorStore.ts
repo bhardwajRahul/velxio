@@ -862,6 +862,12 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
           });
         };
         bridge.onLedcUpdate = makeLedcUpdateHandler(boardId);
+        bridge.onWs2812Update = (channel, pixels) => {
+          const eventTarget = document.getElementById(`ws2812-${boardId}-${channel}`);
+          if (eventTarget) {
+            eventTarget.dispatchEvent(new CustomEvent('ws2812-pixels', { detail: { pixels } }));
+          }
+        };
         esp32BridgeMap.set(boardId, bridge);
         const shim = new Esp32BridgeShim(bridge, pm);
         shim.onSerialData = serialCallback;

@@ -232,8 +232,6 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     # ESP32 signal indices: 72-79 = LEDC HS ch 0-7, 80-87 = LEDC LS ch 0-7
     _ledc_gpio_map: dict[int, int] = {}
 
-    _out_sel_dumped = [False]  # one-time diagnostic dump flag
-
     def _refresh_ledc_gpio_map() -> None:
         """Scan gpio_out_sel[40] registers and update _ledc_gpio_map.
 
@@ -243,25 +241,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         try:
             out_sel_ptr = lib.qemu_picsimlab_get_internals(2)
             if not out_sel_ptr:
-                _log('LEDC gpio_out_sel: internals(2) returned NULL')
                 return
             out_sel = (ctypes.c_uint32 * 40).from_address(out_sel_ptr)
-            # One-time dump of ALL gpio_out_sel values for diagnostics
-            if not _out_sel_dumped[0]:
-                _out_sel_dumped[0] = True
-                non_default = {pin: int(out_sel[pin]) for pin in range(40)
-                               if int(out_sel[pin]) != 256 and int(out_sel[pin]) != 0}
-                _log(f'LEDC gpio_out_sel dump (non-default): {non_default}')
-                _log(f'LEDC gpio_out_sel ALL: {[int(out_sel[i]) for i in range(40)]}')
             for gpio_pin in range(40):
                 signal = int(out_sel[gpio_pin]) & 0xFF
                 if 72 <= signal <= 87:
                     ledc_ch = signal - 72
                     if _ledc_gpio_map.get(ledc_ch) != gpio_pin:
                         _ledc_gpio_map[ledc_ch] = gpio_pin
-                        _log(f'LEDC map: ch{ledc_ch} -> GPIO{gpio_pin} (signal={signal})')
-        except Exception as e:
-            _log(f'LEDC gpio_out_sel scan error: {e}')
+        except Exception:
+            pass
 
     # Sensor state: gpio_pin → {type, properties..., saw_low, responding}
     _sensors: dict[int, dict] = {}
@@ -456,7 +445,6 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
             if marker == 0x5000:  # LEDC duty change (from esp32_ledc.c)
                 ledc_ch = (direction >> 8) & 0x0F
                 intensity = direction & 0xFF  # 0-100 percentage
-                _log(f'0x5000 callback: direction=0x{direction:04X} ch={ledc_ch} intensity={intensity} map={dict(_ledc_gpio_map)}')
                 gpio = _ledc_gpio_map.get(ledc_ch, -1)
                 if gpio == -1:
                     _refresh_ledc_gpio_map()
@@ -622,52 +610,13 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     def _ledc_poll_thread() -> None:
         # Track last-emitted duty to avoid flooding identical updates
         _last_duty = [0.0] * 16
-        _diag_count = [0]
-        _first_nonzero_logged = [False]
-        _log('LEDC poll thread started')
         while not _stopped.wait(0.1):
             try:
                 ptr = lib.qemu_picsimlab_get_internals(6)  # LEDC_CHANNEL_DUTY
-                _diag_count[0] += 1
                 if ptr is None or ptr == 0:
                     continue
-                # duty[] is float[16] in QEMU (percentage 0-100)
                 arr = (ctypes.c_float * 16).from_address(ptr)
-                # Refresh LEDC→GPIO mapping from gpio_out_sel[40] registers
                 _refresh_ledc_gpio_map()
-                # Log once when nonzero duties first appear
-                if not _first_nonzero_logged[0]:
-                    nonzero = {ch: round(float(arr[ch]), 2) for ch in range(16)
-                               if float(arr[ch]) != 0.0}
-                    if nonzero:
-                        _log(f'LEDC first nonzero at poll #{_diag_count[0]}: '
-                             f'duties={nonzero} gpio_map={dict(_ledc_gpio_map)}')
-                        _first_nonzero_logged[0] = True
-                # Periodic diagnostic dump every 50 polls (~5s)
-                if _diag_count[0] % 50 == 0:
-                    all_duties = {ch: round(float(arr[ch]), 4) for ch in range(16)
-                                  if float(arr[ch]) != 0.0}
-                    # Also read LEDC channel conf (internals(4)) and timer freq (internals(5))
-                    diag_parts = [f'duties={all_duties}', f'gpio_map={dict(_ledc_gpio_map)}']
-                    try:
-                        conf_ptr = lib.qemu_picsimlab_get_internals(4)
-                        if conf_ptr:
-                            conf_arr = (ctypes.c_uint32 * 16).from_address(conf_ptr)
-                            nonzero_conf = {ch: hex(int(conf_arr[ch])) for ch in range(16)
-                                            if int(conf_arr[ch]) != 0}
-                            diag_parts.append(f'ch_conf={nonzero_conf}')
-                    except Exception:
-                        pass
-                    try:
-                        freq_ptr = lib.qemu_picsimlab_get_internals(5)
-                        if freq_ptr:
-                            freq_arr = (ctypes.c_uint32 * 8).from_address(freq_ptr)
-                            nonzero_freq = {t: int(freq_arr[t]) for t in range(8)
-                                            if int(freq_arr[t]) != 0}
-                            diag_parts.append(f'timer_freq={nonzero_freq}')
-                    except Exception:
-                        pass
-                    _log(f'LEDC poll #{_diag_count[0]}: {" | ".join(diag_parts)}')
                 for ch in range(16):
                     duty_pct = float(arr[ch])
                     if abs(duty_pct - _last_duty[ch]) < 0.01:
@@ -679,9 +628,8 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                                'duty': round(duty_pct, 2),
                                'duty_pct': round(duty_pct, 2),
                                'gpio': gpio})
-            except Exception as e:
-                import traceback
-                _log(f'LEDC poll error: {e}\n{traceback.format_exc()}')
+            except Exception:
+                pass
 
     threading.Thread(target=_ledc_poll_thread, daemon=True, name='ledc-poll').start()
 
@@ -706,7 +654,6 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
             raw_v = int(int(cmd['millivolts']) * 4095 / 3300)
             ch = int(cmd['channel'])
             clamped = max(0, min(4095, raw_v))
-            _log(f'set_adc: ch={ch} mv={cmd["millivolts"]} raw={clamped}')
             lib.qemu_picsimlab_set_apin(ch, clamped)
 
         elif c == 'set_adc_raw':

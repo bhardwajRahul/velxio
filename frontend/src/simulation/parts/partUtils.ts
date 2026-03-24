@@ -33,7 +33,6 @@ export function setAdcVoltage(simulator: AnySimulator, pin: number, voltage: num
             const channel = pin - 26;
             // RP2040 ADC: 12-bit, 3.3V reference
             const adcValue = Math.round((voltage / 3.3) * 4095);
-            console.log(`[setAdcVoltage] RP2040 ch${channel} = ${adcValue} (${voltage.toFixed(3)}V)`);
             simulator.setADCValue(channel, adcValue);
             return true;
         }
