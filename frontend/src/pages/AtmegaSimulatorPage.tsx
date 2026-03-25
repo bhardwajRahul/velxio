@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import './SEOPage.css';
 
 const META = getSeoMeta('/atmega328p-simulator')!;
@@ -86,7 +87,7 @@ export const AtmegaSimulatorPage: React.FC = () => {
             16 MHz with full GPIO, timer, ADC, and USART emulation. No hardware, no install.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open ATmega328P Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('atmega-simulator', '/editor')}>Open ATmega328P Simulator →</Link>
             <Link to="/docs/emulator" className="seo-btn-secondary">Technical Details</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · Genuine AVR8 emulation · Runs 100% in your browser</p>
@@ -172,7 +173,7 @@ export const AtmegaSimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Simulate your ATmega328P code now</h2>
           <p>Open the editor, paste your sketch, and click Simulate — no setup, no hardware purchase required.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch ATmega328P Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('atmega-simulator', '/editor')}>Launch ATmega328P Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/arduino-simulator">Arduino Simulator</Link>
             <Link to="/arduino-emulator">Arduino Emulator</Link>

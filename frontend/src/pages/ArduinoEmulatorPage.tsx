@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import './SEOPage.css';
 
 const META = getSeoMeta('/arduino-emulator')!;
@@ -86,7 +87,7 @@ export const ArduinoEmulatorPage: React.FC = () => {
             executed at 16 MHz — the same silicon behavior as real hardware, without buying hardware.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open Emulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-emulator', '/editor')}>Open Emulator →</Link>
             <Link to="/docs/emulator" className="seo-btn-secondary">Emulation Details</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · Built on avr8js &amp; rp2040js · No signup required</p>
@@ -171,7 +172,7 @@ export const ArduinoEmulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Start emulating Arduino today</h2>
           <p>Open the editor and execute your firmware against a real emulated CPU — no hardware purchase, no cloud, no limits.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch Emulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-emulator', '/editor')}>Launch Emulator →</Link>
           <div className="seo-internal-links">
             <Link to="/arduino-simulator">Arduino Simulator</Link>
             <Link to="/atmega328p-simulator">ATmega328P Simulator</Link>

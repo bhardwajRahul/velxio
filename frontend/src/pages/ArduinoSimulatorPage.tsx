@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import './SEOPage.css';
 
 const META = getSeoMeta('/arduino-simulator')!;
@@ -86,7 +87,7 @@ export const ArduinoSimulatorPage: React.FC = () => {
             electronic components. No install, no cloud, no account required.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open Arduino Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-simulator', '/editor')}>Open Arduino Simulator →</Link>
             <Link to="/examples" className="seo-btn-secondary">Browse Examples</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · No signup required · Runs 100% in your browser</p>
@@ -167,7 +168,7 @@ export const ArduinoSimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Ready to simulate your Arduino?</h2>
           <p>Open the editor and start coding in seconds — no setup, no install, no account needed.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch Arduino Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-simulator', '/editor')}>Launch Arduino Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/examples">Example Projects</Link>
             <Link to="/arduino-emulator">Arduino Emulator</Link>

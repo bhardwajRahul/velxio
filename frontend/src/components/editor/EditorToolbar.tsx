@@ -11,7 +11,7 @@ import { InstallLibrariesModal } from '../simulator/InstallLibrariesModal';
 import { parseCompileResult } from '../../utils/compilationLogger';
 import type { CompilationLog } from '../../utils/compilationLogger';
 import { exportToWokwiZip, importFromWokwiZip } from '../../utils/wokwiZip';
-import { trackCompileCode, trackRunSimulation } from '../../utils/analytics';
+import { trackCompileCode, trackRunSimulation, trackStopSimulation, trackResetSimulation, trackOpenLibraryManager } from '../../utils/analytics';
 import './EditorToolbar.css';
 
 interface EditorToolbarProps {
@@ -160,6 +160,7 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
       const board = boards.find((b) => b.id === activeBoardId);
       const isQemuBoard = board?.boardKind === 'raspberry-pi-3' || board?.boardKind === 'esp32' || board?.boardKind === 'esp32-s3';
       if (isQemuBoard || board?.compiledProgram) {
+        trackRunSimulation(board?.boardKind);
         startBoard(activeBoardId);
         setMessage(null);
         return;
@@ -176,12 +177,14 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
   };
 
   const handleStop = () => {
+    trackStopSimulation();
     if (activeBoardId) stopBoard(activeBoardId);
     else stopSimulation();
     setMessage(null);
   };
 
   const handleReset = () => {
+    trackResetSimulation();
     if (activeBoardId) resetBoard(activeBoardId);
     else resetSimulation();
     setMessage(null);
@@ -431,7 +434,7 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
 
           {/* Library Manager — always visible with label */}
           <button
-            onClick={() => setLibManagerOpen(true)}
+            onClick={() => { trackOpenLibraryManager(); setLibManagerOpen(true); }}
             className="tb-btn-libraries"
             title="Search and install Arduino libraries"
           >
@@ -516,7 +519,7 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span>Missing library? Install it from the</span>
-          <button className="tb-lib-hint-btn" onClick={() => { setLibManagerOpen(true); setMissingLibHint(false); }}>
+          <button className="tb-lib-hint-btn" onClick={() => { trackOpenLibraryManager(); setLibManagerOpen(true); setMissingLibHint(false); }}>
             Library Manager
           </button>
           <button className="tb-lib-hint-close" onClick={() => setMissingLibHint(false)} title="Dismiss">

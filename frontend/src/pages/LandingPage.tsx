@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { trackVisitGitHub } from '../utils/analytics';
+import { trackVisitGitHub, trackClickCTA } from '../utils/analytics';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
@@ -496,7 +496,7 @@ export const LandingPage: React.FC = () => {
             Raspberry Pi Pico, Raspberry Pi 3, and more. No hardware, no cloud, no limits.
           </p>
           <div className="hero-ctas">
-            <Link to="/editor" className="cta-primary">
+            <Link to="/editor" className="cta-primary" onClick={() => trackClickCTA('landing', '/editor')}>
               <IcoZap />
               Try Simulator Free →
             </Link>
