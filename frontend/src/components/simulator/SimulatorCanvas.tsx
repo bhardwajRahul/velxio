@@ -27,6 +27,7 @@ import type { ComponentMetadata } from '../../types/component-metadata';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
 import { useOscilloscopeStore } from '../../store/useOscilloscopeStore';
+import { trackSelectBoard, trackAddComponent, trackCreateWire, trackToggleSerialMonitor } from '../../utils/analytics';
 import './SimulatorCanvas.css';
 
 export const SimulatorCanvas = () => {
@@ -747,6 +748,7 @@ export const SimulatorCanvas = () => {
     const y = 100 + (row * gridSize);
 
     const component = createComponentFromMetadata(metadata, x, y);
+    trackAddComponent(metadata.id);
     addComponent(component as any);
     setShowComponentPicker(false);
   };
@@ -1001,6 +1003,7 @@ export const SimulatorCanvas = () => {
     if (wireInProgress) {
       // Finish wire: connect to this pin
       finishWireCreation({ componentId, pinName, x, y });
+      trackCreateWire();
     } else {
       // Start wire: auto-detect color from pin name
       startWireCreation({ componentId, pinName, x, y }, autoWireColor(pinName));
@@ -1183,7 +1186,7 @@ export const SimulatorCanvas = () => {
 
             {/* Serial Monitor toggle */}
             <button
-              onClick={toggleSerialMonitor}
+              onClick={() => { toggleSerialMonitor(); trackToggleSerialMonitor(!serialMonitorOpen); }}
               className={`canvas-serial-btn${serialMonitorOpen ? ' canvas-serial-btn-active' : ''}`}
               title="Toggle Serial Monitor"
             >
@@ -1405,6 +1408,7 @@ export const SimulatorCanvas = () => {
         onClose={() => setShowComponentPicker(false)}
         onSelectComponent={handleSelectComponent}
         onSelectBoard={(kind: BoardKind) => {
+          trackSelectBoard(kind);
           const sameKind = boards.filter((b) => b.boardKind === kind);
           const newBoardId = sameKind.length === 0 ? kind : `${kind}-${sameKind.length + 1}`;
           const x = boardPosition.x + boards.length * 60 + 420;

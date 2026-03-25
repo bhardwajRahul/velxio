@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import './SEOPage.css';
 
 const META = getSeoMeta('/arduino-mega-simulator')!;
@@ -86,7 +87,7 @@ export const ArduinoMegaSimulatorPage: React.FC = () => {
             pins, 16 analog inputs, 4 serial ports, and 6 timers. Free and open-source.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open Mega 2560 Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-mega-simulator', '/editor')}>Open Mega 2560 Simulator →</Link>
             <Link to="/examples" className="seo-btn-secondary">Browse Examples</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · No signup required · Full ATmega2560 emulation</p>
@@ -168,7 +169,7 @@ export const ArduinoMegaSimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Simulate your Arduino Mega project</h2>
           <p>Select the Mega 2560 board in the editor and start simulating — full ATmega2560 emulation, no hardware purchase needed.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch Mega 2560 Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('arduino-mega-simulator', '/editor')}>Launch Mega 2560 Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/arduino-simulator">Arduino Simulator</Link>
             <Link to="/arduino-emulator">Arduino Emulator</Link>

@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import esp32S3SvgUrl from '../../../wokwi-libs/wokwi-boards/boards/esp32-s3-devkitc-1/board.svg?url';
 import './SEOPage.css';
 
@@ -86,7 +87,7 @@ export const Esp32S3SimulatorPage: React.FC = () => {
             USB OTG, vector extensions, 45 GPIOs. Write, compile, and run in seconds.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open ESP32-S3 Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('esp32-s3-simulator', '/editor')}>Open ESP32-S3 Simulator →</Link>
             <Link to="/examples" className="seo-btn-secondary">Browse Examples</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · QEMU Xtensa LX7 · No account needed</p>
@@ -150,7 +151,7 @@ export const Esp32S3SimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Ready to simulate ESP32-S3?</h2>
           <p>Open the editor, select an ESP32-S3 board, and run your code instantly.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch ESP32-S3 Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('esp32-s3-simulator', '/editor')}>Launch ESP32-S3 Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/esp32-simulator">ESP32 Simulator</Link>
             <Link to="/esp32-c3-simulator">ESP32-C3 Simulator</Link>

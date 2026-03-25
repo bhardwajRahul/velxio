@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import esp32SvgUrl from '../../../wokwi-libs/wokwi-boards/boards/esp32-devkit-v1/board.svg?url';
 import './SEOPage.css';
 
@@ -88,7 +89,7 @@ export const Esp32SimulatorPage: React.FC = () => {
             48+ interactive components, Serial Monitor, no install required.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open ESP32 Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('esp32-simulator', '/editor')}>Open ESP32 Simulator →</Link>
             <Link to="/examples" className="seo-btn-secondary">ESP32 Examples</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · No signup · QEMU-powered emulation</p>
@@ -183,7 +184,7 @@ export const Esp32SimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Ready to simulate your ESP32?</h2>
           <p>Open the editor, select an ESP32 board, and start coding — no setup, no install, no account needed.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch ESP32 Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('esp32-simulator', '/editor')}>Launch ESP32 Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/examples">Example Projects</Link>
             <Link to="/docs/esp32-emulation">ESP32 Docs</Link>

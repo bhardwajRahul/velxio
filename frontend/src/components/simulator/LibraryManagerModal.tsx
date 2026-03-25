@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { searchLibraries, installLibrary, getInstalledLibraries } from '../../services/libraryService';
 import type { ArduinoLibrary, InstalledLibrary } from '../../services/libraryService';
+import { trackInstallLibrary } from '../../utils/analytics';
 import './LibraryManagerModal.css';
 
 interface LibraryManagerModalProps {
@@ -79,6 +80,7 @@ export const LibraryManagerModal: React.FC<LibraryManagerModalProps> = ({ isOpen
         try {
             const result = await installLibrary(libName);
             if (result.success) {
+                trackInstallLibrary(libName);
                 setStatusMsg({ type: 'success', text: `"${libName}" installed successfully!` });
                 fetchInstalled(); // Refresh installed list so search tab reflects new state
             } else {

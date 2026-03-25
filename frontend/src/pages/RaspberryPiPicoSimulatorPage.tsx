@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import piPicoSvgUrl from '../../../wokwi-libs/wokwi-boards/boards/pi-pico/board.svg?url';
 import './SEOPage.css';
 
@@ -85,7 +86,7 @@ export const RaspberryPiPicoSimulatorPage: React.FC = () => {
             at 133 MHz. 26 GPIO pins, I2C, SPI, UART, ADC. No hardware needed.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">Open Pico Simulator →</Link>
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('rpi-pico-simulator', '/editor')}>Open Pico Simulator →</Link>
             <Link to="/examples" className="seo-btn-secondary">Pico Examples</Link>
           </div>
           <p className="seo-trust">Free &amp; open-source · rp2040js emulation · No account needed</p>
@@ -163,7 +164,7 @@ export const RaspberryPiPicoSimulatorPage: React.FC = () => {
         <div className="seo-bottom">
           <h2>Ready to simulate Raspberry Pi Pico?</h2>
           <p>Open the editor, select a Pico board, and start coding — no Raspberry Pi hardware required.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch Pico Simulator →</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('rpi-pico-simulator', '/editor')}>Launch Pico Simulator →</Link>
           <div className="seo-internal-links">
             <Link to="/examples">Example Projects</Link>
             <Link to="/docs/rp2040-emulation">RP2040 Docs</Link>

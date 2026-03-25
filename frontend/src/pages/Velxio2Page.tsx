@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { AppHeader } from '../components/layout/AppHeader';
 import { useSEO } from '../utils/useSEO';
 import { getSeoMeta } from '../seoRoutes';
+import { trackClickCTA } from '../utils/analytics';
 import raspberryPi3Svg from '../assets/Raspberry_Pi_3_illustration.svg';
 import './SEOPage.css';
 import './Velxio2Page.css';
@@ -265,7 +266,7 @@ export const Velxio2Page: React.FC = () => {
             Free, open-source, no install needed.
           </p>
           <div className="seo-cta-group">
-            <Link to="/editor" className="seo-btn-primary">
+            <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('velxio-v2', '/editor')}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
               Try Velxio 2.0
             </Link>
@@ -603,7 +604,7 @@ export const Velxio2Page: React.FC = () => {
         <div className="seo-bottom">
           <h2>Try Velxio 2.0 now</h2>
           <p>Open the editor and start simulating — 19 boards, 68+ examples, zero setup.</p>
-          <Link to="/editor" className="seo-btn-primary">Launch Simulator</Link>
+          <Link to="/editor" className="seo-btn-primary" onClick={() => trackClickCTA('velxio-v2', '/editor')}>Launch Simulator</Link>
 
           <div className="v2-bottom-community">
             <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="v2-community-btn v2-star-btn">
