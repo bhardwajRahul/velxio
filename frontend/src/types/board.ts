@@ -17,6 +17,13 @@ export type BoardKind =
   | 'aitewinrobot-esp32c3-supermini' // ESP32-C3 SuperMini, browser emulation (Esp32C3Simulator)
   | 'attiny85';                   // AVR ATtiny85, browser emulation (avr8js)
 
+export type LanguageMode = 'arduino' | 'micropython';
+
+export const BOARD_SUPPORTS_MICROPYTHON = new Set<BoardKind>([
+  'raspberry-pi-pico',
+  'pi-pico-w',
+]);
+
 export interface BoardInstance {
   id: string;                   // unique in canvas, e.g. 'arduino-uno', 'raspberry-pi-3'
   boardKind: BoardKind;
@@ -28,6 +35,7 @@ export interface BoardInstance {
   serialBaudRate: number;
   serialMonitorOpen: boolean;
   activeFileGroupId: string;
+  languageMode: LanguageMode;     // 'arduino' (default) or 'micropython'
 }
 
 export const BOARD_KIND_LABELS: Record<BoardKind, string> = {

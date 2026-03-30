@@ -4,7 +4,8 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useSimulatorStore } from '../../store/useSimulatorStore';
+import { useSimulatorStore, getBoardSimulator } from '../../store/useSimulatorStore';
+import { RP2040Simulator } from '../../simulation/RP2040Simulator';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
 
@@ -94,12 +95,28 @@ export const SerialMonitor: React.FC = () => {
     setInputValue('');
   }, [resolvedTabId, inputValue, lineEnding, serialWriteToBoard]);
 
+  const isMicroPython = activeBoard?.languageMode === 'micropython';
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       handleSend();
+      return;
     }
-  }, [handleSend]);
+    // MicroPython REPL control characters
+    if (resolvedTabId && e.ctrlKey) {
+      const sim = getBoardSimulator(resolvedTabId);
+      if (sim instanceof RP2040Simulator && sim.isMicroPythonMode()) {
+        if (e.key === 'c' || e.key === 'C') {
+          e.preventDefault();
+          sim.serialWriteByte(0x03); // Ctrl+C — keyboard interrupt
+        } else if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          sim.serialWriteByte(0x04); // Ctrl+D — soft reset
+        }
+      }
+    }
+  }, [handleSend, resolvedTabId]);
 
   const handleTabClick = (boardId: string) => {
     setActiveTabId(boardId);
@@ -149,7 +166,10 @@ export const SerialMonitor: React.FC = () => {
 
         {/* Right-side controls */}
         <div style={styles.tabControls}>
-          {activeBoard?.serialBaudRate != null && activeBoard.serialBaudRate > 0 && (
+          {isMicroPython && (
+            <span style={{ color: '#ce93d8', fontSize: 11, fontWeight: 600 }}>MicroPython REPL</span>
+          )}
+          {activeBoard?.serialBaudRate != null && activeBoard.serialBaudRate > 0 && !isMicroPython && (
             <span style={styles.baudRate}>{activeBoard.serialBaudRate.toLocaleString()} baud</span>
           )}
           <label style={styles.autoscrollLabel}>
@@ -184,7 +204,7 @@ export const SerialMonitor: React.FC = () => {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Type message to send..."
+          placeholder={isMicroPython ? 'Type Python expression... (Ctrl+C to interrupt)' : 'Type message to send...'}
           style={styles.input}
           disabled={!activeBoard?.running}
         />
