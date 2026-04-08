@@ -43,7 +43,13 @@ class MPU6050Slave:
         # WRITE, as happens with Adafruit BusIO write-then-read) returns 0x68.
         self.reg_ptr    = 0x75
         self.first_byte = True
-        self._first_read_done = False  # True after begin() WHO_AM_I is read
+        # Adafruit_I2CDevice::begin() fires TWO WHO_AM_I reads before the
+        # library moves on to actual data reads:
+        #   1. detected() uses requestFrom as fallback — fires START+READ
+        #   2. chip_id_register.read() — fires START+READ
+        # Only after both have returned 0x68 do we switch reg_ptr to 0x3B
+        # (start of accel/gyro/temp block) for subsequent data transactions.
+        self._who_am_i_count = 0
 
         # WHO_AM_I
         self.regs[0x75] = 0x68
@@ -68,13 +74,17 @@ class MPU6050Slave:
 
         if op == I2C_START:
             self.first_byte = True
-            if self._first_read_done:
-                # picsimlab does not fire WRITE callbacks for write-then-read
-                # transactions (endTransmission(false) + requestFrom).  After
-                # begin() has succeeded, reset reg_ptr to the accel/gyro/temp
-                # block so data reads return the right bytes even without a
-                # prior WRITE setting the register address.
-                self.reg_ptr = 0x3B
+            # picsimlab does not fire WRITE callbacks for write-then-read
+            # transactions (endTransmission(false) + requestFrom).
+            # Adafruit_I2CDevice::begin() fires TWO START+READ sequences
+            # before any data reads:
+            #   1. detected() → requestFrom fallback → START+READ(WHO_AM_I)
+            #   2. chip_id_register.read() → START+READ(WHO_AM_I)
+            # Only after both have returned 0x68 do we switch to data mode.
+            if self._who_am_i_count >= 2:
+                self.reg_ptr = 0x3B   # sensor data block
+            else:
+                self.reg_ptr = 0x75   # WHO_AM_I register
             return 1              # ACK — device present
         elif op in _I2C_WRITE_CODES:
             if self.first_byte:
@@ -90,8 +100,10 @@ class MPU6050Slave:
             return 1              # ACK
         elif op == I2C_READ:
             val = self.regs[self.reg_ptr]
+            # Track WHO_AM_I reads to know when begin() has confirmed device
+            if self.reg_ptr == 0x75 and val == 0x68:
+                self._who_am_i_count += 1
             self.reg_ptr = (self.reg_ptr + 1) & 0xFF
-            self._first_read_done = True
             return val
         else:                     # STOP / unknown
             self.first_byte = True

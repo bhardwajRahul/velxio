@@ -400,16 +400,27 @@ class TestMPU6050Slave(unittest.TestCase):
             f"Expected WHO_AM_I=0x68 without WRITE, got 0x{result:02x}")
 
     def test_data_read_after_begin(self):
-        """After begin() succeeds, START should reset reg_ptr to 0x3B (accel block)."""
+        """After begin() succeeds (two WHO_AM_I reads), START resets reg_ptr to 0x3B.
+
+        Adafruit_I2CDevice::begin() fires TWO START+READ sequences before data reads:
+          1. detected() requestFrom fallback → START+READ(WHO_AM_I)
+          2. chip_id_register.read() → START+READ(WHO_AM_I)
+        Only after both return 0x68 does the slave switch to data mode.
+        """
         m = MPU6050Slave()
-        # Simulate begin(): START + READ (no WRITE) → gets WHO_AM_I
+        # First WHO_AM_I read: detected() requestFrom fallback
         m.handle_event(I2C_START)
-        m.handle_event(I2C_READ)  # _first_read_done = True
-        # Next transaction: START should reset reg_ptr to 0x3B
+        r1 = m.handle_event(I2C_READ)
+        self.assertEqual(r1, 0x68, "First WHO_AM_I read must return 0x68")
+        # Second WHO_AM_I read: actual chip_id check — count reaches 2
+        m.handle_event(I2C_START)
+        r2 = m.handle_event(I2C_READ)
+        self.assertEqual(r2, 0x68, "Second WHO_AM_I read must return 0x68")
+        # Now _who_am_i_count=2 → next START switches to data mode
         m.handle_event(I2C_START)
         first_accel_byte = m.handle_event(I2C_READ)
         self.assertEqual(first_accel_byte, m.regs[0x3B],
-            "After begin(), START should reset reg_ptr to 0x3B (accel block)")
+            "After two WHO_AM_I reads, START should reset reg_ptr to 0x3B (accel block)")
 
     def test_accel_z_default_1g(self):
         """ACCEL_Z should default to +1g = 0x4000 (MSB=0x40, LSB=0x00)."""
@@ -454,6 +465,7 @@ if __name__ == '__main__':
         TestDS1307Slave,
         TestDS3231Slave,
         TestI2CWriteSink,
+        TestMPU6050Slave,
     ]:
         suite.addTests(loader.loadTestsFromTestCase(cls))
 
