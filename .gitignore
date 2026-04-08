@@ -114,3 +114,10 @@ backend/tests/test_wifi_webserver_e2e.py
 # Compiled binary test fixtures (large, should be built not committed)
 frontend/src/__tests__/fixtures/avr-blink/
 frontend/src/__tests__/fixtures/rp2040-blink/
+
+# Arduino compilation byproducts in test fixtures
+**/*.ino.eep
+**/*.ino.with_bootloader.bin
+**/*.ino.with_bootloader.hex
+**/*.ino.map
+**/*.ino.uf2
