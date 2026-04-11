@@ -1,0 +1,12 @@
+Collecting mcp
+  Using cached mcp-1.27.0-py3-none-any.whl.metadata (8.2 kB)
+Collecting pydantic==2.9.2
+  Using cached pydantic-2.9.2-py3-none-any.whl.metadata (149 kB)
+Using cached pydantic-2.9.2-py3-none-any.whl (434 kB)
+Using cached mcp-1.27.0-py3-none-any.whl (215 kB)
+Saved c:\users\david\appdata\local\temp\mcp_test\pydantic-2.9.2-py3-none-any.whl
+Saved c:\users\david\appdata\local\temp\mcp_test\mcp-1.27.0-py3-none-any.whl
+Successfully downloaded pydantic mcp
+
+[notice] A new release of pip is available: 24.3.1 -> 26.0.1
+[notice] To update, run: C:\Python\python.exe -m pip install --upgrade pip
