@@ -332,10 +332,19 @@ class MetadataGenerator {
               const type = member.type?.getText() || 'any';
               const defaultValue = member.initializer?.getText();
 
+              let resolvedDefault: unknown;
+              if (defaultValue) {
+                try {
+                  resolvedDefault = eval(defaultValue);
+                } catch {
+                  // Initializer references an identifier not in scope (e.g. imported constant)
+                  resolvedDefault = undefined;
+                }
+              }
               properties.push({
                 name,
                 type,
-                defaultValue: defaultValue ? eval(defaultValue) : undefined,
+                defaultValue: resolvedDefault,
               });
             }
           }
