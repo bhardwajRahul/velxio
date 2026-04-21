@@ -23,7 +23,7 @@ interface BoardTab {
 }
 
 const BOARD_TABS: BoardTab[] = [
-  { id: 'all',                label: 'All Boards',      color: '#ffffff', bg: '#444444' },
+  { id: 'all',                label: 'All',             color: '#ffffff', bg: '#444444' },
   { id: 'arduino-uno',        label: 'Arduino Uno',     color: '#ffffff', bg: '#007acc' },
   { id: 'arduino-nano',       label: 'Arduino Nano',    color: '#ffffff', bg: '#0055aa' },
   { id: 'arduino-mega',       label: 'Arduino Mega',    color: '#ffffff', bg: '#003388' },
@@ -31,6 +31,7 @@ const BOARD_TABS: BoardTab[] = [
   { id: 'esp32',              label: 'ESP32 (Xtensa)',  color: '#ffffff', bg: '#e77d11' },
   { id: 'esp32-c3',           label: 'ESP32-C3 (RISC-V)', color: '#ffffff', bg: '#27ae60' },
   { id: 'multi',              label: 'Multi-Board',     color: '#ffffff', bg: '#7b2d8b' },
+  { id: 'analog',             label: 'Analog',          color: '#ffffff', bg: '#0ea5a5' },
 ];
 
 function getBoardFilter(example: ExampleProject): string {

@@ -1329,18 +1329,28 @@ export const SimulatorCanvas = () => {
             {/* Status LED */}
             <span className={`status-dot ${running ? 'running' : 'stopped'}`} title={running ? 'Running' : 'Stopped'} />
 
-            {/* Active board selector (multi-board) */}
-            <select
-              className="board-selector"
-              value={activeBoardId ?? ''}
-              onChange={(e) => useSimulatorStore.getState().setActiveBoardId(e.target.value)}
-              disabled={running}
-              title="Active board"
-            >
-              {boards.map((b) => (
-                <option key={b.id} value={b.id}>{BOARD_KIND_LABELS[b.boardKind] ?? b.id}</option>
-              ))}
-            </select>
+            {/* Active board selector (multi-board) — hidden when no boards */}
+            {boards.length > 0 ? (
+              <select
+                className="board-selector"
+                value={activeBoardId ?? ''}
+                onChange={(e) => useSimulatorStore.getState().setActiveBoardId(e.target.value)}
+                disabled={running}
+                title="Active board"
+              >
+                {boards.map((b) => (
+                  <option key={b.id} value={b.id}>{BOARD_KIND_LABELS[b.boardKind] ?? b.id}</option>
+                ))}
+              </select>
+            ) : (
+              <span
+                className="board-selector"
+                style={{ opacity: 0.55, fontStyle: 'italic', cursor: 'default' }}
+                title="No board on canvas — add one with the Add button to compile and run code"
+              >
+                No board
+              </span>
+            )}
 
             {/* Serial Monitor toggle */}
             <button

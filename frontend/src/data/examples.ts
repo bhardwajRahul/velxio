@@ -5,6 +5,7 @@
  */
 
 import { circuitExamples } from './examples-circuits';
+import { analogExamples } from './examples-analog';
 
 /** Per-board setup for multi-board examples */
 export interface ExampleBoard {
@@ -4802,9 +4803,14 @@ void loop() {
 ];
 
 // Merge legacy examples with circuit-focused examples (analog, digital gates,
-// electromechanical). Declared after both arrays exist so the export is a
-// single immutable value — safe from tree-shaking quirks.
-export const exampleProjects: ExampleProject[] = [...legacyExamples, ...circuitExamples];
+// electromechanical) plus the board-less analog SPICE suite. Declared after
+// all arrays exist so the export is a single immutable value — safe from
+// tree-shaking quirks.
+export const exampleProjects: ExampleProject[] = [
+  ...legacyExamples,
+  ...circuitExamples,
+  ...analogExamples,
+];
 
 // Get examples by category
 export function getExamplesByCategory(category: ExampleProject['category']): ExampleProject[] {

@@ -506,9 +506,9 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
           {/* Compile */}
           <button
             onClick={handleCompile}
-            disabled={compiling}
+            disabled={compiling || !activeBoard}
             className="tb-btn tb-btn-compile"
-            title={compiling ? 'Loading…' : activeBoard?.languageMode === 'micropython' ? 'Load MicroPython' : 'Compile (Ctrl+B)'}
+            title={!activeBoard ? 'Add a board to compile' : compiling ? 'Loading…' : activeBoard?.languageMode === 'micropython' ? 'Load MicroPython' : 'Compile (Ctrl+B)'}
           >
             {compiling ? (
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="spin">
@@ -526,9 +526,9 @@ export const EditorToolbar = ({ consoleOpen, setConsoleOpen, compileLogs: _compi
           {/* Run */}
           <button
             onClick={handleRun}
-            disabled={running || compiling}
+            disabled={running || compiling || !activeBoard}
             className="tb-btn tb-btn-run"
-            title={activeBoard?.languageMode === 'micropython' ? 'Run MicroPython' : 'Run (auto-compiles if needed)'}
+            title={!activeBoard ? 'Add a board to run' : activeBoard?.languageMode === 'micropython' ? 'Run MicroPython' : 'Run (auto-compiles if needed)'}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="5,3 19,12 5,21" />

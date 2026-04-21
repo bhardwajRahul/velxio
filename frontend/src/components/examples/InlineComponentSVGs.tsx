@@ -231,6 +231,20 @@ const SignalGenerator: React.FC<InlineSVGProps> = ({ w, h }) => (
   </svg>
 );
 
+function meterGlyph(label: string, w: number, h: number): React.ReactElement {
+  return (
+    <svg width={w} height={h} viewBox="0 0 72 56" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="2" width="68" height="52" rx="4" fill="#111827" stroke="#e5e7eb" strokeWidth="1.2"/>
+      <rect x="8" y="8" width="56" height="22" rx="2" fill="#0b1220" stroke="#22d3ee" strokeWidth="1"/>
+      <text x="36" y="24" textAnchor="middle" fontSize="10" fill="#22d3ee" fontFamily="monospace">{label}</text>
+      <line x1="0"  y1="48" x2="8"  y2="48" stroke="#888" strokeWidth="2"/>
+      <line x1="64" y1="48" x2="72" y2="48" stroke="#888" strokeWidth="2"/>
+    </svg>
+  );
+}
+const Voltmeter: React.FC<InlineSVGProps> = ({ w, h }) => meterGlyph('V', w, h);
+const Ammeter:   React.FC<InlineSVGProps> = ({ w, h }) => meterGlyph('A', w, h);
+
 // ─── Registry ──────────────────────────────────────────────────────────────
 interface InlineEntry {
   component: React.FC<InlineSVGProps>;
@@ -300,4 +314,7 @@ export const INLINE_SVGS: Record<string, InlineEntry> = {
   'wokwi-battery-9v':      { component: Battery9V, w: 48, h: 72 },
   'wokwi-battery-aa':      { component: Battery9V, w: 48, h: 72 },
   'wokwi-signal-generator': { component: SignalGenerator, w: 80, h: 64 },
+  // Instruments
+  'wokwi-instr-voltmeter': { component: Voltmeter, w: 72, h: 56 },
+  'wokwi-instr-ammeter':   { component: Ammeter,   w: 72, h: 56 },
 };
