@@ -23,10 +23,12 @@
  */
 
 // ─── Shared colours ───────────────────────────────────────────────────────────
-const FILL   = '#f4f0e8';
-const STROKE = '#2a2a2a';
-const LEAD   = '#555555';
-const LABEL  = '#333333';
+// Tuned for the dark (#1a1a1a) simulator canvas — symbols must read as
+// light schematic strokes, not dark-on-dark.
+const STROKE = '#e6e6e6';   // primary symbol strokes (base bar, channel)
+const LEAD   = '#b8b8b8';   // pin leads
+const LABEL  = '#d0d0d0';   // pin letters / part number
+const BODY   = '#7a7a7a';   // optional body-circle outline
 const STYLE  = ':host{display:inline-block;line-height:0}';
 
 function threePinInfo(pins: Array<{ name: string; x: number; y: number; number: number }>) {
@@ -42,39 +44,36 @@ function threePinInfo(pins: Array<{ name: string; x: number; y: number; number: 
 // Arrow on emitter lead segment (46..56, y=50..56) — NPN points outward, PNP inward.
 
 function bjtSvg(arrowDir: 'npn' | 'pnp', text: string): string {
-  // Emitter arrow: two line pairs forming an arrowhead near the emitter segment
+  // Symmetric triangle arrowhead on the horizontal emitter line at y=48.
+  // NPN points OUT (rightward, away from base); PNP points IN (leftward, toward base).
   const arrowhead =
     arrowDir === 'npn'
-      ? `
-        <!-- NPN: arrow points OUT from base, toward emitter -->
-        <polygon points="40,52 46,48 44,55" fill="${STROKE}"/>`
-      : `
-        <!-- PNP: arrow points IN toward base -->
-        <polygon points="28,44 22,48 26,51" fill="${STROKE}"/>`;
+      ? `<polygon points="44,48 36,44 36,52" fill="${STROKE}"/>`
+      : `<polygon points="22,48 30,44 30,52" fill="${STROKE}"/>`;
 
   return `
     <style>${STYLE}</style>
     <svg width="72" height="72" xmlns="http://www.w3.org/2000/svg">
-      <!-- Base -->
-      <line x1="0" y1="36" x2="22" y2="36" stroke="${LEAD}" stroke-width="2"/>
-      <line x1="22" y1="14" x2="22" y2="58" stroke="${STROKE}" stroke-width="2.5"/>
+      <!-- Body circle (clean outline, no fill — TO-92 hint) -->
+      <circle cx="34" cy="36" r="22" fill="none" stroke="${BODY}" stroke-width="1.2"/>
+      <!-- Base lead + bar -->
+      <line x1="0"  y1="36" x2="22" y2="36" stroke="${LEAD}"   stroke-width="2"/>
+      <line x1="22" y1="14" x2="22" y2="58" stroke="${STROKE}" stroke-width="3"/>
       <!-- Collector side -->
-      <line x1="22" y1="24" x2="46" y2="24" stroke="${STROKE}" stroke-width="1.5"/>
+      <line x1="22" y1="24" x2="46" y2="24" stroke="${STROKE}" stroke-width="2"/>
       <line x1="46" y1="24" x2="46" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
       <line x1="46" y1="6"  x2="60" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
       <line x1="60" y1="0"  x2="60" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
       <!-- Emitter side -->
-      <line x1="22" y1="48" x2="46" y2="48" stroke="${STROKE}" stroke-width="1.5"/>
+      <line x1="22" y1="48" x2="46" y2="48" stroke="${STROKE}" stroke-width="2"/>
       <line x1="46" y1="48" x2="46" y2="66" stroke="${LEAD}"   stroke-width="2"/>
       <line x1="46" y1="66" x2="60" y2="66" stroke="${LEAD}"   stroke-width="2"/>
       <line x1="60" y1="66" x2="60" y2="72" stroke="${LEAD}"   stroke-width="2"/>
       ${arrowhead}
-      <!-- Body circle (optional TO-92 style) -->
-      <circle cx="34" cy="36" r="22" fill="${FILL}" fill-opacity="0.2" stroke="${STROKE}" stroke-width="1" stroke-opacity="0.4"/>
       <!-- Pin labels -->
-      <text x="50" y="14" font-family="sans-serif" font-size="7" fill="${LABEL}">C</text>
-      <text x="2"  y="32" font-family="sans-serif" font-size="7" fill="${LABEL}">B</text>
-      <text x="50" y="64" font-family="sans-serif" font-size="7" fill="${LABEL}">E</text>
+      <text x="50" y="14" font-family="sans-serif" font-size="8" fill="${LABEL}">C</text>
+      <text x="2"  y="32" font-family="sans-serif" font-size="8" fill="${LABEL}">B</text>
+      <text x="50" y="64" font-family="sans-serif" font-size="8" fill="${LABEL}">E</text>
       <!-- Part number -->
       <text x="36" y="78" text-anchor="middle" font-family="sans-serif" font-size="7" fill="${LABEL}" font-weight="bold">${text}</text>
     </svg>`;
@@ -104,37 +103,40 @@ function makeBjtClass(label: string, polarity: 'npn' | 'pnp') {
 // for PMOS points FROM channel OUT toward substrate.
 
 function mosfetSvg(polarity: 'nmos' | 'pmos', text: string): string {
+  // Symmetric arrowhead between gate plate and channel.
+  // NMOS: arrow points INTO the channel (rightward).
+  // PMOS: arrow points AWAY from channel (leftward).
   const arrow = polarity === 'nmos'
-    ? `<polygon points="24,36 32,32 32,40" fill="${STROKE}"/>`   // NMOS arrow into channel
-    : `<polygon points="32,36 24,32 24,40" fill="${STROKE}"/>`;  // PMOS arrow away
+    ? `<polygon points="24,36 18,32 18,40" fill="${STROKE}"/>`
+    : `<polygon points="18,36 24,32 24,40" fill="${STROKE}"/>`;
 
   return `
     <style>${STYLE}</style>
     <svg width="72" height="72" xmlns="http://www.w3.org/2000/svg">
+      <!-- Body circle (clean outline only) -->
+      <circle cx="34" cy="36" r="22" fill="none" stroke="${BODY}" stroke-width="1.2"/>
       <!-- Gate lead and gate plate -->
-      <line x1="0"  y1="36" x2="18" y2="36" stroke="${LEAD}"   stroke-width="2"/>
-      <line x1="18" y1="22" x2="18" y2="50" stroke="${STROKE}" stroke-width="2.5"/>
-      <!-- Channel line (drain/source side, with small breaks to suggest enhancement mode) -->
-      <line x1="24" y1="22" x2="24" y2="28" stroke="${STROKE}" stroke-width="1.5"/>
-      <line x1="24" y1="32" x2="24" y2="40" stroke="${STROKE}" stroke-width="1.5"/>
-      <line x1="24" y1="44" x2="24" y2="50" stroke="${STROKE}" stroke-width="1.5"/>
+      <line x1="0"  y1="36" x2="16" y2="36" stroke="${LEAD}"   stroke-width="2"/>
+      <line x1="16" y1="22" x2="16" y2="50" stroke="${STROKE}" stroke-width="3"/>
+      <!-- Channel line with breaks (enhancement-mode hint) -->
+      <line x1="24" y1="22" x2="24" y2="28" stroke="${STROKE}" stroke-width="2"/>
+      <line x1="24" y1="32" x2="24" y2="40" stroke="${STROKE}" stroke-width="2"/>
+      <line x1="24" y1="44" x2="24" y2="50" stroke="${STROKE}" stroke-width="2"/>
       <!-- Drain side -->
-      <line x1="24" y1="22" x2="46" y2="22" stroke="${STROKE}" stroke-width="1.5"/>
+      <line x1="24" y1="22" x2="46" y2="22" stroke="${STROKE}" stroke-width="2"/>
       <line x1="46" y1="22" x2="46" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
       <line x1="46" y1="6"  x2="60" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
       <line x1="60" y1="0"  x2="60" y2="6"  stroke="${LEAD}"   stroke-width="2"/>
-      <!-- Source side + body tie (short horizontal back to channel) -->
-      <line x1="24" y1="50" x2="46" y2="50" stroke="${STROKE}" stroke-width="1.5"/>
+      <!-- Source side -->
+      <line x1="24" y1="50" x2="46" y2="50" stroke="${STROKE}" stroke-width="2"/>
       <line x1="46" y1="50" x2="46" y2="66" stroke="${LEAD}"   stroke-width="2"/>
       <line x1="46" y1="66" x2="60" y2="66" stroke="${LEAD}"   stroke-width="2"/>
       <line x1="60" y1="66" x2="60" y2="72" stroke="${LEAD}"   stroke-width="2"/>
       ${arrow}
-      <!-- Body outline -->
-      <circle cx="34" cy="36" r="22" fill="${FILL}" fill-opacity="0.2" stroke="${STROKE}" stroke-width="1" stroke-opacity="0.4"/>
       <!-- Pin labels -->
-      <text x="50" y="14" font-family="sans-serif" font-size="7" fill="${LABEL}">D</text>
-      <text x="2"  y="32" font-family="sans-serif" font-size="7" fill="${LABEL}">G</text>
-      <text x="50" y="64" font-family="sans-serif" font-size="7" fill="${LABEL}">S</text>
+      <text x="50" y="14" font-family="sans-serif" font-size="8" fill="${LABEL}">D</text>
+      <text x="2"  y="32" font-family="sans-serif" font-size="8" fill="${LABEL}">G</text>
+      <text x="50" y="64" font-family="sans-serif" font-size="8" fill="${LABEL}">S</text>
       <!-- Part number -->
       <text x="36" y="78" text-anchor="middle" font-family="sans-serif" font-size="7" fill="${LABEL}" font-weight="bold">${text}</text>
     </svg>`;

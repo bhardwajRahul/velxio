@@ -18,10 +18,14 @@
 
 import React from 'react';
 import type { ExampleProject, ExampleBoard } from '../../data/examples';
+import { INLINE_SVGS } from './InlineComponentSVGs';
 
 // ── Natural display sizes (px on the simulator canvas) ──────────────────────
+// A CompDef either points to a static file under /component-svgs/ (svg set) or
+// to an inline React component rendered via an inline <svg> (inline set).
 interface CompDef {
-  svg: string;   // filename under /component-svgs/
+  svg: string;   // filename under /component-svgs/ (empty string for inline)
+  inline?: React.FC<{ w: number; h: number }>;
   w: number;     // natural width in canvas-space pixels
   h: number;     // natural height in canvas-space pixels
 }
@@ -87,8 +91,19 @@ function getCompDef(type: string, props: Record<string, any>): CompDef {
     const colorSvg = LED_COLOR_SVG[(props.color as string)?.toLowerCase()] ?? 'wokwi-led.svg';
     return { ...COMP_DEFS['wokwi-led'], svg: colorSvg };
   }
-  return COMP_DEFS[type] ?? { svg: '', w: 50, h: 50 };
+  if (COMP_DEFS[type]) return COMP_DEFS[type];
+  const inline = INLINE_SVGS[type];
+  if (inline) return { svg: '', inline: inline.component, w: inline.w, h: inline.h };
+  // Unknown type — fall back to a small generic labeled box so it's visible.
+  return { svg: '', inline: unknownGlyph, w: 60, h: 40 };
 }
+
+const unknownGlyph: React.FC<{ w: number; h: number }> = ({ w, h }) => (
+  <svg width={w} height={h} viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="2" width="56" height="36" rx="3" fill="#3b3b3b" stroke="#888" strokeWidth="1" strokeDasharray="3,2"/>
+    <text x="30" y="24" textAnchor="middle" fontSize="9" fill="#ccc">?</text>
+  </svg>
+);
 
 // Whether a component type is the main board (already registered via boardType)
 function isBoardType(type: string): boolean {
@@ -116,6 +131,49 @@ interface LayoutItem {
   x: number;
   y: number;
   def: CompDef;
+  fixed?: boolean; // boards don't move during overlap resolution
+}
+
+/**
+ * Relax the layout so no two items overlap. Items declared `fixed` (boards)
+ * act as anchors; non-fixed items are pushed out along whichever axis needs
+ * the smaller shift. Runs up to MAX_ITER passes — convergence is fast for
+ * the 3–20 item preview circuits.
+ */
+function resolveOverlaps(items: LayoutItem[], gap = 8): void {
+  const MAX_ITER = 30;
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    let moved = false;
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const a = items[i];
+        const b = items[j];
+        const ax1 = a.x - gap, ax2 = a.x + a.def.w + gap;
+        const ay1 = a.y - gap, ay2 = a.y + a.def.h + gap;
+        const bx1 = b.x,        bx2 = b.x + b.def.w;
+        const by1 = b.y,        by2 = b.y + b.def.h;
+        const overlapX = Math.min(ax2, bx2) - Math.max(ax1, bx1);
+        const overlapY = Math.min(ay2, by2) - Math.max(ay1, by1);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+        // Decide which one to move. Fixed (board) never moves; otherwise move `b`.
+        const target = a.fixed ? b : (b.fixed ? a : b);
+        const anchor = target === a ? b : a;
+        if (target.fixed) continue; // both fixed — nothing we can do
+        // Shift along the axis of least displacement
+        if (overlapX < overlapY) {
+          const aCx = anchor.x + anchor.def.w / 2;
+          const tCx = target.x + target.def.w / 2;
+          target.x += tCx < aCx ? -overlapX : overlapX;
+        } else {
+          const aCy = anchor.y + anchor.def.h / 2;
+          const tCy = target.y + target.def.h / 2;
+          target.y += tCy < aCy ? -overlapY : overlapY;
+        }
+        moved = true;
+      }
+    }
+    if (!moved) return;
+  }
 }
 
 export const CircuitPreview: React.FC<CircuitPreviewProps> = ({
@@ -133,7 +191,7 @@ export const CircuitPreview: React.FC<CircuitPreviewProps> = ({
     // Multi-board layout
     example.boards.forEach((b: ExampleBoard) => {
       const def = BOARD_DEFS[b.boardKind] ?? { svg: '', w: 200, h: 140 };
-      items.push({ id: b.boardKind, x: b.x, y: b.y, def });
+      items.push({ id: b.boardKind, x: b.x, y: b.y, def, fixed: true });
     });
   } else {
     const boardKind = example.boardType ?? 'arduino-uno';
@@ -153,7 +211,7 @@ export const CircuitPreview: React.FC<CircuitPreviewProps> = ({
         : 150;
       const boardX = Math.max(40, minCompX - boardDef.w - 60);
       const boardY = Math.max(40, avgCompY - boardDef.h / 2);
-      items.push({ id: boardKind + '-board', x: boardX, y: boardY, def: boardDef });
+      items.push({ id: boardKind + '-board', x: boardX, y: boardY, def: boardDef, fixed: true });
     }
 
     // Add all components from the example
@@ -162,9 +220,15 @@ export const CircuitPreview: React.FC<CircuitPreviewProps> = ({
       const def = isBoardType(c.type) && boardDef
         ? boardDef
         : getCompDef(c.type, c.properties ?? {});
-      items.push({ id: c.id, x: c.x, y: c.y, def });
+      const fixed = isBoardType(c.type);
+      items.push({ id: c.id, x: c.x, y: c.y, def, fixed });
     });
   }
+
+  // ── Push overlapping components apart so nothing sits on top of the board
+  //    or another component in the preview (component sizes in inline SVG
+  //    renderers may not exactly match the authored canvas positions).
+  resolveOverlaps(items);
 
   // ── Bounding box & scale ─────────────────────────────────────────────────
   const PAD = 12;
@@ -222,26 +286,34 @@ export const CircuitPreview: React.FC<CircuitPreviewProps> = ({
     >
       {/* ── Component images ─────────────────────────────────────────────── */}
       {items.map(({ id, x, y, def }) => {
-        if (!def.svg) return null;
         const px = x * scale + dx;
         const py = y * scale + dy;
         const pw = def.w * scale;
         const ph = def.h * scale;
+        const wrapperStyle: React.CSSProperties = {
+          position: 'absolute',
+          left:   px,
+          top:    py,
+          width:  pw,
+          height: ph,
+          imageRendering: 'auto',
+          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
+        };
+        if (def.inline) {
+          const Inline = def.inline;
+          return (
+            <div key={id} style={wrapperStyle}>
+              <Inline w={pw} h={ph} />
+            </div>
+          );
+        }
+        if (!def.svg) return null;
         return (
           <img
             key={id}
             src={`/component-svgs/${def.svg}`}
             alt=""
-            style={{
-              position: 'absolute',
-              left:   px,
-              top:    py,
-              width:  pw,
-              height: ph,
-              imageRendering: 'auto',
-              // Filter to slightly darken components so they read well on dark bg
-              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))',
-            }}
+            style={wrapperStyle}
           />
         );
       })}

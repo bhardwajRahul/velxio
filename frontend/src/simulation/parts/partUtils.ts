@@ -7,27 +7,28 @@
 
 import type { AnySimulator } from './PartSimulationRegistry';
 import { RP2040Simulator } from '../RP2040Simulator';
-import { useSimulatorStore } from '../../store/useSimulatorStore';
+
+/** DOM event fired when a runtime part mutates a user-facing property. */
+export const PROPERTY_CHANGE_EVENT = 'velxio:property-change';
+
+export interface PropertyChangeDetail {
+    componentId: string;
+    propName: string;
+    value: unknown;
+}
 
 /**
- * Mirror a live DOM / sensor-panel value into the component's store properties
- * so SPICE's netlist memo invalidates and the next `maybeSolve()` picks up the
- * change. Without this, dragging a potentiometer, pressing a button, or moving
- * a sensor slider updates the ADC but leaves the SPICE netlist stale, so any
- * analog circuit driven by the input (comparators, op-amp networks, divider
- * bridges) freezes at the first `.op` solve.
- *
- * Idempotent — no-op when the value hasn't changed since the previous sync.
+ * Dispatch a property change so the canvas can route it through
+ * `updateComponent()`. Parts call this whenever a DOM / sensor-panel value
+ * mutates so the SPICE netlist memo invalidates and the next `maybeSolve()`
+ * picks up the change. Parts stay decoupled from Zustand — `SimulatorCanvas`
+ * is the single listener that applies the update.
  */
-export function syncStoreProperty(componentId: string, propName: string, value: unknown): void {
-    const store = useSimulatorStore.getState();
-    const comp = store.components.find((c) => c.id === componentId);
-    if (!comp) return;
-    const prev = comp.properties?.[propName];
-    if (String(prev) === String(value)) return;
-    store.updateComponent(componentId, {
-        properties: { ...comp.properties, [propName]: value },
-    });
+export function emitPropertyChange(componentId: string, propName: string, value: unknown): void {
+    if (typeof window === 'undefined') return;
+    if (typeof window.dispatchEvent !== 'function' || typeof CustomEvent !== 'function') return;
+    const detail: PropertyChangeDetail = { componentId, propName, value };
+    window.dispatchEvent(new CustomEvent(PROPERTY_CHANGE_EVENT, { detail }));
 }
 
 /** Read the ADC instance from the simulator (returns null if not initialized) */

@@ -1,7 +1,7 @@
 import { PartSimulationRegistry } from './PartSimulationRegistry';
 import type { AnySimulator } from './PartSimulationRegistry';
 import { RP2040Simulator } from '../RP2040Simulator';
-import { getADC, setAdcVoltage, syncStoreProperty } from './partUtils';
+import { getADC, setAdcVoltage, emitPropertyChange } from './partUtils';
 import { registerSensorUpdate, unregisterSensorUpdate } from '../SensorUpdateRegistry';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ PartSimulationRegistry.register('potentiometer', {
             }
             // Mirror to store so the SPICE netlist re-solves (op-amp
             // comparators, divider-driven circuits etc. depend on this).
-            syncStoreProperty(componentId, 'value', raw);
+            emitPropertyChange(componentId, 'value', raw);
         };
 
         onInput();
@@ -109,7 +109,7 @@ PartSimulationRegistry.register('slide-potentiometer', {
                 const volts = normalized * refVoltage;
                 setAdcVoltage(avrSimulator, arduinoPin, volts);
             }
-            syncStoreProperty(componentId, 'value', value);
+            emitPropertyChange(componentId, 'value', value);
         };
 
         onInput();
@@ -153,7 +153,7 @@ PartSimulationRegistry.register('photoresistor-sensor', {
                 }
                 // Mirror to store — maps the slider 0-1023 back to lux 0-1000
                 // so the SPICE photoresistor handler re-computes its R_ldr.
-                syncStoreProperty(componentId, 'lux', Math.round((val / 1023) * 1000));
+                emitPropertyChange(componentId, 'lux', Math.round((val / 1023) * 1000));
             }
         };
         element.addEventListener('input', onInput);
@@ -172,7 +172,7 @@ PartSimulationRegistry.register('photoresistor-sensor', {
                 if (pinAO !== null) {
                     setAdcVoltage(avrSimulator, pinAO, ((values.lux as number) / 1000) * 5.0);
                 }
-                syncStoreProperty(componentId, 'lux', values.lux);
+                emitPropertyChange(componentId, 'lux', values.lux);
             }
         });
 

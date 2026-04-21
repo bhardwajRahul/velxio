@@ -185,52 +185,55 @@ export const ComponentPickerModal: React.FC<ComponentPickerModalProps> = ({
           </div>
         ) : (
           <>
-            {/* Boards row in "All Components" view */}
-            {selectedCategory === 'all' && onSelectBoard && (
-              <div className="components-grid" style={{ borderBottom: '1px solid #333', paddingBottom: 8, marginBottom: 4 }}>
-                {ALL_BOARDS.filter((k) =>
-                  !searchQuery || BOARD_KIND_LABELS[k].toLowerCase().includes(searchQuery.toLowerCase())
-                ).map((kind) => (
-                  <BoardCard
-                    key={kind}
-                    kind={kind}
-                    onSelect={() => { onSelectBoard(kind); onClose(); }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Components Grid */}
-            <div className="components-grid">
-              {isLoading ? (
-                <div className="loading-state">
-                  <div className="spinner"></div>
-                  <p>Loading components...</p>
+            {/* Single scrollable area wrapping both the boards row (only in
+                "All Components" view) and the components grid, so the modal
+                shows ONE scrollbar instead of two stacked ones. */}
+            <div className="components-scroll">
+              {selectedCategory === 'all' && onSelectBoard && (
+                <div className="components-grid components-grid--inline" style={{ borderBottom: '1px solid #333', paddingBottom: 8, marginBottom: 4 }}>
+                  {ALL_BOARDS.filter((k) =>
+                    !searchQuery || BOARD_KIND_LABELS[k].toLowerCase().includes(searchQuery.toLowerCase())
+                  ).map((kind) => (
+                    <BoardCard
+                      key={kind}
+                      kind={kind}
+                      onSelect={() => { onSelectBoard(kind); onClose(); }}
+                    />
+                  ))}
                 </div>
-              ) : filteredComponents.length === 0 ? (
-                <div className="no-results">
-                  <p>No components found</p>
-                  {searchQuery && (
-                    <button
-                      className="clear-filters-btn"
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSelectedCategory('all');
-                      }}
-                    >
-                      Clear filters
-                    </button>
-                  )}
-                </div>
-              ) : (
-                filteredComponents.map((component) => (
-                  <ComponentCard
-                    key={component.id}
-                    component={component}
-                    onSelect={() => onSelectComponent(component)}
-                  />
-                ))
               )}
+
+              <div className="components-grid components-grid--inline">
+                {isLoading ? (
+                  <div className="loading-state">
+                    <div className="spinner"></div>
+                    <p>Loading components...</p>
+                  </div>
+                ) : filteredComponents.length === 0 ? (
+                  <div className="no-results">
+                    <p>No components found</p>
+                    {searchQuery && (
+                      <button
+                        className="clear-filters-btn"
+                        onClick={() => {
+                          setSearchQuery('');
+                          setSelectedCategory('all');
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredComponents.map((component) => (
+                    <ComponentCard
+                      key={component.id}
+                      component={component}
+                      onSelect={() => onSelectComponent(component)}
+                    />
+                  ))
+                )}
+              </div>
             </div>
 
             {/* Footer Info */}

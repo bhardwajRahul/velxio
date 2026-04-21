@@ -1,6 +1,6 @@
 import { PartSimulationRegistry } from './PartSimulationRegistry';
 import { useElectricalStore } from '../../store/useElectricalStore';
-import { syncStoreProperty } from './partUtils';
+import { emitPropertyChange } from './partUtils';
 
 /**
  * Basic Pushbutton implementation (full-size)
@@ -14,12 +14,12 @@ PartSimulationRegistry.register('pushbutton', {
         const onButtonPress = () => {
             if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, false); // Active LOW
             (element as any).pressed = true;
-            syncStoreProperty(componentId, 'pressed', true);
+            emitPropertyChange(componentId, 'pressed', true);
         };
         const onButtonRelease = () => {
             if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, true);
             (element as any).pressed = false;
-            syncStoreProperty(componentId, 'pressed', false);
+            emitPropertyChange(componentId, 'pressed', false);
         };
 
         element.addEventListener('button-press', onButtonPress);
@@ -43,12 +43,12 @@ PartSimulationRegistry.register('pushbutton-6mm', {
         const onPress = () => {
             if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, false);
             (element as any).pressed = true;
-            syncStoreProperty(componentId, 'pressed', true);
+            emitPropertyChange(componentId, 'pressed', true);
         };
         const onRelease = () => {
             if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, true);
             (element as any).pressed = false;
-            syncStoreProperty(componentId, 'pressed', false);
+            emitPropertyChange(componentId, 'pressed', false);
         };
 
         element.addEventListener('button-press', onPress);
@@ -72,13 +72,13 @@ PartSimulationRegistry.register('slide-switch', {
         const raw = (element as any).value;
         let state = raw === 1 || raw === '1';
         if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, state);
-        syncStoreProperty(componentId, 'value', state ? 1 : 0);
+        emitPropertyChange(componentId, 'value', state ? 1 : 0);
 
         const onChange = () => {
             const v = (element as any).value;
             state = v === 1 || v === '1';
             if (arduinoPin !== null) avrSimulator.setPinState(arduinoPin, state);
-            syncStoreProperty(componentId, 'value', state ? 1 : 0);
+            emitPropertyChange(componentId, 'value', state ? 1 : 0);
         };
 
         element.addEventListener('change', onChange);

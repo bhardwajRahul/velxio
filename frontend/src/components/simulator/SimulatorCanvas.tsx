@@ -14,6 +14,7 @@ import type { SegmentHandle } from './WireLayer';
 import { ElectricalOverlay } from '../analog-ui/ElectricalOverlay';
 import { BoardOnCanvas } from './BoardOnCanvas';
 import { PartSimulationRegistry } from '../../simulation/parts';
+import { PROPERTY_CHANGE_EVENT, type PropertyChangeDetail } from '../../simulation/parts/partUtils';
 import { isSpiceMapped } from '../../simulation/spice/componentToSpice';
 import { PinOverlay } from './PinOverlay';
 import { isBoardComponent, boardPinToNumber } from '../../utils/boardPinMapping';
@@ -220,6 +221,27 @@ export const SimulatorCanvas = () => {
   useEffect(() => {
     initSimulator();
   }, [initSimulator]);
+
+  // Runtime parts (pots, switches, sensor panels) emit
+  // `velxio:property-change` instead of writing the store directly — one
+  // listener here routes every mutation through `updateComponent()`, which
+  // is the same path the Property Dialog uses. Keeps parts decoupled from
+  // Zustand and guarantees the SPICE netlist memo invalidates on every
+  // user-driven property change.
+  useEffect(() => {
+    const onPropertyChange = (evt: Event) => {
+      const { componentId, propName, value } = (evt as CustomEvent<PropertyChangeDetail>).detail;
+      const state = useSimulatorStore.getState();
+      const comp = state.components.find((c) => c.id === componentId);
+      if (!comp) return;
+      if (String(comp.properties?.[propName]) === String(value)) return;
+      state.updateComponent(componentId, {
+        properties: { ...comp.properties, [propName]: value },
+      });
+    };
+    window.addEventListener(PROPERTY_CHANGE_EVENT, onPropertyChange);
+    return () => window.removeEventListener(PROPERTY_CHANGE_EVENT, onPropertyChange);
+  }, []);
 
   // Auto-start/stop Pi bridges when simulation state changes
   const startBoard = useSimulatorStore((s) => s.startBoard);
@@ -857,17 +879,23 @@ export const SimulatorCanvas = () => {
 
   // Handle component selection from modal
   const handleSelectComponent = (metadata: ComponentMetadata) => {
-    // Calculate grid position to avoid overlapping
-    // Use existing components count to determine position
-    const componentsCount = components.length;
-    const gridSize = 250; // Space between components
-    const cols = 3; // Components per row
+    // Anchor new components to the visible top-left of the canvas, so they
+    // appear in the user's current viewport regardless of pan/zoom (instead
+    // of growing off-screen at fixed world coords like (400, 100 + row*250)).
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const z = zoomRef.current || 1;
+    const screenMargin = 60; // px on screen — keeps the part off the toolbar/edge
+    const worldOrigin = rect
+      ? toWorld(rect.left + screenMargin, rect.top + screenMargin)
+      : { x: 100, y: 100 };
 
-    const col = componentsCount % cols;
-    const row = Math.floor(componentsCount / cols);
-
-    const x = 400 + (col * gridSize);
-    const y = 100 + (row * gridSize);
+    // Tile additional drops so they don't stack exactly on top of each other,
+    // while still landing inside the viewport.
+    const tileStep = 40 / z; // 40 screen-px between successive drops
+    const cols = 4;
+    const idx = components.length;
+    const x = worldOrigin.x + (idx % cols) * tileStep;
+    const y = worldOrigin.y + Math.floor(idx / cols) * tileStep;
 
     const component = createComponentFromMetadata(metadata, x, y);
     trackAddComponent(metadata.id);

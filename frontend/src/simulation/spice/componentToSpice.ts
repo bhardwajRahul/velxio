@@ -941,29 +941,43 @@ const MAPPERS: Record<string, Mapper> = {
   // uses a B-source that inverts the coil voltage as its control signal,
   // because ngspice SW has no "normally closed" mode.
   // Optional flyback diode across the coil (anode on COIL-, cathode on COIL+).
+  // NO and NC contact cards are only emitted when their respective pins are
+  // wired — leaving NC unconnected is a very common pattern and must not
+  // suppress the rest of the relay (coil + NO switch).
   relay: (comp, netLookup) => {
     const cp = netLookup('COIL+');
     const cn = netLookup('COIL-');
     const com = netLookup('COM');
     const no = netLookup('NO');
     const nc = netLookup('NC');
-    if (!cp || !cn || !com || !no || !nc) return null;
+    // Coil pins must be present — without them the relay can't be energised.
+    // COM is required too; without it, neither NO nor NC contact is useful.
+    if (!cp || !cn || !com) return null;
     const coilR = Number(comp.properties.coil_resistance ?? 70);
     const coilV = Number(comp.properties.coil_voltage ?? 5);
     const threshold = coilV * 0.6; // drop-in at 60% of nominal
     const hysteresis = coilV * 0.15;
     const includeFlyback = comp.properties.include_flyback !== false;
-    const ctrlInvNet = `${comp.id}_ncctrl`;
+    // A relay coil is a wire-wound inductor: R (of the copper) in SERIES
+    // with ideal L. Modelling R and L in parallel would make the coil a DC
+    // short — V(COIL+) ≡ V(COIL-) in .op analysis — so the switch control
+    // voltage is always 0 and the NO contact never closes.
+    const coilMidNet = `${comp.id}_coilmid`;
     const cards = [
-      `R_${comp.id}_coil ${cp} ${cn} ${coilR}`,
-      `L_${comp.id}_coil ${cp} ${cn} 20m`,
+      `R_${comp.id}_coil ${cp} ${coilMidNet} ${coilR}`,
+      `L_${comp.id}_coil ${coilMidNet} ${cn} 20m`,
+    ];
+    if (no) {
       // NO: closes when V_coil > Vt (normal SW behaviour)
-      `S_${comp.id}_no ${com} ${no} ${cp} ${cn} RELAY_SW`,
+      cards.push(`S_${comp.id}_no ${com} ${no} ${cp} ${cn} RELAY_SW`);
+    }
+    if (nc) {
       // NC: inverted control — B-source maps (V_coil → Vnom − V_coil) so that
       // SW still "turns on when ctrl > Vt", but meaning is inverted.
-      `B_${comp.id}_ncctrl ${ctrlInvNet} 0 V = ${coilV} - (V(${cp}) - V(${cn}))`,
-      `S_${comp.id}_nc ${com} ${nc} ${ctrlInvNet} 0 RELAY_SW`,
-    ];
+      const ctrlInvNet = `${comp.id}_ncctrl`;
+      cards.push(`B_${comp.id}_ncctrl ${ctrlInvNet} 0 V = ${coilV} - (V(${cp}) - V(${cn}))`);
+      cards.push(`S_${comp.id}_nc ${com} ${nc} ${ctrlInvNet} 0 RELAY_SW`);
+    }
     if (includeFlyback) {
       cards.push(`D_${comp.id}_fly ${cn} ${cp} D1N4148`);
     }

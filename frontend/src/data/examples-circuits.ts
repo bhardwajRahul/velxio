@@ -934,11 +934,17 @@ void loop() {
     description: 'Sum = A XOR B XOR Cin, Cout = (A AND B) OR (Cin AND (A XOR B)).',
     category: 'circuits', difficulty: 'intermediate',
     code: `// 1-bit full adder in software
-void setup() { Serial.begin(9600); pinMode(2,INPUT_PULLUP); pinMode(3,INPUT_PULLUP); pinMode(4,INPUT_PULLUP); }
+void setup() {
+  Serial.begin(9600);
+  pinMode(2,INPUT_PULLUP); pinMode(3,INPUT_PULLUP); pinMode(4,INPUT_PULLUP);
+  pinMode(5,OUTPUT); pinMode(6,OUTPUT);
+}
 void loop() {
   bool a=!digitalRead(2), b=!digitalRead(3), cin=!digitalRead(4);
   bool sum = a ^ b ^ cin;
   bool cout = (a&b) | (cin&(a^b));
+  digitalWrite(5, sum);
+  digitalWrite(6, cout);
   Serial.print("A="); Serial.print(a); Serial.print(" B="); Serial.print(b);
   Serial.print(" Cin="); Serial.print(cin); Serial.print(" Sum="); Serial.print(sum);
   Serial.print(" Cout="); Serial.println(cout);
@@ -949,8 +955,10 @@ void loop() {
       { type: 'wokwi-pushbutton', id: 'bA', x: 350, y: 60, properties: {} },
       { type: 'wokwi-pushbutton', id: 'bB', x: 350, y: 140, properties: {} },
       { type: 'wokwi-pushbutton', id: 'bCin', x: 350, y: 220, properties: {} },
-      { type: 'wokwi-led', id: 'sumLed', x: 480, y: 100, properties: { color: 'green' } },
-      { type: 'wokwi-led', id: 'coutLed', x: 480, y: 200, properties: { color: 'red' } },
+      { type: 'wokwi-resistor', id: 'rSum',  x: 440, y: 100, properties: { value: '220' } },
+      { type: 'wokwi-resistor', id: 'rCout', x: 440, y: 200, properties: { value: '220' } },
+      { type: 'wokwi-led', id: 'sumLed',  x: 540, y: 100, properties: { color: 'green' } },
+      { type: 'wokwi-led', id: 'coutLed', x: 540, y: 200, properties: { color: 'red' } },
     ],
     wires: [
       w('w1', ['arduino-uno','2'], ['bA','1.l']),
@@ -959,6 +967,14 @@ void loop() {
       w('w4', ['bB','2.l'], ['arduino-uno','GND'], '#000000'),
       w('w5', ['arduino-uno','4'], ['bCin','1.l']),
       w('w6', ['bCin','2.l'], ['arduino-uno','GND'], '#000000'),
+      // Sum LED: pin 5 → 220Ω → LED → GND
+      w('w7',  ['arduino-uno','5'], ['rSum','1']),
+      w('w8',  ['rSum','2'],        ['sumLed','A']),
+      w('w9',  ['sumLed','C'],      ['arduino-uno','GND'], '#000000'),
+      // Cout LED: pin 6 → 220Ω → LED → GND
+      w('w10', ['arduino-uno','6'], ['rCout','1']),
+      w('w11', ['rCout','2'],       ['coutLed','A']),
+      w('w12', ['coutLed','C'],     ['arduino-uno','GND'], '#000000'),
     ],
   },
 

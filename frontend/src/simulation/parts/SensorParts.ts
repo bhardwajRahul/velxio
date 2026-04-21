@@ -17,7 +17,7 @@
  */
 
 import { PartSimulationRegistry } from './PartSimulationRegistry';
-import { setAdcVoltage, syncStoreProperty } from './partUtils';
+import { setAdcVoltage, emitPropertyChange } from './partUtils';
 import { registerSensorUpdate, unregisterSensorUpdate } from '../SensorUpdateRegistry';
 
 // ─── Tilt Switch ─────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ PartSimulationRegistry.register('ntc-temperature-sensor', {
                 }
                 // Mirror to store — the SPICE ntc-temperature-sensor handler
                 // reads comp.properties.temperature when computing R_ntc.
-                syncStoreProperty(componentId, 'temperature', values.temperature);
+                emitPropertyChange(componentId, 'temperature', values.temperature);
             }
         });
 

@@ -135,13 +135,17 @@ describe('Half-Wave Rectifier — layer-by-layer reproduction', () => {
     expect(result.timeWaveforms!.nodes.has(a0Net)).toBe(true);
 
     // ── L5 ────────────────────────────────────────────────────────────────
+    // `rtw.time[last]` is the `.tran` STOP time (~80 ms — four periods of the
+    // 50 Hz signal), not the signal period. Sample 8 phases across one real
+    // signal period (1/50 Hz = 20 ms); anything else aliases against the sine.
     console.log('\n=== L5 interpolateAt sanity at 8 phases ===');
     const rtw = result.timeWaveforms!;
     const rSamples = rtw.nodes.get(a0Net)!;
-    const periodS = rtw.time[rtw.time.length - 1];
+    const signalFreqHz = 50;
+    const signalPeriodS = 1 / signalFreqHz;
     const phases: Array<{ t: number; v: number }> = [];
     for (const q of [0, 1, 2, 3, 4, 5, 6, 7]) {
-      const t = (q / 8) * periodS;
+      const t = (q / 8) * signalPeriodS;
       const v = interpolateAt(rtw.time, rSamples, t);
       phases.push({ t, v });
       console.log(`  t = ${(t * 1000).toFixed(2)} ms → V(A0) = ${v.toFixed(3)} V`);
@@ -180,7 +184,7 @@ describe('Half-Wave Rectifier — layer-by-layer reproduction', () => {
     const adchSeries: number[] = [];
     for (let i = 0; i < STEPS; i++) {
       const simT = freshAvr.cpu.cycles / CPU_HZ;
-      const t = simT % periodS;
+      const t = simT % signalPeriodS;
       const v = interpolateAt(rtw.time, rSamples, t);
       setAdcVoltage(freshMock, 14, Math.max(0, Math.min(5, v)));
       freshAvr.runCycles(STEP_CYCLES);
@@ -200,131 +204,12 @@ describe('Half-Wave Rectifier — layer-by-layer reproduction', () => {
   }, 60_000);
 });
 
-// ── L8: live reproduction through the real wireElectricalSolver() ───────
-// This imports the actual store and solver bootstrap, exactly as EditorPage
-// does. If the app-level timing / subscription bug exists, this test will
-// reproduce it here. We stub `requestAnimationFrame` so we can drive replay
-// frames deterministically.
-describe('Half-Wave Rectifier — wireElectricalSolver live bootstrap', () => {
-  let rafCallbacks: Array<() => void>;
-
-  beforeEach(() => {
-    rafCallbacks = [];
-    vi.stubGlobal('requestAnimationFrame', (cb: () => void) => {
-      rafCallbacks.push(cb);
-      return rafCallbacks.length;
-    });
-    vi.stubGlobal('cancelAnimationFrame', () => {});
-    // wireElectricalSolver installs window.__spiceDebug — give it a target
-    vi.stubGlobal('window', globalThis);
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  async function flushRaf() {
-    // Pop and run any queued callbacks; each one may queue the next frame.
-    while (rafCallbacks.length > 0) {
-      const cbs = rafCallbacks.splice(0, rafCallbacks.length);
-      for (const cb of cbs) {
-        try { cb(); } catch (e) { console.warn('RAF cb threw', e); }
-      }
-      // One trip through the queue per flushRaf call — caller iterates.
-      break;
-    }
-  }
-
-  it('invokes wireElectricalSolver against live stores populated by loadExample', async () => {
-    const { useSimulatorStore } = await import('../store/useSimulatorStore');
-    const { useElectricalStore } = await import('../store/useElectricalStore');
-    const { wireElectricalSolver } = await import('../simulation/spice/subscribeToStore');
-
-    // Replicate what loadExample() does: setComponents + setWires on the real store.
-    const snap = rectifierSnapshot();
-    console.log('\n=== L8 preparing live store ===');
-    const store = useSimulatorStore.getState();
-    console.log('initial boards:', store.boards.map((b) => ({ id: b.id, kind: b.boardKind })));
-
-    store.setComponents(
-      snap.components.map((c) => ({
-        id: c.id,
-        metadataId: c.metadataId,
-        x: 0,
-        y: 0,
-        properties: c.properties,
-      })),
-    );
-    store.setWires(
-      snap.wires.map((w) => ({
-        id: w.id,
-        start: { componentId: w.start.componentId, pinName: w.start.pinName, x: 0, y: 0 },
-        end: { componentId: w.end.componentId, pinName: w.end.pinName, x: 0, y: 0 },
-        color: '#ffaa00',
-        waypoints: [],
-      })),
-    );
-    console.log('components set:', useSimulatorStore.getState().components.map((c) => c.id));
-    console.log('wires set:', useSimulatorStore.getState().wires.length);
-
-    // Now mount wireElectricalSolver — exactly as EditorPage useEffect does.
-    console.log('\n=== L8 calling wireElectricalSolver() ===');
-    const unsub = wireElectricalSolver();
-
-    // Give the debounced solve (50ms) + async ngspice time to complete.
-    // Poll the store until timeWaveforms appears or we time out.
-    const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline) {
-      const es = useElectricalStore.getState();
-      if (es.timeWaveforms) break;
-      await new Promise((r) => setTimeout(r, 50));
-    }
-
-    const finalES = useElectricalStore.getState();
-    console.log('\n=== L8 electrical store after solve ===');
-    console.log('analysisMode:', finalES.analysisMode);
-    console.log('converged:', finalES.converged, 'error:', finalES.error);
-    console.log('pinNetMap size:', finalES.pinNetMap.size, 'entries:', [...finalES.pinNetMap.entries()].slice(0, 16));
-    console.log('hasTimeWaveforms:', !!finalES.timeWaveforms);
-    if (finalES.timeWaveforms) {
-      console.log('timeWaveforms.nodes keys:', [...finalES.timeWaveforms.nodes.keys()]);
-      const a0Net = finalES.pinNetMap.get('arduino-uno:A0');
-      console.log('arduino-uno:A0 → net:', a0Net);
-      if (a0Net) {
-        const samples = finalES.timeWaveforms.nodes.get(a0Net);
-        if (samples) {
-          console.log(`samples @ A0 net: peak=${Math.max(...samples).toFixed(3)} V, count=${samples.length}`);
-        } else {
-          console.log('!!! a0Net has no samples in timeWaveforms.nodes !!!');
-        }
-      } else {
-        console.log('!!! pinNetMap does not contain arduino-uno:A0 !!!');
-      }
-    }
-    console.log('RAF queued frames:', rafCallbacks.length);
-
-    // Drain some RAF frames to confirm the replay actually writes into AVRADC.
-    const sim = (await import('../store/useSimulatorStore')).getBoardSimulator('arduino-uno');
-    console.log('live simulator:', sim ? 'present' : 'absent');
-    if (sim) {
-      const adc = (sim as unknown as { getADC: () => { channelValues: Float32Array | number[] } }).getADC();
-      console.log('ADC channelValues BEFORE RAF:', adc ? [...adc.channelValues].slice(0, 6) : 'no adc');
-      // Drive 10 RAF frames simulating ~160ms of real time
-      for (let i = 0; i < 10; i++) await flushRaf();
-      console.log('RAF callbacks after drain:', rafCallbacks.length);
-      console.log('ADC channelValues AFTER RAF:', adc ? [...adc.channelValues].slice(0, 6) : 'no adc');
-    }
-
-    unsub();
-
-    // Assertions — the pipeline should have produced a valid waveform.
-    expect(finalES.converged).toBe(true);
-    expect(finalES.analysisMode).toBe('tran');
-    expect(finalES.timeWaveforms).toBeDefined();
-    expect(finalES.pinNetMap.size).toBeGreaterThan(0);
-    expect(finalES.pinNetMap.has('arduino-uno:A0')).toBe(true);
-  }, 45_000);
-});
+// ── L8 extracted to `spice-rectifier-live-bootstrap.test.ts` ─────────────
+// The live-bootstrap block ran against the real singleton ngspice-WASM
+// engine. When L1/L3 solved first in the same process, realloc exploded
+// with "Not enough memory or heap corruption" and the electrical store
+// fell back to `op`. Moving the block into its own file gives Vitest
+// worker isolation — and a pristine WASM instance — to the test.
 
 // ── L9: per-read onADCRead hook (RAF replay removed in Phase 1) ──────────
 // The previous version of this block flushed RAF frames and expected
