@@ -6,7 +6,7 @@
 import type { ExampleProject } from '../data/examples';
 import type { BoardKind } from '../types/board';
 import { useEditorStore } from '../store/useEditorStore';
-import { useSimulatorStore } from '../store/useSimulatorStore';
+import { useSimulatorStore, DEFAULT_BOARD_POSITION } from '../store/useSimulatorStore';
 import { useVfsStore } from '../store/useVfsStore';
 import { isBoardComponent } from './boardPinMapping';
 import { getInstalledLibraries, installLibrary } from '../services/libraryService';
@@ -155,7 +155,19 @@ export async function loadExample(
       currentIds.forEach((id) => removeBoard(id));
     } else {
       const targetBoard = example.boardType || 'arduino-uno';
-      setBoardType(targetBoard);
+      // If boards[] is empty (e.g. a previous analog example removed every
+      // board), setBoardType can't work — it only maps over existing entries.
+      // Add a fresh board instead.
+      if (useSimulatorStore.getState().boards.length === 0) {
+        const newId = addBoard(
+          targetBoard as BoardKind,
+          DEFAULT_BOARD_POSITION.x,
+          DEFAULT_BOARD_POSITION.y,
+        );
+        setActiveBoardId(newId);
+      } else {
+        setBoardType(targetBoard);
+      }
     }
     useEditorStore.getState().setCode(example.code);
 
