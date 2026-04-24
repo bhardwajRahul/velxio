@@ -1026,7 +1026,7 @@
           "name": "lux",
           "type": "number",
           "defaultValue": 500,
-          "control": "range",
+          "control": "number",
           "min": 0,
           "max": 100000,
           "description": "Illumination in lux"

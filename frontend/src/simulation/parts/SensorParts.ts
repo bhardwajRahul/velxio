@@ -4,6 +4,7 @@
  * Implements:
  *  - tilt-switch
  *  - ntc-temperature-sensor
+ *  - photodiode
  *  - gas-sensor (MQ-series)
  *  - flame-sensor
  *  - heart-beat-sensor
@@ -94,6 +95,28 @@ PartSimulationRegistry.register('ntc-temperature-sensor', {
 
     return () => {
       element.removeEventListener('input', onInput);
+      unregisterSensorUpdate(componentId);
+    };
+  },
+});
+
+// ─── Photodiode ──────────────────────────────────────────────────────────────
+
+/**
+ * Photodiode — 2-terminal passive, reverse-biased light sensor. The SPICE
+ * emitter (componentToSpice.ts) reads `properties.lux` and drives a current
+ * source (100 nA/lux). This handler wires the SensorControlPanel slider so
+ * moving it updates the store → netlist rebuild → re-solve.
+ */
+PartSimulationRegistry.register('photodiode', {
+  attachEvents: (_element, _simulator, _getArduinoPinHelper, componentId) => {
+    registerSensorUpdate(componentId, (values) => {
+      if ('lux' in values) {
+        emitPropertyChange(componentId, 'lux', values.lux);
+      }
+    });
+
+    return () => {
       unregisterSensorUpdate(componentId);
     };
   },
