@@ -329,6 +329,18 @@ export const SEO_ROUTES: SeoRoute[] = [
       url: `${DOMAIN}/v2`,
     },
   },
+  {
+    path: '/v2-5',
+    priority: 0.95,
+    changefreq: 'weekly',
+    seoMeta: {
+      title:
+        'Velxio 2.5 — Arduino + SPICE Analog Circuit Simulator in Your Browser | ngspice-WASM',
+      description:
+        'Velxio 2.5 brings real-time analog circuit simulation via ngspice-WASM. Hybrid digital + analog co-simulation: resistors, capacitors, inductors, op-amps, transistors, voltmeters, ammeters — wired to Arduino, ESP32, RP2040 GPIO/ADC. 40+ circuit examples. Free and open-source.',
+      url: `${DOMAIN}/v2-5`,
+    },
+  },
 
   // ── About
   {
