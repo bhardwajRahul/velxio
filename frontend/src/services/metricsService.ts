@@ -193,6 +193,44 @@ export async function adminGetUserMetrics(
   return data;
 }
 
+export interface DailyProjectActivity {
+  date: string;
+  project_id: string | null;
+  project_name: string | null;
+  compiles: number;
+  compile_errors: number;
+  runs: number;
+  saves: number;
+}
+
+export interface DailyTotals {
+  date: string;
+  compiles: number;
+  compile_errors: number;
+  runs: number;
+  saves: number;
+  distinct_projects: number;
+}
+
+export interface UserDailyActivityResponse {
+  user_id: string;
+  username: string;
+  range_days: number;
+  entries: DailyProjectActivity[];
+  daily_totals: DailyTotals[];
+}
+
+export async function adminGetUserActivity(
+  userId: string,
+  rangeDays = 30,
+): Promise<UserDailyActivityResponse> {
+  const { data } = await api.get<UserDailyActivityResponse>(
+    `/admin/metrics/users/${userId}/activity`,
+    { params: { range_days: rangeDays } },
+  );
+  return data;
+}
+
 export async function adminGetProjectMetrics(
   projectId: string,
   rangeDays = 30,

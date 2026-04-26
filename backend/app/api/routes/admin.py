@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import distinct, func, select
+from sqlalchemy import case, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import require_admin
@@ -21,12 +21,15 @@ from app.schemas.admin import (
     BoardsResponse,
     CountriesResponse,
     CountryEntry,
+    DailyProjectActivity,
+    DailyTotals,
     OverviewResponse,
     ProjectMetricsResponse,
     TimeseriesPoint,
     TimeseriesResponse,
     TopProjectEntry,
     TopUserEntry,
+    UserDailyActivityResponse,
     UserMetricsResponse,
 )
 from app.utils.slug import is_valid_username
@@ -381,7 +384,7 @@ async def metrics_boards(
                 group_col.label("g"),
                 func.count(UsageEvent.id).label("compile_count"),
                 func.sum(
-                    func.case((UsageEvent.event_type == "compile_error", 1), else_=0)
+                    case((UsageEvent.event_type == "compile_error", 1), else_=0)
                 ).label("compile_error_count"),
                 func.count(distinct(UsageEvent.user_id)).label("distinct_users"),
                 func.count(distinct(UsageEvent.project_id)).label("distinct_projects"),
@@ -637,13 +640,13 @@ async def metrics_countries(
             select(
                 UsageEvent.country,
                 func.sum(
-                    func.case(
+                    case(
                         (UsageEvent.event_type.in_(("compile", "compile_error")), 1),
                         else_=0,
                     )
                 ).label("compiles"),
                 func.sum(
-                    func.case((UsageEvent.event_type == "run", 1), else_=0)
+                    case((UsageEvent.event_type == "run", 1), else_=0)
                 ).label("runs"),
                 func.count(distinct(UsageEvent.user_id)).label("active_users"),
             )
@@ -698,6 +701,126 @@ async def metrics_countries(
     )
 
     return CountriesResponse(range_days=range_days, entries=entries)
+
+
+@router.get(
+    "/metrics/users/{user_id}/activity",
+    response_model=UserDailyActivityResponse,
+)
+async def metrics_user_daily_activity(
+    user_id: str,
+    range_days: int = Query(30, ge=1, le=365),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Per-day, per-project breakdown of one user's activity.
+
+    Returns one row per (day, project) tuple plus a flat per-day totals
+    list. Useful for answering "which projects did Alice work on
+    yesterday and how many times did she compile each?".
+    """
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    since = _now() - timedelta(days=range_days)
+    bucket = func.strftime("%Y-%m-%d", UsageEvent.created_at).label("day")
+
+    # Per-(day, project) counts
+    rows = (
+        await db.execute(
+            select(
+                bucket,
+                UsageEvent.project_id,
+                func.sum(
+                    case((UsageEvent.event_type == "compile", 1), else_=0)
+                ).label("compiles"),
+                func.sum(
+                    case((UsageEvent.event_type == "compile_error", 1), else_=0)
+                ).label("compile_errors"),
+                func.sum(
+                    case((UsageEvent.event_type == "run", 1), else_=0)
+                ).label("runs"),
+                func.sum(
+                    case((UsageEvent.event_type == "save", 1), else_=0)
+                ).label("saves"),
+            )
+            .where(UsageEvent.user_id == user_id, UsageEvent.created_at >= since)
+            .group_by(bucket, UsageEvent.project_id)
+            .order_by(bucket.desc(), func.sum(
+                case((UsageEvent.event_type == "compile", 1), else_=0)
+            ).desc())
+        )
+    ).all()
+
+    # Resolve project names in one query (avoid N+1)
+    project_ids = {r[1] for r in rows if r[1] is not None}
+    name_map: dict[str, str] = {}
+    if project_ids:
+        proj_rows = (
+            await db.execute(
+                select(Project.id, Project.name).where(Project.id.in_(project_ids))
+            )
+        ).all()
+        name_map = {pid: name for pid, name in proj_rows}
+
+    entries = [
+        DailyProjectActivity(
+            date=row[0],
+            project_id=row[1],
+            project_name=name_map.get(row[1]) if row[1] else None,
+            compiles=int(row[2] or 0),
+            compile_errors=int(row[3] or 0),
+            runs=int(row[4] or 0),
+            saves=int(row[5] or 0),
+        )
+        for row in rows
+    ]
+
+    # Roll up to per-day totals
+    totals_rows = (
+        await db.execute(
+            select(
+                bucket,
+                func.sum(
+                    case((UsageEvent.event_type == "compile", 1), else_=0)
+                ).label("compiles"),
+                func.sum(
+                    case((UsageEvent.event_type == "compile_error", 1), else_=0)
+                ).label("compile_errors"),
+                func.sum(
+                    case((UsageEvent.event_type == "run", 1), else_=0)
+                ).label("runs"),
+                func.sum(
+                    case((UsageEvent.event_type == "save", 1), else_=0)
+                ).label("saves"),
+                func.count(distinct(UsageEvent.project_id)).label("distinct_projects"),
+            )
+            .where(UsageEvent.user_id == user_id, UsageEvent.created_at >= since)
+            .group_by(bucket)
+            .order_by(bucket.desc())
+        )
+    ).all()
+
+    daily_totals = [
+        DailyTotals(
+            date=row[0],
+            compiles=int(row[1] or 0),
+            compile_errors=int(row[2] or 0),
+            runs=int(row[3] or 0),
+            saves=int(row[4] or 0),
+            distinct_projects=int(row[5] or 0),
+        )
+        for row in totals_rows
+    ]
+
+    return UserDailyActivityResponse(
+        user_id=user.id,
+        username=user.username,
+        range_days=range_days,
+        entries=entries,
+        daily_totals=daily_totals,
+    )
 
 
 @router.get("/metrics/projects/{project_id}", response_model=ProjectMetricsResponse)

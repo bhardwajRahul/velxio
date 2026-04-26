@@ -16,6 +16,7 @@ import {
 } from '../services/adminService';
 import { AdminDashboardTab } from '../components/admin/AdminDashboardTab';
 import { AdminBoardsTab } from '../components/admin/AdminBoardsTab';
+import { UserActivityModal } from '../components/admin/UserActivityModal';
 import { countryFlag } from '../utils/countryFlag';
 
 type Tab = 'dashboard' | 'users' | 'projects' | 'boards';
@@ -300,6 +301,7 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [editUser, setEditUser] = useState<AdminUserResponse | null>(null);
+  const [activityUser, setActivityUser] = useState<AdminUserResponse | null>(null);
   const [error, setError] = useState('');
 
   const load = () => {
@@ -424,6 +426,9 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
                     <td style={s.td}>{formatRelative(u.last_active_at)}</td>
                     <td style={s.td}>{new Date(u.created_at).toLocaleDateString()}</td>
                     <td style={s.td}>
+                      <button style={s.activityBtn} onClick={() => setActivityUser(u)}>
+                        Activity
+                      </button>
                       <button style={s.editBtn} onClick={() => setEditUser(u)}>
                         Edit
                       </button>
@@ -450,6 +455,14 @@ function UsersTab({ currentUserId }: { currentUserId: string }) {
 
       {editUser && (
         <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSave={handleSave} />
+      )}
+
+      {activityUser && (
+        <UserActivityModal
+          userId={activityUser.id}
+          username={activityUser.username}
+          onClose={() => setActivityUser(null)}
+        />
       )}
     </div>
   );
@@ -892,6 +905,16 @@ const s: Record<string, React.CSSProperties> = {
     padding: '4px 10px',
     fontSize: 12,
     cursor: 'pointer',
+  },
+  activityBtn: {
+    background: '#2d3a5a',
+    border: 'none',
+    borderRadius: 4,
+    color: '#9cdcfe',
+    padding: '4px 10px',
+    fontSize: 12,
+    cursor: 'pointer',
+    marginRight: 4,
   },
   errPct: { color: '#f48771', fontSize: 11, marginLeft: 4 },
   boardChip: {

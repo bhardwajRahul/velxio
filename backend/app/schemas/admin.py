@@ -156,6 +156,35 @@ class CountriesResponse(BaseModel):
     entries: list[CountryEntry]
 
 
+class DailyProjectActivity(BaseModel):
+    """One row per (day, project) for a given user."""
+    date: str  # YYYY-MM-DD
+    project_id: str | None  # None for events without a project association
+    project_name: str | None  # None when the project was deleted
+    compiles: int  # successful compiles
+    compile_errors: int
+    runs: int
+    saves: int
+
+
+class UserDailyActivityResponse(BaseModel):
+    user_id: str
+    username: str
+    range_days: int
+    entries: list[DailyProjectActivity]
+    # Pre-aggregated totals per day (across all projects) for at-a-glance KPIs
+    daily_totals: list["DailyTotals"]
+
+
+class DailyTotals(BaseModel):
+    date: str
+    compiles: int
+    compile_errors: int
+    runs: int
+    saves: int
+    distinct_projects: int
+
+
 class ProjectMetricsResponse(BaseModel):
     project_id: str
     project_name: str
