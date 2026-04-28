@@ -112,6 +112,34 @@ export class ComponentRegistry {
         tags: ['ammeter', 'meter', 'probe', 'instrument', 'spice', 'current', 'multimeter', 'dmm'],
       });
 
+      // Custom Chip — user-supplied WASM compiled from C. Pin layout is
+      // dynamic (read from the per-instance chip.json properties), so
+      // pinCount=0 is just a placeholder for the picker grid.
+      data.components.push({
+        id: 'custom-chip',
+        tagName: 'velxio-custom-chip',
+        name: 'Custom Chip',
+        category: 'logic',
+        description:
+          'Write your own chip in C and compile to WebAssembly. Includes a gallery of examples (EEPROM, RTC, shift register, ADC, UART, …).',
+        thumbnail:
+          '<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="14" width="52" height="36" rx="3" fill="#1a1a1a" stroke="#888" stroke-width="2"/><rect x="2" y="20" width="6" height="3" fill="#c0c0c0"/><rect x="2" y="28" width="6" height="3" fill="#c0c0c0"/><rect x="2" y="36" width="6" height="3" fill="#c0c0c0"/><rect x="2" y="44" width="6" height="3" fill="#c0c0c0"/><rect x="56" y="20" width="6" height="3" fill="#c0c0c0"/><rect x="56" y="28" width="6" height="3" fill="#c0c0c0"/><rect x="56" y="36" width="6" height="3" fill="#c0c0c0"/><rect x="56" y="44" width="6" height="3" fill="#c0c0c0"/><text x="32" y="36" text-anchor="middle" font-family="monospace" font-size="9" font-weight="bold" fill="#e0e0e0">CHIP</text></svg>',
+        properties: [
+          { name: 'chipName',   type: 'string', defaultValue: 'My Chip' },
+          { name: 'sourceC',    type: 'string', defaultValue: '' },
+          { name: 'chipJson',   type: 'string', defaultValue: '{"name":"My Chip","pins":["IN","OUT","GND","VCC"]}' },
+          { name: 'wasmBase64', type: 'string', defaultValue: '' },
+        ],
+        defaultValues: {
+          chipName: 'My Chip',
+          sourceC: '',
+          chipJson: '{"name":"My Chip","pins":["IN","OUT","GND","VCC"]}',
+          wasmBase64: '',
+        },
+        pinCount: 0,
+        tags: ['custom', 'chip', 'wasm', 'c', 'wokwi', 'eeprom', 'rtc', 'logic'],
+      });
+
       this.processMetadata(data.components);
       this.loaded = true;
 

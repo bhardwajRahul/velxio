@@ -50,6 +50,7 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
     ExampleProject['difficulty'] | 'all'
   >('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [search, setSearch] = useState<string>('');
 
   const handleCopyLink = useCallback((e: React.MouseEvent, exampleId: string) => {
     e.stopPropagation(); // Don't trigger card click
@@ -60,11 +61,36 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
     });
   }, []);
 
+  // Pre-tokenise the search string once per keystroke. Each token must match
+  // somewhere in the example's haystack, so users can type "esp32 oled dht"
+  // and find every project that hits all three.
+  const searchTokens = search
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const exampleHaystack = (example: ExampleProject): string =>
+    [
+      example.title,
+      example.description,
+      example.category,
+      example.difficulty,
+      getBoardFilter(example),
+      ...(example.tags ?? []),
+      ...example.components.map((c) => c.type),
+    ]
+      .join(' ')
+      .toLowerCase();
+
   const filteredExamples = exampleProjects.filter((example) => {
     const boardMatch = selectedBoard === 'all' || getBoardFilter(example) === selectedBoard;
     const catMatch = selectedCategory === 'all' || example.category === selectedCategory;
     const diffMatch = selectedDifficulty === 'all' || example.difficulty === selectedDifficulty;
-    return boardMatch && catMatch && diffMatch;
+    if (!boardMatch || !catMatch || !diffMatch) return false;
+    if (searchTokens.length === 0) return true;
+    const hay = exampleHaystack(example);
+    return searchTokens.every((tok) => hay.includes(tok));
   });
 
   // Count per board for tab badges
@@ -167,6 +193,52 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
       <div className="examples-header">
         <h1>Featured Projects</h1>
         <p>Explore and run example projects — organized by board</p>
+      </div>
+
+      {/* Search */}
+      <div className="examples-search">
+        <div className="examples-search-wrap">
+          <svg
+            className="examples-search-icon"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            type="search"
+            className="examples-search-input"
+            placeholder="Search examples — try 'esp32 oled', 'blink', 'dht'…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search examples"
+          />
+          {search && (
+            <button
+              type="button"
+              className="examples-search-clear"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              title="Clear"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {searchTokens.length > 0 && (
+          <span className="examples-search-count">
+            {filteredExamples.length} match
+            {filteredExamples.length === 1 ? '' : 'es'}
+          </span>
+        )}
       </div>
 
       {/* Board tabs */}
@@ -330,7 +402,27 @@ export const ExamplesGallery: React.FC<ExamplesGalleryProps> = ({ onLoadExample 
 
       {filteredExamples.length === 0 && (
         <div className="examples-empty">
-          <p>No examples found with the selected filters</p>
+          <p>
+            No examples found
+            {searchTokens.length > 0 ? ` for "${search.trim()}"` : ''} with the
+            selected filters
+          </p>
+          {(searchTokens.length > 0 ||
+            selectedBoard !== 'all' ||
+            selectedCategory !== 'all' ||
+            selectedDifficulty !== 'all') && (
+            <button
+              className="examples-empty-reset"
+              onClick={() => {
+                setSearch('');
+                setSelectedBoard('all');
+                setSelectedCategory('all');
+                setSelectedDifficulty('all');
+              }}
+            >
+              Reset filters
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@
 
 import { circuitExamples } from './examples-circuits';
 import { analogExamples } from './examples-analog';
+import { hundredDaysExamples } from './examples-100-days';
 
 /** Per-board setup for multi-board examples */
 export interface ExampleBoard {
@@ -41,8 +42,22 @@ export interface ExampleProject {
    * Wire componentIds reference these IDs directly.
    */
   boards?: ExampleBoard[];
-  /** Code for single-board examples (ignored when boards[] is set) */
+  /** Code for single-board examples (ignored when boards[] is set, or when files[] is provided). */
   code: string;
+  /**
+   * Optional language mode for the active board. When 'micropython', loadExample
+   * switches the board into MicroPython mode before populating files.
+   */
+  languageMode?: 'arduino' | 'micropython';
+  /**
+   * Optional multi-file payload for single-board examples. When present it
+   * overrides ``code`` — every entry is loaded into the active file group as-is.
+   * Used by the MicroPython gallery to ship projects that have main.py plus
+   * helper modules (ssd1306.py, BlynkLib.py, …).
+   */
+  files?: Array<{ name: string; content: string }>;
+  /** Free-form tags surfaced in the gallery search box (board kind, sensors, protocol, …). */
+  tags?: string[];
   components: Array<{
     type: string;
     id: string;
@@ -2694,6 +2709,365 @@ void processCommand(const String& cmd) {
         color: '#000000',
       },
     ],
+  },
+
+  // ─── Dual Raspberry Pi Pico W — Multi-protocol bench ────────────────────────
+  // These three examples reproduce the exact wiring patterns the user reported
+  // at https://velxio.dev/project/cb406120-d40e-4225-bbfd-1b362a64445a — two
+  // Pico W boards talking to each other over UART / I2C / digital GPIO.
+  // The wire-aware Interconnect router (see frontend/src/simulation/Interconnect.ts)
+  // routes pin transitions and UART byte shortcuts between any two simulators
+  // along the wires defined here.
+
+  {
+    id: 'dual-pico-serial1-passthrough',
+    title: '[2× Pico W] Serial1 Passthrough (UART0)',
+    description:
+      'Two Raspberry Pi Pico W boards talking over Serial1 (UART0 on GP0/GP1). Pico A sends "PING #N" every second; Pico B replies "PONG #N". Open the Serial Monitor on each board to see the conversation.',
+    category: 'communication',
+    difficulty: 'intermediate',
+    boardFilter: 'raspberry-pi-pico',
+    code: '',
+    boards: [
+      {
+        boardKind: 'pi-pico-w',
+        x: 100,
+        y: 120,
+        code: `// Pico A — Serial1 ping/pong sender
+//
+// Wiring to Pico B:
+//   A.GP0 (TX) ──> B.GP1 (RX)
+//   A.GP1 (RX) <── B.GP0 (TX)
+//   A.GND     ──── B.GND
+//
+// Open the Serial Monitor on Pico A to see PONG replies coming back.
+
+void setup() {
+  Serial.begin(115200);   // USB-CDC console
+  Serial1.begin(9600);    // UART0 on GP0(TX)/GP1(RX)
+  pinMode(LED_BUILTIN, OUTPUT);
+  delay(500);
+  Serial.println("Pico A ready — sending PING every second.");
+}
+
+unsigned long lastSend = 0;
+uint32_t counter = 0;
+String rx = "";
+
+void loop() {
+  // Send a PING every 1 s
+  if (millis() - lastSend >= 1000) {
+    lastSend = millis();
+    counter++;
+    Serial1.print("PING #");
+    Serial1.println(counter);
+    digitalWrite(LED_BUILTIN, HIGH);
+  }
+
+  // Echo any reply from Pico B onto the USB console
+  while (Serial1.available()) {
+    char c = (char)Serial1.read();
+    if (c == '\\n') {
+      Serial.print("[A] got: ");
+      Serial.println(rx);
+      rx = "";
+      digitalWrite(LED_BUILTIN, LOW);
+    } else if (c != '\\r') {
+      rx += c;
+    }
+  }
+}
+`,
+      },
+      {
+        boardKind: 'pi-pico-w',
+        x: 520,
+        y: 120,
+        code: `// Pico B — Serial1 ping/pong responder
+//
+// Wiring to Pico A:
+//   B.GP0 (TX) ──> A.GP1 (RX)
+//   B.GP1 (RX) <── A.GP0 (TX)
+//   B.GND     ──── A.GND
+//
+// Open the Serial Monitor on Pico B to see PINGs as they arrive.
+
+void setup() {
+  Serial.begin(115200);
+  Serial1.begin(9600);
+  pinMode(LED_BUILTIN, OUTPUT);
+  delay(500);
+  Serial.println("Pico B ready — replying PONG to every PING.");
+}
+
+String rx = "";
+
+void loop() {
+  while (Serial1.available()) {
+    char c = (char)Serial1.read();
+    if (c == '\\n') {
+      Serial.print("[B] got: ");
+      Serial.println(rx);
+      // Echo back as PONG with the same number
+      // rx looks like "PING #42" — strip the prefix and reply.
+      int hash = rx.indexOf('#');
+      String n = (hash >= 0) ? rx.substring(hash + 1) : "?";
+      Serial1.print("PONG #");
+      Serial1.println(n);
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      rx = "";
+    } else if (c != '\\r') {
+      rx += c;
+    }
+  }
+}
+`,
+      },
+    ],
+    components: [],
+    wires: [
+      // A.GP0 (TX) → B.GP1 (RX)
+      {
+        id: 'w-a-tx-b-rx',
+        start: { componentId: 'pi-pico-w', pinName: 'GP0' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GP1' },
+        color: '#22cc22',
+      },
+      // B.GP0 (TX) → A.GP1 (RX)
+      {
+        id: 'w-b-tx-a-rx',
+        start: { componentId: 'pi-pico-w-2', pinName: 'GP0' },
+        end: { componentId: 'pi-pico-w', pinName: 'GP1' },
+        color: '#ffaa00',
+      },
+      // GND ↔ GND
+      {
+        id: 'w-gnd',
+        start: { componentId: 'pi-pico-w', pinName: 'GND' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['rp2040', 'pico', 'multi-board', 'uart', 'serial1', 'serial-passthrough'],
+  },
+
+  {
+    id: 'dual-pico-i2c-master-slave',
+    title: '[2× Pico W] I²C Master/Slave LED Control',
+    description:
+      'Pico A is the I²C master on Wire (GP4=SDA, GP5=SCL). It sends 1-byte commands (1=LED ON, 0=LED OFF) every second to Pico B at address 0x42. Pico B drives its built-in LED based on the command via Wire.onReceive.',
+    category: 'communication',
+    difficulty: 'intermediate',
+    boardFilter: 'raspberry-pi-pico',
+    code: '',
+    boards: [
+      {
+        boardKind: 'pi-pico-w',
+        x: 100,
+        y: 120,
+        code: `// Pico A — I²C master
+// Sends 1-byte commands to slave 0x42:
+//   0x01 → LED ON
+//   0x00 → LED OFF
+//
+// Wiring (use I²C0 on the Earle Philhower core):
+//   A.GP4 (SDA) ──── B.GP4 (SDA)
+//   A.GP5 (SCL) ──── B.GP5 (SCL)
+//   A.GND        ─── B.GND
+//
+// (Real hardware would also need 4.7 kΩ pull-ups on SDA and SCL — the
+//  emulator pulls them up automatically.)
+
+#include <Wire.h>
+
+const uint8_t SLAVE_ADDR = 0x42;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.setSDA(4);
+  Wire.setSCL(5);
+  Wire.begin();             // master mode
+  delay(500);
+  Serial.println("Pico A — I2C master ready.");
+}
+
+bool ledState = false;
+
+void loop() {
+  ledState = !ledState;
+  Wire.beginTransmission(SLAVE_ADDR);
+  Wire.write(ledState ? 0x01 : 0x00);
+  uint8_t err = Wire.endTransmission();
+
+  Serial.print("→ slave ");
+  Serial.print(ledState ? "ON " : "OFF");
+  Serial.print(" (err=");
+  Serial.print(err);
+  Serial.println(")");
+
+  delay(1000);
+}
+`,
+      },
+      {
+        boardKind: 'pi-pico-w',
+        x: 520,
+        y: 120,
+        code: `// Pico B — I²C slave at address 0x42
+// Receives 1-byte commands from Pico A and toggles LED_BUILTIN.
+
+#include <Wire.h>
+
+const uint8_t MY_ADDR = 0x42;
+
+void onReceive(int howMany) {
+  while (Wire.available()) {
+    uint8_t cmd = Wire.read();
+    digitalWrite(LED_BUILTIN, cmd ? HIGH : LOW);
+    Serial.print("[B] cmd=0x");
+    Serial.print(cmd, HEX);
+    Serial.println(cmd ? "  → LED ON" : "  → LED OFF");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
+  Wire.setSDA(4);
+  Wire.setSCL(5);
+  Wire.begin(MY_ADDR);          // slave mode at 0x42
+  Wire.onReceive(onReceive);
+  delay(500);
+  Serial.print("Pico B — I2C slave ready at 0x");
+  Serial.println(MY_ADDR, HEX);
+}
+
+void loop() {
+  // Nothing to do — Wire.onReceive is event-driven.
+}
+`,
+      },
+    ],
+    components: [],
+    wires: [
+      // SDA bus: A.GP4 ↔ B.GP4
+      {
+        id: 'w-sda',
+        start: { componentId: 'pi-pico-w', pinName: 'GP4' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GP4' },
+        color: '#0088ff',
+      },
+      // SCL bus: A.GP5 ↔ B.GP5
+      {
+        id: 'w-scl',
+        start: { componentId: 'pi-pico-w', pinName: 'GP5' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GP5' },
+        color: '#ffaa00',
+      },
+      // GND
+      {
+        id: 'w-gnd',
+        start: { componentId: 'pi-pico-w', pinName: 'GND' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['rp2040', 'pico', 'multi-board', 'i2c', 'wire'],
+  },
+
+  {
+    id: 'dual-pico-digital-mirror',
+    title: '[2× Pico W] Digital GPIO Mirror',
+    description:
+      'Simplest possible cross-board test. Pico A toggles GP15 every 500 ms; Pico B reads GP15 as a digital input and mirrors its state to its built-in LED. Watch each Pico\'s Serial Monitor to confirm the wire is alive.',
+    category: 'basics',
+    difficulty: 'beginner',
+    boardFilter: 'raspberry-pi-pico',
+    code: '',
+    boards: [
+      {
+        boardKind: 'pi-pico-w',
+        x: 100,
+        y: 120,
+        code: `// Pico A — Digital signal generator
+// Toggles GP15 at 1 Hz (500 ms HIGH, 500 ms LOW).
+//
+// Wiring to Pico B:
+//   A.GP15 ─── B.GP15  (signal)
+//   A.GND  ─── B.GND   (common ground)
+
+const int OUT_PIN = 15;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(OUT_PIN, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  delay(300);
+  Serial.println("Pico A — pulse generator on GP15.");
+}
+
+void loop() {
+  digitalWrite(OUT_PIN, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("GP15 → HIGH");
+  delay(500);
+
+  digitalWrite(OUT_PIN, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
+  Serial.println("GP15 → LOW");
+  delay(500);
+}
+`,
+      },
+      {
+        boardKind: 'pi-pico-w',
+        x: 520,
+        y: 120,
+        code: `// Pico B — Digital signal mirror
+// Reads GP15 as input and copies the state to LED_BUILTIN.
+
+const int IN_PIN = 15;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(IN_PIN, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  delay(300);
+  Serial.println("Pico B — mirroring GP15 state to built-in LED.");
+}
+
+int lastState = -1;
+
+void loop() {
+  int s = digitalRead(IN_PIN);
+  digitalWrite(LED_BUILTIN, s);
+  if (s != lastState) {
+    Serial.print("GP15 read: ");
+    Serial.println(s ? "HIGH" : "LOW");
+    lastState = s;
+  }
+}
+`,
+      },
+    ],
+    components: [],
+    wires: [
+      // Signal: A.GP15 ↔ B.GP15
+      {
+        id: 'w-sig',
+        start: { componentId: 'pi-pico-w', pinName: 'GP15' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GP15' },
+        color: '#22cc22',
+      },
+      // Ground
+      {
+        id: 'w-gnd',
+        start: { componentId: 'pi-pico-w', pinName: 'GND' },
+        end: { componentId: 'pi-pico-w-2', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+    tags: ['rp2040', 'pico', 'multi-board', 'gpio', 'digital'],
   },
 
   // ─── Arduino Nano Examples ────────────────────────────────────────────────
@@ -6486,6 +6860,7 @@ export const exampleProjects: ExampleProject[] = [
   ...legacyExamples,
   ...circuitExamples,
   ...analogExamples,
+  ...hundredDaysExamples,
 ];
 
 // Get examples by category

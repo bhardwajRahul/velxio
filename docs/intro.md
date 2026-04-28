@@ -39,6 +39,13 @@ Write Arduino C++ code, compile it with a real `arduino-cli` backend, and simula
 - [Emulator Architecture](./emulator.md) — How CPU emulation works layer by layer
 - [Wokwi Libraries Integration](./WOKWI_LIBS.md) — Local wokwi-elements, avr8js, rp2040js setup
 
+### Custom Chips (write your own in C)
+
+- [**Custom Chips — Developer Guide**](./CUSTOM_CHIPS.md) — Overview, quick start, design philosophy
+- [API Reference](./wiki/custom-chips-api-reference.md) — Every `vx_*` function explained
+- [Examples Walkthrough](./wiki/custom-chips-examples.md) — All 11 gallery chips
+- [Build & Test](./wiki/custom-chips-build-and-test.md) — Toolchain, compile pipeline, sandbox tests
+
 ### Boards & Emulation
 
 - [RP2040 Emulation](./RP2040_EMULATION.md) — Raspberry Pi Pico / Pico W in-browser emulator (ARM Cortex-M0+)

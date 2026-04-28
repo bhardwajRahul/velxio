@@ -238,6 +238,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         _lock_iothread   = None
         _unlock_iothread = None
 
+    # Predicate: is the iothread lock currently held by this thread?
+    # Used to avoid re-acquiring when we're already inside a QEMU callback
+    # (e.g., chip's vx_uart_write fired from inside _on_uart_tx).
+    try:
+        _iothread_locked = lib.qemu_mutex_iothread_locked
+        _iothread_locked.restype  = ctypes.c_bool
+        _iothread_locked.argtypes = []
+    except AttributeError:
+        _iothread_locked = None
+
     # qemu_system_shutdown_request() schedules a clean shutdown from inside
     # the QEMU main-loop thread (which owns the AIO context).  Calling
     # qemu_cleanup() directly from a Python thread (the command loop) triggers
@@ -297,7 +307,18 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     _sensors_ready = threading.Event()      # set after pre-registering initial sensors
     _i2c_responses: dict[int, int] = {}     # 7-bit addr → response byte (simple)
     _i2c_slaves:    dict = {}               # 7-bit addr → I2C slave/sink instance
-    _spi_response   = [0xFF]                # MISO byte for SPI transfers
+    _spi_response   = [0xFF]                # MISO byte for SPI transfers (default)
+
+    # Custom-chip runtimes that registered their respective protocols at chip_setup.
+    # Mutated when sensor_type=='custom-chip' is processed in initial_sensors.
+    _chip_uart_runtimes: list = []          # runtimes that called vx_uart_attach
+    _chip_spi_runtimes:  list = []          # runtimes that called vx_spi_attach
+    _chip_timer_runtimes: list = []         # runtimes with active timers
+    _chip_pin_watch_runtimes: list = []     # runtimes that called vx_pin_watch
+
+    # Live GPIO state tracked from QEMU's _on_pin_change callback. Custom-chip
+    # runtimes' vx_pin_read consults this to see what the firmware just drove.
+    _pin_state: dict[int, int] = {}
     _rmt_decoders:  dict[int, _RmtDecoder] = {}
     _uart0_buf      = bytearray()           # accumulate UART0 for crash detection
     _reboot_count   = [0]
@@ -529,7 +550,19 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         if _stopped.is_set():
             return
         gpio = int(_PINMAP[slot]) if 1 <= slot <= _GPIO_COUNT else slot
+        _pin_state[gpio] = value & 1
         _emit({'type': 'gpio_change', 'pin': gpio, 'state': value})
+
+        # Dispatch to any custom-chip runtime that has a vx_pin_watch on this
+        # GPIO. We're called from QEMU's GPIO state-change path which holds the
+        # IO-thread lock, so the chip's callback can safely call vx_pin_write
+        # (which goes back into picsimlab and requires the same lock).
+        if _chip_pin_watch_runtimes:
+            for rt in _chip_pin_watch_runtimes:
+                try:
+                    rt.notify_pin_change(gpio, value)
+                except Exception as e:
+                    _log(f'[custom-chip pin_watch] error: {e!r}')
 
         # Sensor protocol dispatch by type
         with _sensors_lock:
@@ -641,6 +674,13 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         if _stopped.is_set():
             return
         _emit({'type': 'uart_tx', 'uart': uart_id, 'byte': byte_val})
+        # Dispatch to any custom-chip runtimes that declared a UART.
+        # The chip's on_rx_byte callback runs synchronously in this thread.
+        for rt in _chip_uart_runtimes:
+            try:
+                rt.feed_uart_byte(byte_val)
+            except Exception as e:
+                _log(f'[custom-chip uart_tx] error: {e!r}')
         # Crash / reboot detection on UART0 only
         if uart_id == 0:
             _uart0_buf.append(byte_val)
@@ -738,7 +778,31 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
         return resp
 
     def _on_spi_event(bus_id: int, event: int) -> int:
-        """Synchronous — must return immediately; called from QEMU thread."""
+        """Synchronous — must return immediately; called from QEMU thread.
+
+        Event encoding (picsimlab — see hw/ssi/picsimlab_spi.c and the CS irq
+        handler in esp32_picsimlab.c):
+            event = data << 8                                  → SPI byte transfer
+                                                                 (op = low byte = 0x00,
+                                                                  MOSI = high byte)
+            event = ((((cs_idx & 3) << 1) | level) << 8) | 0x01 → CS line change
+                                                                  (op = 0x01,
+                                                                   ignored by chips
+                                                                   that drive their own
+                                                                   CS via pin_watch)
+        """
+        # Custom-chip SPI runtimes get first dibs on byte transfers. The chip's
+        # pre-armed buffer holds the next MISO byte; the runtime overwrites it
+        # with the master's MOSI byte and advances. on_done fires when count is
+        # reached.
+        op   = event & 0xFF
+        mosi = (event >> 8) & 0xFF
+        if _chip_spi_runtimes and op == 0x00:
+            for rt in _chip_spi_runtimes:
+                try:
+                    return rt.spi_transfer_byte(mosi) & 0xFF
+                except Exception as e:
+                    _log(f'[custom-chip spi_event] error: {e!r}')
         resp = _spi_response[0]
         if not _stopped.is_set():
             _emit({'type': 'spi_event', 'bus': bus_id, 'event': event, 'response': resp})
@@ -848,6 +912,112 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 _i2c_slaves[i2c_addr] = sink
                 sensor_data['i2c_addr'] = i2c_addr
                 sensor_data['slave'] = sink
+            elif sensor_type == 'custom-chip':
+                # User-supplied chip compiled to WASM. The runtime loads the
+                # binary in this same Python process so I2C callbacks fire
+                # synchronously when QEMU calls _on_i2c_event — same fidelity
+                # as the hardcoded slaves above.
+                # See docs/wiki/custom-chips-esp32-backend-runtime.md
+                try:
+                    from app.services.wasm_chip_runtime import WasmChipRuntime
+                    from app.services.wasm_chip_slave   import WasmChipI2CSlave
+                except ImportError:
+                    # Fallback: same pattern as esp32_i2c_slaves at the top of
+                    # this file. The worker subprocess may run from a cwd that
+                    # doesn't have `app.services` on sys.path.
+                    import importlib.util, pathlib as _pl
+                    _here = _pl.Path(__file__).parent
+                    _spec_rt = importlib.util.spec_from_file_location(
+                        'wasm_chip_runtime', _here / 'wasm_chip_runtime.py'
+                    )
+                    _mod_rt = importlib.util.module_from_spec(_spec_rt)
+                    _spec_rt.loader.exec_module(_mod_rt)
+                    WasmChipRuntime = _mod_rt.WasmChipRuntime
+                    _spec_sl = importlib.util.spec_from_file_location(
+                        'wasm_chip_slave', _here / 'wasm_chip_slave.py'
+                    )
+                    _mod_sl = importlib.util.module_from_spec(_spec_sl)
+                    # The slave module imports from app.services.wasm_chip_runtime;
+                    # patch sys.modules so that import resolves to our loaded module.
+                    sys.modules['app.services.wasm_chip_runtime'] = _mod_rt
+                    _spec_sl.loader.exec_module(_mod_sl)
+                    WasmChipI2CSlave = _mod_sl.WasmChipI2CSlave
+                wasm_b64 = s.get('wasm_b64', '')
+                if not wasm_b64:
+                    _log("[custom-chip] missing wasm_b64 in sensor payload")
+                else:
+                    try:
+                        wasm_bytes = base64.b64decode(wasm_b64)
+                        attrs      = s.get('attrs', {}) or {}
+                        pin_map    = s.get('pin_map', {}) or {}
+
+                        # ── Plumbing: hook the runtime to QEMU's live peripherals ──
+                        # GPIO output: chip's vx_pin_write → qemu_picsimlab_set_pin
+                        def _chip_pin_writer(gpio: int, value: int, _lib=lib):
+                            _lib.qemu_picsimlab_set_pin(gpio + 1, value)
+
+                        # GPIO input: chip reads current QEMU pin state.
+                        def _chip_pin_reader(gpio: int, _store=_pin_state):
+                            return int(_store.get(gpio, 0)) & 1
+
+                        # UART RX: chip's vx_uart_write → inject bytes into firmware UART.
+                        # Acquire the iothread lock ONLY if we don't already hold it
+                        # (typical case: the chip's vx_uart_write is fired from inside
+                        # _on_uart_tx, which is already in the QEMU thread holding the
+                        # lock — re-acquiring there triggers an assertion).
+                        def _chip_uart_writer(uart_id: int, data: bytes,
+                                              _lib=lib,
+                                              _lock=_lock_iothread,
+                                              _unlock=_unlock_iothread,
+                                              _is_locked=_iothread_locked):
+                            buf = (ctypes.c_uint8 * len(data))(*data)
+                            need_lock = bool(_lock) and (not _is_locked or not _is_locked())
+                            if need_lock:
+                                _lock(b'esp32_worker.py:custom-chip', 0)
+                            try:
+                                _lib.qemu_picsimlab_uart_receive(int(uart_id), buf, len(data))
+                            finally:
+                                if need_lock and _unlock:
+                                    _unlock()
+
+                        # Timer arm: just track this runtime so the scheduler thread
+                        # picks up the new deadline on its next iteration.
+                        def _chip_timer_scheduler(rt):
+                            if rt not in _chip_timer_runtimes:
+                                _chip_timer_runtimes.append(rt)
+
+                        runtime = WasmChipRuntime(
+                            wasm_bytes, attrs, _emit,
+                            pin_map=pin_map,
+                            pin_writer=_chip_pin_writer,
+                            pin_reader=_chip_pin_reader,
+                            uart_writer=_chip_uart_writer,
+                            timer_scheduler=_chip_timer_scheduler,
+                        )
+                        runtime.run_chip_setup()
+
+                        if runtime.i2c_address is not None:
+                            slave = WasmChipI2CSlave(runtime.i2c_address, runtime)
+                            _i2c_slaves[runtime.i2c_address] = slave
+                            sensor_data['i2c_addr'] = runtime.i2c_address
+                            sensor_data['slave']    = slave
+                            _log(f"[custom-chip] I2C slave registered at 0x{runtime.i2c_address:02x}")
+                        if runtime.uart_config is not None:
+                            _chip_uart_runtimes.append(runtime)
+                            _log("[custom-chip] UART chip registered on UART0")
+                        if runtime.spi_config is not None:
+                            _chip_spi_runtimes.append(runtime)
+                            _log("[custom-chip] SPI chip registered")
+                        if runtime.has_pin_watches():
+                            _chip_pin_watch_runtimes.append(runtime)
+                            _log(f"[custom-chip] pin watches registered: {list(runtime._pin_watches.keys())}")
+                        if (runtime.i2c_address is None and runtime.uart_config is None
+                                and runtime.spi_config is None):
+                            _log("[custom-chip] WASM loaded but no I2C/UART/SPI peripherals declared "
+                                 "— chip is GPIO-only")
+                        sensor_data['runtime'] = runtime
+                    except Exception as e:
+                        _log(f"[custom-chip] failed to load: {e!r}")
             _sensors[gpio] = sensor_data
     _sensors_ready.set()
     _log(f'_i2c_slaves registered: {list(_i2c_slaves.keys())}')
@@ -855,6 +1025,45 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     _emit({'type': 'system', 'event': 'booted'})
     _log(f'QEMU started: machine={machine} firmware={firmware_path}')
     _log(f'QEMU args: {[a.decode() for a in args_list]}')
+
+    # ── 6.5 Custom-chip timer thread ──────────────────────────────────────────
+    # Wakes on each chip's next_timer_deadline. Acquires the QEMU IO-thread lock
+    # before firing callbacks because vx_pin_write inside a timer would touch
+    # picsimlab_set_pin which requires the lock.
+    def _chip_timer_thread() -> None:
+        while not _stopped.is_set():
+            # Find the soonest deadline across all chips with active timers.
+            soonest_ns: int | None = None
+            for rt in list(_chip_timer_runtimes):
+                d = rt.next_timer_deadline()
+                if d is not None and (soonest_ns is None or d < soonest_ns):
+                    soonest_ns = d
+            if soonest_ns is None:
+                # No active timers — sleep a bit and re-check.
+                _stopped.wait(0.050)
+                continue
+            now_ns = time.monotonic_ns() - _t0_ref[0]
+            wait_ns = max(0, soonest_ns - now_ns)
+            if wait_ns > 0:
+                _stopped.wait(wait_ns / 1e9)
+                if _stopped.is_set():
+                    break
+            # Fire under the IO-thread lock so any pin_write the timer triggers is safe.
+            if _lock_iothread:
+                _lock_iothread(b'esp32_worker.py:chip_timer', 0)
+            try:
+                for rt in list(_chip_timer_runtimes):
+                    try:
+                        rt.fire_due_timers()
+                    except Exception as e:
+                        _log(f'[custom-chip timer] error: {e!r}')
+            finally:
+                if _unlock_iothread:
+                    _unlock_iothread()
+
+    _t0_ref = [time.monotonic_ns()]   # used so the timer thread can compute "now"
+    _timer_t = threading.Thread(target=_chip_timer_thread, daemon=True, name='chip-timer')
+    _timer_t.start()
 
     # ── 7. LEDC polling thread (100 ms interval) ──────────────────────────────
 

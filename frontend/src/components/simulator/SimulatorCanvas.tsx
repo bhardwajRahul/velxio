@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ESP32_ADC_PIN_MAP } from '../velxio-components/Esp32Element';
 import { ComponentPickerModal } from '../ComponentPickerModal';
 import { ComponentPropertyDialog } from './ComponentPropertyDialog';
+import { CustomChipDialog } from '../customChips/CustomChipDialog';
 import { SensorControlPanel } from './SensorControlPanel';
 import { SENSOR_CONTROLS } from '../../simulation/sensorControlConfig';
 import { DynamicComponent, createComponentFromMetadata } from '../DynamicComponent';
@@ -132,6 +133,8 @@ export const SimulatorCanvas = () => {
   // Component property dialog
   const [showPropertyDialog, setShowPropertyDialog] = useState(false);
   const [propertyDialogComponentId, setPropertyDialogComponentId] = useState<string | null>(null);
+  /** When non-null, the Custom Chip designer dialog is open for this component. */
+  const [customChipComponentId, setCustomChipComponentId] = useState<string | null>(null);
   const [propertyDialogPosition, setPropertyDialogPosition] = useState({ x: 0, y: 0 });
 
   // Sensor control panel (shown instead of property dialog for sensor components during simulation)
@@ -978,6 +981,12 @@ export const SimulatorCanvas = () => {
     trackAddComponent(metadata.id);
     addComponent(component as any);
     setShowComponentPicker(false);
+
+    // Custom Chips need a compile step before they can do anything — open the
+    // designer dialog immediately so the user lands in the editor.
+    if (metadata.id === 'custom-chip') {
+      setCustomChipComponentId(component.id);
+    }
   };
 
   // Component rotation
@@ -1237,6 +1246,9 @@ export const SimulatorCanvas = () => {
                 setSensorControlComponentId(draggedComponentId);
                 setSensorControlMetadataId(component.metadataId);
               }
+            } else if (component.metadataId === 'custom-chip') {
+              // Custom Chips have their own designer (C editor + chip.json + Compile).
+              setCustomChipComponentId(draggedComponentId);
             } else {
               setPropertyDialogComponentId(draggedComponentId);
               setPropertyDialogPosition({
@@ -2038,6 +2050,34 @@ export const SimulatorCanvas = () => {
                     properties: { ...comp.properties, [propName]: value },
                   });
                 }
+              }}
+            />
+          );
+        })()}
+
+      {/* Custom Chip Designer Dialog */}
+      {customChipComponentId &&
+        (() => {
+          const comp = components.find((c) => c.id === customChipComponentId);
+          if (!comp) return null;
+          const props = comp.properties as Record<string, unknown>;
+          return (
+            <CustomChipDialog
+              initial={{
+                chipName:   String(props.chipName   ?? 'My Chip'),
+                sourceC:    String(props.sourceC    ?? ''),
+                chipJson:   String(props.chipJson   ?? ''),
+                wasmBase64: String(props.wasmBase64 ?? ''),
+                attrs:      (props.attrs as Record<string, number>) ?? {},
+              }}
+              onClose={() => setCustomChipComponentId(null)}
+              onSave={(data) => {
+                updateComponent(customChipComponentId, {
+                  properties: { ...comp.properties, ...data },
+                } as any);
+                setCustomChipComponentId(null);
+                // Force the chip's pin layout to re-render after the save.
+                recalculateAllWirePositions();
               }}
             />
           );

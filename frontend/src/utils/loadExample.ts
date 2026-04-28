@@ -65,6 +65,7 @@ export async function loadExample(
     setComponents,
     setWires,
     setBoardType,
+    setBoardLanguageMode,
     activeBoardId,
     boards,
     addBoard,
@@ -82,20 +83,33 @@ export async function loadExample(
       addBoard(eb.boardKind as BoardKind, eb.x, eb.y);
     });
 
+    // Match addBoard's deterministic ID rule (useSimulatorStore.addBoard):
+    //   1st board of a kind  → id = boardKind
+    //   2nd board of a kind  → id = `${boardKind}-2`
+    //   Nth board of a kind  → id = `${boardKind}-N`
+    // This is what wires reference, so the loader must compute the same IDs
+    // when loading per-board code/vfs.
+    const kindCount = new Map<string, number>();
+    const boardIds: string[] = example.boards.map((eb) => {
+      const n = (kindCount.get(eb.boardKind) ?? 0) + 1;
+      kindCount.set(eb.boardKind, n);
+      return n === 1 ? eb.boardKind : `${eb.boardKind}-${n}`;
+    });
+
     const { boards: newBoards } = useSimulatorStore.getState();
-    example.boards.forEach((eb) => {
-      const boardId = eb.boardKind;
+    example.boards.forEach((eb, idx) => {
+      const boardId = boardIds[idx];
       const board = newBoards.find((b) => b.id === boardId);
       if (!board) return;
 
       if (eb.code) {
         const AVR_BOARDS = ['arduino-uno', 'arduino-nano', 'arduino-mega', 'attiny85'];
-        const filename = AVR_BOARDS.includes(boardId) ? 'sketch.ino' : 'main.cpp';
+        const filename = AVR_BOARDS.includes(eb.boardKind) ? 'sketch.ino' : 'main.cpp';
         useEditorStore.getState().setActiveGroup(board.activeFileGroupId);
         useEditorStore.getState().loadFiles([{ name: filename, content: eb.code }]);
       }
 
-      if (eb.vfsFiles && boardId === 'raspberry-pi-3') {
+      if (eb.vfsFiles && eb.boardKind === 'raspberry-pi-3') {
         const vfsState = useVfsStore.getState();
         const tree = vfsState.getTree(boardId);
         for (const [nodeId, node] of Object.entries(tree)) {
@@ -106,15 +120,15 @@ export async function loadExample(
       }
     });
 
-    const firstArduino = example.boards.find(
+    const firstArduinoIdx = example.boards.findIndex(
       (eb) =>
         eb.boardKind !== 'raspberry-pi-3' &&
         eb.boardKind !== 'esp32' &&
         eb.boardKind !== 'esp32-s3' &&
         eb.boardKind !== 'esp32-c3',
     );
-    if (firstArduino) {
-      setActiveBoardId(firstArduino.boardKind);
+    if (firstArduinoIdx !== -1) {
+      setActiveBoardId(boardIds[firstArduinoIdx]);
     }
 
     const componentsWithoutBoard = example.components.filter(
@@ -169,7 +183,33 @@ export async function loadExample(
         setBoardType(targetBoard);
       }
     }
-    useEditorStore.getState().setCode(example.code);
+
+    // ── MicroPython + multi-file payloads ────────────────────────────────
+    // When the example specifies languageMode='micropython' or ships a
+    // files[] array, we go through setBoardLanguageMode + loadFiles instead
+    // of the legacy setCode() path so the editor opens the right file
+    // (main.py) with the right language mode.
+    const liveBoardId = useSimulatorStore.getState().activeBoardId;
+    const liveBoard = useSimulatorStore
+      .getState()
+      .boards.find((b) => b.id === liveBoardId);
+
+    if (example.languageMode === 'micropython' && liveBoard) {
+      setBoardLanguageMode(liveBoard.id, 'micropython');
+    }
+
+    if (example.files && example.files.length > 0 && liveBoard) {
+      // Re-resolve the file group ID — setBoardLanguageMode replaces it.
+      const updatedBoard = useSimulatorStore
+        .getState()
+        .boards.find((b) => b.id === liveBoard.id);
+      const groupId = updatedBoard?.activeFileGroupId ?? liveBoard.activeFileGroupId;
+      const editorStore = useEditorStore.getState();
+      editorStore.setActiveGroup(groupId);
+      editorStore.loadFiles(example.files);
+    } else {
+      useEditorStore.getState().setCode(example.code);
+    }
 
     const componentsWithoutBoard = example.components.filter(
       (comp) =>

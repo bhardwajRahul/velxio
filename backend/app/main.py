@@ -14,7 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.routes import compile, libraries
+from app.api.routes import compile, compile_chip, libraries
 from app.api.routes.admin import router as admin_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.metrics import router as metrics_router
@@ -109,6 +109,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(compile.router, prefix="/api/compile", tags=["compilation"])
+app.include_router(compile_chip.router, prefix="/api/compile-chip", tags=["custom-chips"])
 app.include_router(libraries.router, prefix="/api/libraries", tags=["libraries"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(projects_router, prefix="/api", tags=["projects"])
