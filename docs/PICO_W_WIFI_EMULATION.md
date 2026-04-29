@@ -151,14 +151,23 @@ user,model=esp32_wifi` slirp NIC. QEMU does the IP/TCP termination
 internally; the backend just shovels stdio.
 
 For the Pico W there's no QEMU — the chip lives in JavaScript. The
-backend bridge therefore has to **terminate Layer 2 itself**: parse
-Ethernet frames, demux by ethertype, and fan out to host TCP/UDP
-sockets. The first iteration (`picow_net_bridge.py` as shipped) does
-the demux skeleton and logs the destination of TCP SYNs. The actual
-slirp-equivalent (proxying TCP streams to the host) is intentionally
-left as a follow-up PR — every test in
-`test/test_Raspberry_Pi_Pico_W/test_code/` validates the chip-side
-contract independently.
+backend bridge therefore **terminates Layer 2 itself** in pure Python:
+parses Ethernet frames, demuxes by ethertype, and fans out to host
+TCP/UDP sockets. Concretely:
+
+| Layer | Implementation |
+|---|---|
+| Ethernet / ARP | `picow_net/protocols.py` + `arp.py` |
+| IPv4 (header + checksum) | `protocols.py` + `checksums.py` (RFC 1071) |
+| ICMP echo (ping) | `icmp.py` — synthesises Echo Reply for any Echo Request |
+| DHCP server | `dhcp.py` — DISCOVER → OFFER, REQUEST → ACK with proper option layout (RFC 2131) |
+| DNS proxy | `dns.py` — forwards A-record queries to host resolver via `asyncio.getaddrinfo` |
+| TCP NAT | `tcp_nat.py` — full RFC 793 state machine: SYN_RCVD → ESTABLISHED → CLOSE_WAIT/FIN_WAIT_1/2 → LAST_ACK, MSS option negotiation, modular sequence-number arithmetic, `asyncio.open_connection` for the host side |
+| UDP NAT | `udp_nat.py` — per-(chip_port, dst, dst_port) `DatagramTransport`, idle reaper |
+
+The bridge is fully self-contained — **zero subprocess overhead**, no
+QEMU, no libslirp dependency. It runs in the same FastAPI event loop
+the rest of the backend already uses.
 
 ## Test coverage
 
@@ -172,7 +181,15 @@ contract independently.
 | Real 100-days projects | `…/07_picow_iot_projects.test.ts` | ✅ 10/10 |
 | Performance budgets | `…/08_viability.test.ts` | ✅ 9/9 |
 | Frontend integration | `frontend/src/__tests__/picow-cyw43-integration.test.ts` | ✅ 6/6 |
-| **Total** | — | **55 passed, 0 failed** |
+| Backend bridge | `test/backend/integration/test_picow_net_bridge.py` | ✅ 18/18 |
+| **Total** | — | **73 passed, 0 failed** |
+
+The backend integration suite includes a **real TCP round-trip**: the
+test stands up an in-process HTTP server, drives a SYN through the
+bridge, walks through the full RFC 793 handshake, sends a `GET
+/hello` request, asserts the response carries `HTTP/1.1 200 OK` and
+`hello`, then closes cleanly. Likewise UDP (echo server) and DNS
+(localhost resolution) are exercised end-to-end against real sockets.
 
 End-to-end with real MicroPython firmware is gated on a UF2 fixture
 that CI does not bundle (see `…/03_pico_w_blink.test.ts`); drop a

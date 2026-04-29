@@ -1,8 +1,11 @@
 # Pico W (CYW43439) Wi-Fi emulation — what we built and how
 
-> **Status:** Tier 0/1 + chip-side Tier 2 shipped 2026-04-29.
-> Backend slirp/TCP fan-out scoped for a follow-up PR.
-> All 55 tests pass.
+> **Status:** Full stack shipped 2026-04-29.
+> Frontend chip emulator + backend pure-Python network stack (TCP/UDP
+> NAT + ARP + DHCP + DNS + ICMP). No QEMU subprocess, no libslirp
+> binding, no closed firmware blob.
+> **All 73 tests pass** end-to-end including a real TCP round-trip
+> against an in-process HTTP server.
 
 This wiki entry is the post-mortem for how Velxio gained Wi-Fi on the
 Raspberry Pi Pico W. The *user-facing* docs live at
@@ -173,20 +176,59 @@ sees the frames it should.
   16-bit halves before pushing words on the wire. Our sniffer has to
   un-swap before decoding. This was the single longest debug session.
 
-## Where to take it next
+## The backend network stack — why pure Python?
+
+Two routes existed: spawn QEMU just for libslirp, or write the stack
+ourselves. We picked option 4 from the conversation — pure Python —
+because:
+
+- A QEMU subprocess sized for "just slirp" still costs ~30 MB RSS per
+  simulated chip. With many tabs that adds up.
+- libslirp doesn't have stable Python bindings.
+- The protocols are stable and well-documented. RFC 793 (TCP) is from
+  1981; RFC 2131 (DHCP) is from 1997. We're not chasing a moving target.
+- Pure-Python keeps the test surface honest — every test exercises real
+  bytes through a real state machine, not "QEMU said it worked".
+
+The whole stack landed in **~1300 LOC across 8 files**:
+
+```
+backend/app/services/picow_net/
+├── consts.py           ~50 LOC   network parameters
+├── checksums.py        ~30 LOC   RFC 1071 + pseudo-header
+├── protocols.py       ~400 LOC   parsers + encoders for L2..L7
+├── arp.py              ~50 LOC
+├── dhcp.py            ~140 LOC
+├── dns.py             ~150 LOC
+├── icmp.py             ~30 LOC
+├── tcp_nat.py         ~300 LOC   RFC 793 state machine
+├── udp_nat.py         ~150 LOC
+└── bridge.py          ~150 LOC   orchestrator
+```
+
+Every numeric constant traces back to a public RFC or datasheet —
+nothing copied from `cyw43-driver` (RP-noncommercial). Worst quirk
+during implementation: TCP sequence-number wrap-around. RFC 1323's
+modular comparison (the `_seq_lt` helper in `tcp_nat.py`) is the
+correct way; naive subtraction breaks at 2³² roll-over.
+
+## What's left for someone else to take next
 
 The path of least resistance:
 
-1. **Backend slirp** — terminate TCP locally in `picow_net_bridge.py`
-   and proxy streams to the host. Python's `asyncio.open_connection`
-   is enough; mirror what `esp32_worker.py` gets from QEMU's slirp.
-2. **DHCP/DNS stubs** — already partially synthesised in
-   `virtual-ap.ts`. Wire the responses back through `injectPacket()`
-   so MicroPython's lwIP gets a happy path.
-3. **WS reconnect/backoff** — `Cyw43Bridge` doesn't retry on close.
+1. **WS reconnect/backoff** — `Cyw43Bridge` doesn't retry on close.
    Mirror `Esp32Bridge` if/when users hit it.
+2. **Window scaling (RFC 1323)** — current TCP NAT advertises a fixed
+   65535 window. For high-bandwidth use cases (firmware OTA, streaming
+   sensor logs) we'd want window scaling.
+3. **TCP retransmit timer** — we don't time out unacked data; we
+   trust the chip to retransmit. Real slirp does both.
 4. **Bluetooth** — only worth it if a user files an issue. No 100-days
    project uses BT.
+5. **TCP server-mode (chip listens, host connects)** — currently the
+   chip is always the active opener. To accept inbound connections
+   from the host we'd need a hostfwd-style port-forward layer like
+   QEMU's `hostfwd=`.
 
 If an upstream rp2040js maintainer ever responds to issue #134, this
 work is small and modular enough to extract into a separate
