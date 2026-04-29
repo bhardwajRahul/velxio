@@ -100,20 +100,6 @@ const IcoMonitor = () => (
   </svg>
 );
 
-const IcoBook = () => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-  </svg>
-);
-
 const IcoGitHub = () => (
   <svg viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
@@ -669,34 +655,34 @@ const BoardEsp32C3 = () => (
 /* ── Features ─────────────────────────────────────────── */
 const features = [
   {
+    icon: <IcoZap />,
+    title: 'Real-Time SPICE Analog',
+    desc: 'ngspice-WASM engine — full Modified Nodal Analysis at ~60 Hz. Resistors, capacitors, op-amps, BJTs, MOSFETs, regulators behave like real silicon, not idealised models.',
+  },
+  {
     icon: <IcoCpu />,
     title: '5 Emulation Engines',
-    desc: 'AVR8 (ATmega), RP2040 (ARM Cortex-M0+), RV32IMC (ESP32-C3 in-browser), Xtensa LX6/LX7 (ESP32 via QEMU), and ARM Cortex-A53 (Raspberry Pi 3 Linux).',
+    desc: 'AVR8 (ATmega328P, ATmega2560, ATtiny85), RP2040 (ARM Cortex-M0+), RV32IMC (ESP32-C3 in-browser), Xtensa LX6/LX7 (ESP32 via QEMU), and ARM Cortex-A53 (Raspberry Pi 3 Linux).',
+  },
+  {
+    icon: <IcoChip />,
+    title: 'Custom Chips',
+    desc: 'Author your own integrated circuits in C, Rust, or AssemblyScript using the Wokwi Custom Chips API. Compile to WebAssembly and reuse across projects.',
   },
   {
     icon: <IcoLayers />,
-    title: '48+ Visual Components',
-    desc: 'LEDs, LCDs, ILI9341 TFT displays, servos, buzzers, ultrasonic sensors, keypads, and more from wokwi-elements.',
-  },
-  {
-    icon: <IcoCode />,
-    title: 'Monaco Editor',
-    desc: 'VS Code-grade C++ editor with full syntax highlighting, IntelliSense-style autocomplete, minimap, and multi-file workspace.',
-  },
-  {
-    icon: <IcoZap />,
-    title: 'Local arduino-cli Compiler',
-    desc: 'Compile and flash sketches locally in seconds. No cloud, no latency, no account required. Full offline support.',
+    title: '100+ Components',
+    desc: 'SPICE-accurate analog parts plus 48+ wokwi visual components — LEDs, LCDs, ILI9341 TFT, servos, buzzers, ultrasonic sensors, keypads, NeoPixel strips.',
   },
   {
     icon: <IcoMonitor />,
-    title: 'Serial Monitor',
-    desc: 'Real-time TX/RX with auto baud-rate detection, message history, send commands, and autoscroll.',
+    title: 'Live Instruments',
+    desc: 'Multi-channel oscilloscope, voltmeter, ammeter, signal generator. Drop on any node and watch waveforms update in real time as the simulation runs.',
   },
   {
-    icon: <IcoBook />,
-    title: 'Library Manager',
-    desc: 'Search and install any library from the full Arduino library index — directly inside the editor, no terminal needed.',
+    icon: <IcoCode />,
+    title: 'Monaco Editor + arduino-cli',
+    desc: 'VS Code-grade C++ editor with multi-file workspace. Local arduino-cli compiles to real .hex / .uf2 / .bin files — no cloud round-trip.',
   },
 ];
 
@@ -853,10 +839,26 @@ export const LandingPage: React.FC = () => {
         },
         {
           '@type': 'Question',
+          name: 'Can Velxio simulate analog circuits?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes. Velxio 2.5 includes real-time SPICE analog simulation via ngspice compiled to WebAssembly. You can mix passive and active analog parts (resistors, capacitors, op-amps, BJTs, MOSFETs, regulators, diodes) with Arduino, ESP32, and RP2040 firmware on the same canvas — GPIO drives SPICE nets, ADC reads solved node voltages.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Can I create my own custom chips?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes. Velxio implements the Wokwi Custom Chips API. Write your chip in C, Rust, or AssemblyScript; Velxio compiles it to WebAssembly and runs it on the canvas like any other component, with pin I/O, attribute reads, timers, and I²C/SPI bus integration.',
+          },
+        },
+        {
+          '@type': 'Question',
           name: 'Does Velxio work offline?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Velxio can be self-hosted via Docker. Once running, the simulation engine works fully offline in the browser. Compilation requires the local arduino-cli backend.',
+            text: 'The SPICE solver and the AVR / RP2040 / RISC-V CPU emulators all run in your browser. Compilation of Arduino sketches requires the arduino-cli backend. Self-hosted Docker deployments work fully offline once running.',
           },
         },
         {
@@ -869,10 +871,10 @@ export const LandingPage: React.FC = () => {
         },
         {
           '@type': 'Question',
-          name: 'Is Velxio a Wokwi alternative?',
+          name: 'Is Velxio a Wokwi / Falstad / Tinkercad alternative?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Yes. Velxio is a free, self-hosted alternative to Wokwi. It uses the same avr8js and wokwi-elements open-source libraries but runs entirely on your machine with no cloud dependency.',
+            text: 'Yes. Velxio is a free, self-hosted alternative to Wokwi for microcontroller simulation, and a more accurate alternative to Falstad and Tinkercad for analog circuits — Velxio runs the real ngspice engine and also runs the firmware on the microcontroller driving the circuit, all in one tool.',
           },
         },
       ],
@@ -887,15 +889,16 @@ export const LandingPage: React.FC = () => {
       <section className="landing-hero">
         <div className="hero-left">
           <h1 className="hero-title">
-            Emulate Arduino,
+            Circuits + Code.
             <br />
-            ESP32 &amp; Raspberry Pi.
+            One Browser Tab.
             <br />
-            <span className="hero-accent">in your browser.</span>
+            <span className="hero-accent">SPICE-accurate.</span>
           </h1>
           <p className="hero-subtitle">
-            Write code, compile, and run on 19 real boards — Arduino Uno, ESP32, ESP32-C3, Raspberry
-            Pi Pico, Raspberry Pi 3, and more. No hardware, no cloud, no limits.
+            Free online circuit simulator with real ngspice analog co-simulated with 19 boards —
+            Arduino Uno, Mega, ATtiny85, ESP32, ESP32-C3, Raspberry Pi Pico, Raspberry Pi 3 —
+            plus build your own custom chips in C or Rust. No hardware, no cloud, no limits.
           </p>
           <div className="hero-ctas">
             <Link

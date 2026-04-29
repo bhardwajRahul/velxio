@@ -15,6 +15,11 @@ import { ArduinoSimulatorPage } from './pages/ArduinoSimulatorPage';
 import { ArduinoEmulatorPage } from './pages/ArduinoEmulatorPage';
 import { AtmegaSimulatorPage } from './pages/AtmegaSimulatorPage';
 import { ArduinoMegaSimulatorPage } from './pages/ArduinoMegaSimulatorPage';
+import { Attiny85SimulatorPage } from './pages/Attiny85SimulatorPage';
+import { CircuitSimulatorPage } from './pages/CircuitSimulatorPage';
+import { SpiceSimulatorPage } from './pages/SpiceSimulatorPage';
+import { ElectronicsSimulatorPage } from './pages/ElectronicsSimulatorPage';
+import { CustomChipSimulatorPage } from './pages/CustomChipSimulatorPage';
 import { Esp32SimulatorPage } from './pages/Esp32SimulatorPage';
 import { Esp32S3SimulatorPage } from './pages/Esp32S3SimulatorPage';
 import { Esp32C3SimulatorPage } from './pages/Esp32C3SimulatorPage';
@@ -46,6 +51,11 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/docs/:section" element={<DocsPage />} />
         {/* SEO landing pages — keyword-targeted */}
+        <Route path="/circuit-simulator" element={<CircuitSimulatorPage />} />
+        <Route path="/spice-simulator" element={<SpiceSimulatorPage />} />
+        <Route path="/electronics-simulator" element={<ElectronicsSimulatorPage />} />
+        <Route path="/custom-chip-simulator" element={<CustomChipSimulatorPage />} />
+        <Route path="/attiny85-simulator" element={<Attiny85SimulatorPage />} />
         <Route path="/arduino-simulator" element={<ArduinoSimulatorPage />} />
         <Route path="/arduino-emulator" element={<ArduinoEmulatorPage />} />
         <Route path="/atmega328p-simulator" element={<AtmegaSimulatorPage />} />
