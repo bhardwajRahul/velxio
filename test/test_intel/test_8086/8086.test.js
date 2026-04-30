@@ -23,6 +23,38 @@ const skip = !chipWasmExists(CHIP);
 const CLOCK_HZ = 5_000_000;
 const CLOCK_NS = Math.round(1e9 / CLOCK_HZ);
 
+/** Boot helper: wires the CPU to a fake 1 MB bus that responds to the
+ *  multiplexed AD protocol (ALE-driven 8282-equivalent). The test
+ *  program is placed at physical 0xF0100; the reset vector at 0xFFFF0
+ *  is patched with a JMP FAR 0xF000:0x0100 to drop into the program.
+ *  RAM cells below 0x80000 are writable so the program can store
+ *  results for the test to verify via ram.peek(...). */
+async function boot8086(programBytes) {
+  const board = new BoardHarness();
+  await board.addChip(CHIP, fullPinMap());
+  const ram = board.installFake8086Bus({});
+
+  // Patch the reset vector with JMP FAR 0xF000:0x0100
+  const reset = [0xEA, 0x00, 0x01, 0x00, 0xF0];
+  for (let i = 0; i < reset.length; i++) ram.poke(0xFFFF0 + i, reset[i]);
+
+  // Place the test program at 0xF0100 (where JMP FAR lands).
+  for (let i = 0; i < programBytes.length; i++) ram.poke(0xF0100 + i, programBytes[i]);
+
+  // Strap MN/MX̅ high (minimum mode) and quiet the input pins.
+  board.setNet('MNMX',  true);
+  board.setNet('READY', true);
+  board.setNet('TEST',  true);
+  board.setNet('NMI',   false);
+  board.setNet('INTR',  false);
+  board.setNet('HOLD',  false);
+
+  board.setNet('RESET', true);
+  board.advanceNanos(CLOCK_NS * 8);
+  board.setNet('RESET', false);
+  return { board, ram };
+}
+
 function fullPinMap() {
   const m = {
     ALE: 'ALE', RD: 'RD', WR: 'WR', MIO: 'MIO', DTR: 'DTR', DEN: 'DEN',
@@ -103,16 +135,141 @@ describe('Intel 8086 chip (minimum mode)', () => {
   });
 
   describe('basic instructions', () => {
-    it.todo('MOV reg, imm16 loads 16-bit immediate');
-    it.todo('MOV [addr], AX writes a 16-bit word with BHE̅+A0 indicating word write');
-    it.todo('MOV AX, [addr] reads a 16-bit word');
-    it.todo('JMP near transfers IP within the current segment');
-    it.todo('CALL pushes return address (CS:IP) onto the stack');
+    it.skipIf(skip)('MOV reg, imm16 loads 16-bit immediate', async () => {
+      // MOV AX, 0x1242 ; MOV [0x8000], AX ; HLT
+      const program = [
+        0xB8, 0x42, 0x12,
+        0xA3, 0x00, 0x80,
+        0xF4,
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 8000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x8000)).toBe(0x42);
+      expect(ram.peek(0x8001)).toBe(0x12);
+    });
+
+    it.skipIf(skip)('ADD AX, BX stores 16-bit result', async () => {
+      // MOV AX, 0x1000 ; MOV BX, 0x0234 ; ADD AX, BX ; MOV [0x8000], AX ; HLT
+      const program = [
+        0xB8, 0x00, 0x10,           // MOV AX, 0x1000
+        0xBB, 0x34, 0x02,           // MOV BX, 0x0234
+        0x01, 0xD8,                  // ADD AX, BX
+        0xA3, 0x00, 0x80,           // MOV [0x8000], AX
+        0xF4,                        // HLT
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 8000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x8000)).toBe(0x34);
+      expect(ram.peek(0x8001)).toBe(0x12);
+    });
+
+    it.skipIf(skip)('JMP near transfers IP', async () => {
+      // MOV AX, 0xAAAA ; JMP +3 ; MOV AX, 0xFFFF (skipped) ;
+      // MOV [0x8000], AX ; HLT
+      const program = [
+        0xB8, 0xAA, 0xAA,           // MOV AX, 0xAAAA
+        0xEB, 0x03,                  // JMP short +3
+        0xB8, 0xFF, 0xFF,           // (skipped) MOV AX, 0xFFFF
+        0xA3, 0x00, 0x80,           // MOV [0x8000], AX
+        0xF4,
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 8000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x8000)).toBe(0xAA);
+      expect(ram.peek(0x8001)).toBe(0xAA);
+    });
+
+    it.todo('CALL pushes return address; RET pops it (debug pending — chip seems to take an unintended path after the CALL push, investigate fetch sequence)');
+
+    it.skipIf(skip)('SHL AX, 1 doubles a value and updates CF', async () => {
+      // MOV AX, 0x4001 ; SHL AX, 1 ; MOV [0x8000], AX ;
+      // PUSHF ; POP AX ; MOV [0x8002], AX ; HLT
+      const program = [
+        0xBC, 0x00, 0xFE,           // MOV SP, 0xFE00 (so PUSHF works)
+        0xB8, 0x01, 0x40,           // MOV AX, 0x4001
+        0xD1, 0xE0,                  // SHL AX, 1
+        0xA3, 0x00, 0x80,           // MOV [0x8000], AX
+        0x9C,                        // PUSHF
+        0x58,                        // POP AX
+        0xA3, 0x02, 0x80,           // MOV [0x8002], AX
+        0xF4,
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 10000; i++) board.advanceNanos(CLOCK_NS);
+      // 0x4001 << 1 = 0x8002
+      expect(ram.peek(0x8000)).toBe(0x02);
+      expect(ram.peek(0x8001)).toBe(0x80);
+      // CF bit 0 of flags = 0 (no carry out of bit 15 since 0x4001 < 0x8000).
+      expect(ram.peek(0x8002) & 0x01).toBe(0);
+    });
+
+    it.skipIf(skip)('MUL BX produces DX:AX = AX*BX', async () => {
+      // MOV AX, 0x0100 ; MOV BX, 0x0080 ; MUL BX ;
+      // 0x0100 * 0x0080 = 0x8000 → AX=0x8000, DX=0.
+      // MOV [0x8000], AX ; MOV [0x8002], DX ; HLT
+      const program = [
+        0xB8, 0x00, 0x01,           // MOV AX, 0x0100
+        0xBB, 0x80, 0x00,           // MOV BX, 0x0080
+        0xF7, 0xE3,                  // MUL BX
+        0xA3, 0x00, 0x80,           // MOV [0x8000], AX
+        0x89, 0x16, 0x02, 0x80,     // MOV [0x8002], DX
+        0xF4,
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 10000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x8000)).toBe(0x00);
+      expect(ram.peek(0x8001)).toBe(0x80);
+      expect(ram.peek(0x8002)).toBe(0x00);
+      expect(ram.peek(0x8003)).toBe(0x00);
+    });
+
+    it.skipIf(skip)('REP MOVSB copies a buffer', async () => {
+      // Pre-poke 4 bytes at DS:SI=0x9000..0x9003. After REP MOVSB with
+      // CX=4, those bytes should appear at ES:DI=0x8000..0x8003.
+      // Program: set up DS=0, ES=0, SI=0x9000, DI=0x8000, CX=4 ; REP MOVSB ; HLT
+      const program = [
+        0xB8, 0x00, 0x00, 0x8E, 0xD8,   // MOV AX, 0 ; MOV DS, AX
+        0xB8, 0x00, 0x00, 0x8E, 0xC0,   // MOV AX, 0 ; MOV ES, AX
+        0xBE, 0x00, 0x90,                // MOV SI, 0x9000
+        0xBF, 0x00, 0x80,                // MOV DI, 0x8000
+        0xB9, 0x04, 0x00,                // MOV CX, 4
+        0xFC,                             // CLD (DF=0, increment)
+        0xF3, 0xA4,                       // REP MOVSB
+        0xF4,                             // HLT
+      ];
+      const { board, ram } = await boot8086(program);
+      ram.poke(0x9000, 0x11);
+      ram.poke(0x9001, 0x22);
+      ram.poke(0x9002, 0x33);
+      ram.poke(0x9003, 0x44);
+      for (let i = 0; i < 15000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x8000)).toBe(0x11);
+      expect(ram.peek(0x8001)).toBe(0x22);
+      expect(ram.peek(0x8002)).toBe(0x33);
+      expect(ram.peek(0x8003)).toBe(0x44);
+    });
   });
 
   describe('segment math', () => {
+    it.skipIf(skip)('segment override prefix changes the default segment', async () => {
+      // Without override, MOV [0x8000], AL writes to DS:0x8000.
+      // With ES override (0x26 prefix), it writes to ES:0x8000.
+      // Set DS=0, ES=0x1000, AL=0x77, then ES: MOV [0x8000], AL.
+      // Physical = 0x1000<<4 + 0x8000 = 0x18000.
+      const program = [
+        0xB8, 0x00, 0x10, 0x8E, 0xC0,   // MOV AX, 0x1000 ; MOV ES, AX
+        0xB0, 0x77,                      // MOV AL, 0x77
+        0x26, 0xA2, 0x00, 0x80,         // ES: MOV [0x8000], AL
+        0xF4,
+      ];
+      const { board, ram } = await boot8086(program);
+      for (let i = 0; i < 8000; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x18000)).toBe(0x77);
+      // And to confirm it's NOT at DS:0x8000 (which is physical 0x8000):
+      expect(ram.peek(0x8000)).toBe(0x00);
+    });
+
     it.todo('physical address = (segment << 4) + offset is wrapped at 1 MB');
-    it.todo('segment override prefix changes the default segment for one op');
   });
 
   describe('integration', () => {
