@@ -27,7 +27,7 @@ top of each phase reflects status.
 | **A** | 8080 INTA bus cycle | low | ✅ done 2026-04-30 |
 | **B** | Z80 ISA polish for ZEXDOC | high | ✅ done 2026-04-30 (ZEXDOC ROM run deferred to Phase F) |
 | **C** | Support chip ecosystem (rom-1m, 8255, 8251 done; 4001/4002/8253/8259 deferred) | high | ⚠️ partial 2026-04-30 |
-| **D** | 4004/4040 I/O completion (uses chips from C) | medium | ⏸️ pending |
+| **D** | 4004/4040 I/O completion (4001 done; 4002/SRC/WRM still pending) | medium | ⚠️ partial 2026-04-30 |
 | **E** | 8086 ISA completion | high | ✅ done 2026-04-30 (CALL/RET edge case deferred) |
 | **F** | Real software validation (CPUDIAG, ZEXDOC done; Busicom + 8088 V2 deferred) | medium | ⚠️ partial 2026-04-30 |
 | **G** | Cycle accuracy (optional) | high | ⏸️ deferred |
@@ -624,4 +624,53 @@ subject line (e.g. "test_intel: phase A — 8080 INTA bus protocol").
 
 ---
 
-## Phases D and G — still pending
+## Phase D — partial completion (2026-04-30)
+
+### Delivered
+- **4001 ROM** (`test_buses/4001-rom.c`, ~140 LOC) — companion ROM
+  chip for the 4004/4040 over the 4-bit multiplexed nibble bus.
+  Supports the canonical 8-phase frame: captures the 12-bit PC during
+  A1/A2/A3, drives opcode high nibble during M1 and low nibble during
+  M2 if the captured chip-select matches `ROM4001_CHIP_ID` (compile-
+  time constant).
+- **Integration test** (`test_buses/4001-rom.test.js`) — wires a real
+  4001 chip alongside the 4004 chip on the same board and verifies
+  that the 4004 actually fetches and executes opcodes from the 4001
+  (PC walks 0, 1, 2 with the embedded NOP image).
+
+### Timing model — the load-bearing trick
+The 4001's own timer fires once per phase at the same period (1351 ns)
+as the 4004's. The caller registers the 4001 BEFORE the 4004 in their
+test board, so the 4001's `tickTimers` runs first per `advanceNanos`.
+This means the 4001 effectively runs ONE FRAME BEHIND the 4004's
+drives — it samples the bus contents (driven by the 4004 last frame)
+and either records the addr nibble or drives the next opcode nibble.
+A small state machine (S_SAMPLE_LOW → S_SAMPLE_MID → S_SAMPLE_HIGH →
+S_DRIVE_HI → S_DRIVE_LO → S_POST) handles the 8-phase walk; reset on
+SYNC rising. Documented in `4001-rom.c`.
+
+### Deferred — still pending
+- **4002 RAM** — similar 16-pin chip. Needs SRC-instruction tracking
+  (the 4004 latches an 8-bit chip-select into the 4002 during X2/X3
+  of the SRC cycle, then subsequent WRM/RDM/WMP/RDR ops use that
+  latched address). Moderate complexity; same timing model as 4001.
+- **4004 SRC + WRM/RDM/WMP wiring** to actually exchange data with a
+  4002. The 4004 chip currently STUBS these as no-ops; needs to drive
+  the bus during X2/X3 of SRC and during M2 of the I/O group ops.
+- **Busicom 141-PF integration test** for 4004 — requires both 4001
+  and 4002 working end-to-end, plus a baked Busicom firmware ROM
+  variant (~1 KB).
+
+### Tests delta
+- Total test_intel: 98 → **99 passing**, 11 todo, 0 failed.
+
+---
+
+## Phase C deferred items — still pending
+- **8253 PIT** (programmable interval timer) — 3 channels of 16-bit
+  countdown timers, 6 modes. Needed for system-tick interrupts and PC
+  speaker tone generation.
+- **8259 PIC** (programmable interrupt controller) — needed for
+  actual hardware interrupt routing on 8080/Z80/8086 demos.
+
+## Phase G — still deferred (cycle accuracy)
