@@ -37,6 +37,15 @@
 | `arduino-nano-esp32` | `Esp32Bridge` | ✅ vía shim | **✅ backend WASM** | **✅ backend WASM** | **✅ backend WASM** | **GPIO + I2C + SPI + UART** |
 | `raspberry-pi-3` | `RaspberryPi3Bridge` (QEMU) | ✅ vía shim | ❌ | ❌ | ❌ | GPIO + Serial vía WS |
 
+## Componentes de display soportados
+
+| Componente | AVR | RP2040 | ESP32 | Path |
+|---|:---:|:---:|:---:|---|
+| `wokwi-ssd1306` (I2C OLED) | ✅ | ✅ | ⚠️ I2C sink only (no canvas) | `simulator.addI2CDevice` (browser) |
+| `wokwi-ili9341` (SPI TFT) | ✅ | ✅ | ❌ | `spi.onByte` (browser) |
+| `wokwi-lcd2004` (parallel LCD) | ✅ | ✅ | ❌ | parallel pin monitor |
+| **`epaper-ssd168x` (5 variants)** | **✅ ≤2.13"** | **✅** | **✅** | Browser decoder for AVR/RP2040; backend `Ssd168xEpaperSlave` for ESP32 — emits `epaper_update` WS events. See [`docs/wiki/epaper-emulation.md`](../../docs/wiki/epaper-emulation.md). |
+
 **Nota ESP32**: el chip's `.wasm` corre en el proceso del worker QEMU (vía
 [`wasmtime`](https://wasmtime.dev/)), así que **todas** las callbacks
 (I2C / SPI / UART / pin_watch / timers) responden a QEMU **sincrónicamente** —

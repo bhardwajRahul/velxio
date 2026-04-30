@@ -62,6 +62,7 @@ const COMP_DEFS: Record<string, CompDef> = {
   'wokwi-7segment': { svg: '7segment.svg', w: 47, h: 83 },
   'wokwi-ili9341': { svg: 'ili9341.svg', w: 176, h: 293 },
   'wokwi-lcd2004': { svg: 'lcd2004.svg', w: 356, h: 180 },
+  // (ePaper variants are picked up via INLINE_SVGS — see EPaperGlyph.)
   // Motors
   'wokwi-servo': { svg: 'servo.svg', w: 170, h: 120 },
 };

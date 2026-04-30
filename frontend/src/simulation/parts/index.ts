@@ -11,3 +11,4 @@ import './SensorParts';
 import './LogicGateParts';
 import './ProtocolParts';
 import './CustomChipPart';
+import './EPaperPart';

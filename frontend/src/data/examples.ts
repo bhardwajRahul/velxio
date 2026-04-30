@@ -8,6 +8,7 @@ import { circuitExamples } from './examples-circuits';
 import { analogExamples } from './examples-analog';
 import { hundredDaysExamples } from './examples-100-days';
 import { picowWifiExamples } from './examples-picow-wifi';
+import { epaperExamples } from './examples-displays-epaper';
 
 /** Per-board setup for multi-board examples */
 export interface ExampleBoard {
@@ -6881,6 +6882,7 @@ export const exampleProjects: ExampleProject[] = [
   ...analogExamples,
   ...hundredDaysExamples,
   ...picowWifiExamples,
+  ...epaperExamples,
 ];
 
 // Get examples by category

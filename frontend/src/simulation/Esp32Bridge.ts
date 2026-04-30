@@ -94,6 +94,19 @@ export class Esp32Bridge {
   onPinDir: ((gpioPin: number, dir: 0 | 1) => void) | null = null;
   onLedcUpdate: ((update: LedcUpdate) => void) | null = null;
   onWs2812Update: ((channel: number, pixels: Ws2812Pixel[]) => void) | null = null;
+  /**
+   * ePaper SSD168x backend rendering. Backend decodes SPI traffic in
+   * `Ssd168xEpaperSlave` and emits this event on every 0x20
+   * MASTER_ACTIVATION with a base64-encoded palette buffer (1 byte/pixel:
+   * 0=black, 1=white, 2=red). One subscriber per `componentId`; multiple
+   * panels on the same board are routed by ID.
+   */
+  onEpaperUpdate:
+    | ((
+        componentId: string,
+        frame: { width: number; height: number; b64: string; refreshMs: number },
+      ) => void)
+    | null = null;
   onI2cEvent: ((addr: number, data: number) => void) | null = null;
   onI2cTransaction: ((addr: number, data: number[]) => void) | null = null;
   onSpiEvent: ((data: number) => void) | null = null;
@@ -249,6 +262,16 @@ export class Esp32Bridge {
           const raw = msg.data.pixels as [number, number, number][];
           const pixels: Ws2812Pixel[] = raw.map(([r, g, b]) => ({ r, g, b }));
           this.onWs2812Update?.(channel, pixels);
+          break;
+        }
+        case 'epaper_update': {
+          const componentId = msg.data.component_id as string;
+          this.onEpaperUpdate?.(componentId, {
+            width: msg.data.width as number,
+            height: msg.data.height as number,
+            b64: msg.data.frame_b64 as string,
+            refreshMs: (msg.data.refresh_ms as number) ?? 50,
+          });
           break;
         }
         case 'i2c_event': {

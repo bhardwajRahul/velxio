@@ -65,6 +65,18 @@ except ImportError:
     _DS3231Slave  = _mod.DS3231Slave   # type: ignore[assignment]
     _I2CWriteSink = _mod.I2CWriteSink  # type: ignore[assignment]
 
+# SPI slaves (Phase 1: SSD168x ePaper). Same fallback dance — when the worker
+# runs as a subprocess from backend/ the package import won't resolve.
+try:
+    from app.services.esp32_spi_slaves import Ssd168xEpaperSlave as _Ssd168xEpaperSlave
+except ImportError:
+    import importlib.util, pathlib
+    _here = pathlib.Path(__file__).parent
+    _spec = importlib.util.spec_from_file_location('esp32_spi_slaves', _here / 'esp32_spi_slaves.py')
+    _mod = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+    _spec.loader.exec_module(_mod)  # type: ignore[union-attr]
+    _Ssd168xEpaperSlave = _mod.Ssd168xEpaperSlave  # type: ignore[assignment]
+
 # ─── stdout helpers ──────────────────────────────────────────────────────────
 
 _stdout_lock = threading.Lock()
@@ -316,6 +328,16 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     _chip_timer_runtimes: list = []         # runtimes with active timers
     _chip_pin_watch_runtimes: list = []     # runtimes that called vx_pin_watch
 
+    # ePaper SSD168x slaves keyed by frontend component_id. The slave decodes
+    # SPI bytes; on MASTER_ACTIVATION it emits an `epaper_update` WS frame.
+    # `dc_pin` / `cs_pin` / `rst_pin` (gpio numbers) are tracked via
+    # `_on_pin_change`; an active slave is one whose `cs_low` is True.
+    _epaper_slaves: dict = {}
+    # Per-slave runtime state keyed identically: dict with keys
+    #   'slave', 'dc_pin', 'cs_pin', 'rst_pin', 'busy_pin', 'cs_low',
+    #   'dc_high', 'refresh_ms'.
+    _epaper_state: dict = {}
+
     # Live GPIO state tracked from QEMU's _on_pin_change callback. Custom-chip
     # runtimes' vx_pin_read consults this to see what the firmware just drove.
     _pin_state: dict[int, int] = {}
@@ -564,6 +586,19 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 except Exception as e:
                     _log(f'[custom-chip pin_watch] error: {e!r}')
 
+        # ePaper SSD168x: track DC / CS / RST pin states for every slave.
+        # CS rising re-arms the next byte; CS falling activates the slave.
+        # RST falling clears the controller's RAM (active LOW).
+        if _epaper_state:
+            for st in _epaper_state.values():
+                if gpio == st['dc_pin']:
+                    st['dc_high'] = bool(value & 1)
+                elif gpio == st['cs_pin']:
+                    st['cs_low'] = (value & 1) == 0
+                elif gpio == st['rst_pin']:
+                    if (value & 1) == 0:
+                        st['slave'].reset()
+
         # Sensor protocol dispatch by type
         with _sensors_lock:
             sensor = _sensors.get(gpio)
@@ -803,6 +838,23 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                     return rt.spi_transfer_byte(mosi) & 0xFF
                 except Exception as e:
                     _log(f'[custom-chip spi_event] error: {e!r}')
+
+        # ePaper SSD168x panels — feed every byte to the active slave (CS LOW).
+        # ePaper is write-only on MOSI; the panel uses BUSY for status, so we
+        # always respond 0xFF on MISO. Multiple panels on the same bus would
+        # both receive the byte, but the user's wiring + CS gating decide
+        # which slave's `cs_low` is True.
+        if _epaper_state and op == 0x00:
+            any_active = False
+            for st in _epaper_state.values():
+                if st['cs_low']:
+                    any_active = True
+                    try:
+                        st['slave'].feed(mosi, st['dc_high'])
+                    except Exception as e:
+                        _log(f'[epaper spi_event] error: {e!r}')
+            if any_active:
+                return 0xFF
         resp = _spi_response[0]
         if not _stopped.is_set():
             _emit({'type': 'spi_event', 'bus': bus_id, 'event': event, 'response': resp})
@@ -905,6 +957,76 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
                 _i2c_slaves[i2c_addr] = slave
                 sensor_data['i2c_addr'] = i2c_addr
                 sensor_data['slave'] = slave
+            elif sensor_type == 'epaper-ssd168x':
+                # ePaper SSD168x panel: backend decodes SPI traffic and emits
+                # `epaper_update` events with the latched framebuffer.
+                comp_id = str(s.get('component_id', f'epaper-{gpio}'))
+                width = int(s.get('width', 200))
+                height = int(s.get('height', 200))
+                refresh_ms = int(s.get('refresh_ms', 50))
+                busy_pin = int(s.get('busy_pin', -1))
+
+                def _flush_factory(_comp_id=comp_id,
+                                   _w=width, _h=height,
+                                   _refresh=refresh_ms,
+                                   _busy=busy_pin,
+                                   _lib=lib):
+                    """Build an on_flush callback bound to this slave's
+                    component_id so the WS event can route to the right panel."""
+                    def _on_flush(frame):
+                        try:
+                            frame_b64 = base64.b64encode(frame.pixels).decode('ascii')
+                        except Exception:
+                            return
+                        _emit({
+                            'type': 'epaper_update',
+                            'data': {
+                                'component_id': _comp_id,
+                                'width': _w,
+                                'height': _h,
+                                'frame_b64': frame_b64,
+                                'refresh_ms': _refresh,
+                            },
+                        })
+                        # Drive BUSY high on the wired GPIO so firmware
+                        # busy-wait loops see realistic timing. Falls LOW
+                        # again after refresh_ms via a short timer.
+                        if _busy is not None and _busy >= 0:
+                            try:
+                                _lib.qemu_picsimlab_set_pin(_busy + 1, 1)
+
+                                def _busy_low(_b=_busy):
+                                    try:
+                                        _lib.qemu_picsimlab_set_pin(_b + 1, 0)
+                                    except Exception:
+                                        pass
+
+                                threading.Timer(_refresh / 1000.0, _busy_low).start()
+                            except Exception:
+                                pass
+                    return _on_flush
+
+                slave = _Ssd168xEpaperSlave(
+                    component_id=comp_id, width=width, height=height,
+                    on_flush=_flush_factory(),
+                )
+                state = {
+                    'slave': slave,
+                    'dc_pin': int(s.get('dc_pin', -1)),
+                    'cs_pin': int(s.get('cs_pin', -1)),
+                    'rst_pin': int(s.get('rst_pin', -1)),
+                    'busy_pin': busy_pin,
+                    'cs_low': False,
+                    'dc_high': False,
+                    'refresh_ms': refresh_ms,
+                }
+                _epaper_slaves[comp_id] = slave
+                _epaper_state[comp_id] = state
+                sensor_data['epaper_component_id'] = comp_id
+                _log(f"[epaper] registered '{comp_id}' "
+                     f"({width}x{height}) "
+                     f"DC={state['dc_pin']} CS={state['cs_pin']} "
+                     f"RST={state['rst_pin']} BUSY={state['busy_pin']}")
             elif sensor_type in ('ssd1306', 'pcf8574'):
                 default_addr = 0x3C if sensor_type == 'ssd1306' else 0x27
                 i2c_addr = int(s.get('addr', default_addr))

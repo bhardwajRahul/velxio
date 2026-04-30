@@ -199,6 +199,15 @@ class Esp32BridgeShim {
     this.bridge.sendSensorAttach(type, pin, properties);
     return true; // backend handles the protocol
   }
+
+  /**
+   * Expose the underlying Esp32Bridge so simulation parts can subscribe to
+   * board-specific WS events (e.g. `onEpaperUpdate` for the ePaper backend
+   * rendering path). Hooks should restore any handler they overwrite.
+   */
+  getBridge(): Esp32Bridge {
+    return this.bridge;
+  }
   updateSensor(pin: number, properties: Record<string, unknown>): void {
     this.bridge.sendSensorUpdate(pin, properties);
   }
