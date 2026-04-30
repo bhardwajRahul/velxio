@@ -21,6 +21,94 @@ const skip = !chipWasmExists(CHIP);
 const CLOCK_HZ = 740_000;
 const CLOCK_NS = Math.round(1e9 / CLOCK_HZ);
 
+/**
+ * Feed a program into the 4004 via the multiplexed nibble bus, mirroring
+ * what a real 4001 ROM would do. The 4004 walks an 8-phase frame
+ * (A1, A2, A3, M1, M2, X1, X2, X3) per machine cycle. The test must
+ * pre-drive D0..D3 with the appropriate ROM nibble before the chip's
+ * M1 and M2 phases fire.
+ *
+ * Strategy:
+ *   - Watch SYNC. When SYNC pulses high, that's the start of a new
+ *     cycle (phase A1). We track phasesSinceSync = 0 → 1 → ... → 7.
+ *   - phasesSinceSync == 3 means "next tick will be M1": pre-drive
+ *     the high nibble of program[pc].
+ *   - phasesSinceSync == 4 means "next tick will be M2": pre-drive
+ *     the low nibble.
+ *   - At end of every cycle (X3 done), advance our shadow pc by 1 IF
+ *     the chip didn't jump. We detect jumps by reading the address
+ *     bus during the next cycle's A1/A2/A3 phases and re-syncing.
+ *
+ * We track the chip's PC by reading what it drives on D0..D3 during
+ * A1/A2/A3 phases. That keeps pc in lockstep regardless of jumps.
+ *
+ * The class exposes `step()` (advance one phase) and `runCycles(n)`
+ * (advance n full instruction cycles).
+ */
+class Bus4004 {
+  constructor(board, program) {
+    this.board = board;
+    this.program = program;
+    this.phase = -1;     // 0=A1, 1=A2, 2=A3, 3=M1, 4=M2, 5=X1, 6=X2, 7=X3
+    this.pcLow = 0;
+    this.pcMid = 0;
+    this.pcHigh = 0;
+    this.observedPc = 0;
+    this._setupSyncWatch();
+  }
+
+  _setupSyncWatch() {
+    this.board.watchNet('SYNC', (high) => {
+      if (high) this.phase = 0;
+    });
+  }
+
+  _drive(nibble) {
+    for (let i = 0; i < 4; i++) {
+      this.board.setNet(`D${i}`, ((nibble >> i) & 1) === 1);
+    }
+  }
+
+  step() {
+    // Pre-drive D pins for the upcoming phase. The chip processes
+    // phases 0..7 = A1, A2, A3, M1, M2, X1, X2, X3. Our `phase` field
+    // is the COUNT of phases the chip has already executed in this
+    // cycle. So phase=3 means "the chip has done A1+A2+A3, next tick
+    // will be M1" — that's when we drive the opcode high nibble.
+    // phase=4 means "next tick is M2" — drive low nibble.
+    if (this.phase === 3) {
+      const byte = this.program[this.observedPc & 0xFFF] || 0;
+      this._drive((byte >> 4) & 0xF);
+    } else if (this.phase === 4) {
+      const byte = this.program[this.observedPc & 0xFFF] || 0;
+      this._drive(byte & 0xF);
+    }
+
+    this.board.advanceNanos(CLOCK_NS);
+
+    // Sample address nibbles after the chip's drives complete.
+    if (this.phase === 0)      this.pcLow  = this.board.readBus('D', 4);
+    else if (this.phase === 1) this.pcMid  = this.board.readBus('D', 4);
+    else if (this.phase === 2) this.pcHigh = this.board.readBus('D', 4);
+
+    // After A3 we have the full PC the chip is about to fetch from.
+    if (this.phase === 2) {
+      this.observedPc = this.pcLow | (this.pcMid << 4) | (this.pcHigh << 8);
+    }
+
+    if (this.phase >= 0) this.phase = (this.phase + 1) & 7;
+  }
+
+  /** Run one full instruction cycle (8 phases). */
+  runCycle() { for (let i = 0; i < 8; i++) this.step(); }
+
+  /** Run n full cycles. Useful for multi-cycle programs. */
+  runCycles(n) { for (let i = 0; i < n; i++) this.runCycle(); }
+
+  /** The PC the chip drove on the bus during the most recent A1..A3. */
+  pc() { return this.observedPc; }
+}
+
 function fullPinMap() {
   const m = {
     SYNC: 'SYNC', RESET: 'RESET', TEST: 'TEST',
@@ -115,12 +203,94 @@ describe('Intel 4004 chip', () => {
   });
 
   describe('instruction set', () => {
-    it.todo('NOP advances PC by 1');
+    it.skipIf(skip)('NOP advances PC by 1', async () => {
+      // [NOP, NOP, NOP, NOP] — every cycle PC increments by 1.
+      const prog = [0x00, 0x00, 0x00, 0x00];
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+      const pcs = [];
+      for (let cyc = 0; cyc < 4; cyc++) {
+        bus.runCycle();
+        pcs.push(bus.pc());
+      }
+      // Cycle 0 fetched at PC=0; cycle 1 at PC=1; etc.
+      expect(pcs).toEqual([0, 1, 2, 3]);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('JUN jumps to absolute 12-bit address', async () => {
+      // Prog: JUN 0x123 (bytes 0x41 0x23) at addr 0; rest zeros.
+      const prog = new Uint8Array(0x200);
+      prog[0] = 0x41; prog[1] = 0x23;     // JUN target=0x123
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+      // Cycle 0: fetch 0x41 (JUN opcode); 2-byte op.
+      // Cycle 1: fetch 0x23 (operand); execute → PC = 0x123.
+      // Cycle 2: fetch at PC=0x123 (NOP from the all-zero region).
+      bus.runCycles(3);
+      expect(bus.pc()).toBe(0x123);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('JMS pushes return address and BBL pops it', async () => {
+      // Prog: JMS 0x010, NOP, ... ; at 0x010: BBL 5
+      const prog = new Uint8Array(0x100);
+      prog[0] = 0x50; prog[1] = 0x10;     // JMS 0x010
+      prog[2] = 0x00;                      // NOP (return target after BBL)
+      prog[0x10] = 0xC5;                   // BBL 5
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+      // Cycle 0+1: JMS opcode + operand fetch → PC = 0x010.
+      // Cycle 2: chip fetches BBL at 0x010 → end of cycle PC = 0x002.
+      // Cycle 3: chip fetches NOP at 0x002 → end of cycle PC = 0x003.
+      // Cycle 4: chip starts fetch at 0x003. We need cycle 4's A1/A2/A3
+      // to OBSERVE the post-NOP PC (since bus.pc() reports the address
+      // the chip is currently driving on the bus).
+      bus.runCycles(5);
+      expect(bus.pc()).toBe(0x003);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('JCN with C4 jumps when TEST pin is logic-0', async () => {
+      // Prog at 0:
+      //   JCN 0x1, 0x10  ; jump-if-test-low to 0x010 (C4=1)
+      //   ...
+      //   at 0x010: zeros (target)
+      const prog = new Uint8Array(0x80);
+      prog[0] = 0x11; prog[1] = 0x10;     // JCN C4=1, target page-low=0x10
+      const board = new BoardHarness();
+      await bootChip(board);
+      // TEST pin LOW (false) means "logic 0" per [M4] p. 14 — JUMP IF TEST=logic-0
+      board.setNet('TEST', false);
+      const bus = new Bus4004(board, prog);
+      // Cycle 0+1: JCN opcode + operand → PC = 0x010 if condition met.
+      // Cycle 2: chip drives PC = 0x010 in A1..A3 (observed).
+      bus.runCycles(3);
+      expect(bus.pc()).toBe(0x010);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('JCN does not jump when condition is false', async () => {
+      const prog = new Uint8Array(0x80);
+      prog[0] = 0x11; prog[1] = 0x10;     // JCN C4=1, target=0x10
+      prog[2] = 0x00;                      // fallthrough = NOP
+      const board = new BoardHarness();
+      await bootChip(board);
+      // TEST pin HIGH means "logic 1" → JCN with C4=1 not taken.
+      board.setNet('TEST', true);
+      const bus = new Bus4004(board, prog);
+      // Cycle 0+1: JCN; not taken → PC = 0x002.
+      // Cycle 2: chip drives PC = 0x002 in A1..A3 (observed).
+      bus.runCycles(3);
+      expect(bus.pc()).toBe(0x002);
+      board.dispose();
+    });
+
     it.todo('LDM loads the immediate nibble into the accumulator');
-    it.todo('JCN conditionally jumps based on TEST/CY/ACC zero');
     it.todo('FIM loads an 8-bit immediate into a register pair');
-    it.todo('JMS pushes return address and jumps');
-    it.todo('BBL pops return address into PC');
   });
 
   describe('integration', () => {
