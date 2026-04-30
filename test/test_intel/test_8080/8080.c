@@ -323,16 +323,32 @@ static bool cond_met(uint8_t cc) {
 
 /* ─── One-instruction step ──────────────────────────────────────────────── */
 static void step(void) {
-    /* Service interrupt if pending and IME — simple model: synthesise an
-       implicit RST 7 (vector 0x0038). Real 8080 reads the RST opcode from
-       the data bus during INTA; we approximate. */
+    /* Service interrupt if pending and IME. Real 8080 INT acknowledge:
+       run an INTA bus cycle (status byte 0x23 = M1+INTA+WO̅), read the
+       opcode that external hardware (8259 PIC or hard-wired logic)
+       jams onto the data bus, and execute it. The opcode is typically
+       a RST n (0xC7..0xFF); we support that fully. Other opcodes
+       during INTA are documented to work too (e.g. CALL nnn) but
+       require multi-byte fetches with INTA status — deferred. */
     if (G.int_pending && G.ime) {
         G.ime = false;
         G.int_pending = false;
         G.halted = false;
         vx_pin_write(G.inte, 0);
-        push16(G.pc);
-        G.pc = 0x0038;
+
+        /* Address driven on A0..A15 during INTA is undefined per
+           datasheet; we drive PC for clarity. */
+        uint8_t opcode = bus_read(G.pc, ST_INTA);
+
+        if ((opcode & 0xC7) == 0xC7) {
+            /* RST n */
+            push16(G.pc);
+            G.pc = (uint16_t)((opcode >> 3) & 7) * 8;
+        }
+        /* If opcode is a non-RST (e.g. CALL nnn = 0xCD), full fidelity
+           would require additional INTA bus cycles to fetch the
+           operand bytes — not implemented yet. Treat as a NOP. */
+        return;
     }
 
     if (G.halted) {

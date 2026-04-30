@@ -414,31 +414,50 @@ describe('Intel 8080 chip', () => {
   });
 
   describe('interrupts', () => {
-    it.skipIf(skip)('INT pin triggers RST-vector when EI was executed', async () => {
+    it.skipIf(skip)('INT pin + INTA bus cycle vectors via RST opcode jammed on bus', async () => {
       // EI ; loop: NOP ; JMP loop
-      // ISR at 0x0038 (RST 7): MVI A, 0x55 ; STA 0x8000 ; HLT
+      // ISR at 0x0028 (RST 5): MVI A, 0x55 ; STA 0x8000 ; HLT
       const program = new Uint8Array(0x40);
       program.fill(I8080.NOP);
       program[0x00] = I8080.EI;
       program[0x01] = I8080.JMP; program[0x02] = 0x01; program[0x03] = 0x00;
-      program[0x38] = I8080.MVI_A; program[0x39] = 0x55;
-      program[0x3A] = I8080.STA;   program[0x3B] = 0x00; program[0x3C] = 0x80;
-      program[0x3D] = I8080.HLT;
+      program[0x28] = I8080.MVI_A; program[0x29] = 0x55;
+      program[0x2A] = I8080.STA;   program[0x2B] = 0x00; program[0x2C] = 0x80;
+      program[0x2D] = I8080.HLT;
 
       const { board, ram } = await bootCpu(program);
-      // Run a few cycles to let EI take effect.
+
+      // INTA bus driver. Two-stage:
+      //   1. Watch SYNC. When high, sample the status byte. If INTA bit
+      //      is set (status 0x23 = M1 + INTA + WO̅), latch a flag.
+      //   2. Watch DBIN AFTER bootCpu (so we register last and our drive
+      //      overrides the fake_rom's drive on the same DBIN edge).
+      //      When DBIN rises during a latched INTA cycle, drive the RST
+      //      opcode on D — the chip will read it.
+      let intaPending = false;
+      board.watchNet('SYNC', (high) => {
+        if (!high) return;
+        const status = board.readBus('D', 8);
+        intaPending = (status & 0x01) !== 0;
+      });
+      board.watchNet('DBIN', (high) => {
+        if (!high || !intaPending) return;
+        intaPending = false;
+        const RST5 = 0xEF;
+        for (let i = 0; i < 8; i++) {
+          board.setNet(`D${i}`, ((RST5 >> i) & 1) === 1);
+        }
+      });
+
+      // Let EI + a few NOPs run.
       board.advanceNanos(CLOCK_NS * 20);
-      // Pulse INT high. The 8080 expects an RST opcode on the data bus
-      // during interrupt acknowledge; our fake ROM doesn't model INTA.
-      // For a first-cut test we mark this todo until we extend the fake
-      // ROM with an INTA hook.
+      // Pulse INT high.
       board.setNet('INT', true);
-      board.advanceNanos(CLOCK_NS * 50);
+      board.advanceNanos(CLOCK_NS * 5);
       board.setNet('INT', false);
+      // Let the ISR run to HLT.
       board.advanceNanos(CLOCK_NS * 200);
 
-      // This assertion will only pass once the chip + harness understand
-      // the INTA bus protocol. Until then it's expected to fail/skip.
       expect(ram.peek(0x8000)).toBe(0x55);
       board.dispose();
     });
