@@ -5,9 +5,55 @@ for the spec.
 
 ## Status
 
-📋 **Spec only.** Recommended **last chip to implement** — most
-complex bus, biggest ISA. Tackle after 8080 and Z80 prove the
-toolchain.
+✅ **Implemented (minimum-mode baseline).** 3/13 active tests pass;
+10 are `it.todo` deferred. ~750 LOC clean-room in `8086.c` compiled
+to `fixtures/8086.wasm`.
+
+Validated against:
+- Intel 8086 Family User's Manual, October 1979 (PDF at
+  `autosearch/pdfs/iapx_86_88_users_manual.pdf`)
+- Cross-checked against 8086tiny (MIT, Adrian Cable),
+  MartyPC (MIT, dbalsom — hardware-validated 99.9997% on
+  SingleStepTests 8088 V2), YJDoc2/8086-Emulator (Apache+MIT)
+
+What works:
+- 40-pin minimum-mode contract (AD0..AD15, A16..A19, ALE, RD, WR,
+  M/IO, DT/R̅, DEN̅, BHE̅, INTR, NMI, INTA̅, RESET, READY, TEST̅, CLK,
+  HOLD, HLDA, MN/MX̅, VCC, GND).
+- Reset state per [I86] PDF p.51: CS=0xFFFF, IP=0, all other segs=0,
+  flags clear with reserved bits canonicalised. First fetch at
+  physical address 0xFFFF0 with proper ALE strobe.
+- Bus cycle T1-T4 (instruction-per-tick collapse): drive AD with low
+  16 addr, A with high 4, pulse ALE, switch AD to input, assert RD̅
+  (or drive data + WR̅ for writes).
+- 20-bit physical addressing: (segment<<4)+offset modulo 1 MB.
+- Register file: AX/BX/CX/DX with byte halves (union), SP/BP/SI/DI,
+  IP, CS/DS/ES/SS, FLAGS.
+- ModR/M decode for memory operands (Table 4-10 effective-address
+  formulas with default-segment selection).
+- ~50 opcodes: NOP, HLT, MOV reg/imm and r/m forms, MOV sreg, MOV
+  AL/AX,[addr]; ADD/OR/ADC/SBB/AND/SUB/XOR/CMP r/m + r and reverse
+  + AL/AX-imm forms; Group 1 (immediate ALU); INC/DEC r16; PUSH/POP
+  r16; PUSHF/POPF; CLC/STC/CLI/STI/CLD/STD/CMC; conditional short
+  jumps Jcc; JMP near/short/far; CALL near/far; RET near/far +imm;
+  LOOP/LOOPE/LOOPNE/JCXZ; Group 5 (INC/DEC/CALL/JMP/PUSH r/m16);
+  segment-override prefixes.
+
+Deferred (10 it.todo tests):
+- String ops (MOVS/CMPS/SCAS/LODS/STOS) with REP/REPE/REPNE prefix.
+- MUL/DIV/IMUL/IDIV with their per-flag undefined-ness.
+- BCD adjust (DAA/DAS/AAA/AAS/AAM/AAD).
+- Port I/O instructions (IN/OUT).
+- Hardware interrupts (NMI vector 2; INTR + INTA cycle reading the
+  vector byte from the data bus).
+- Maximum-mode bus protocol with QS0/QS1, S0..S2 status pins.
+- Cycle-accurate prefetch queue.
+- Undocumented opcodes (POP CS at 0x0F, SALC at 0xD6 — original
+  8086 only).
+
+Test infrastructure for the multiplexed AD bus + ALE-driven 8282
+demux is also pending — the ISA tests need a fake-8086-ROM helper
+that snapshots AD on ALE rising and drives back during RD̅ asserted.
 
 ## Pin contract (40-pin DIP, minimum mode)
 
