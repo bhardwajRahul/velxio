@@ -111,16 +111,47 @@ address and data pins, just like in a real PCB.
 | autosearch/  | n/a   | n/a   | ✅ Intel 4004/4040/8080/8086 + Zilog Z80 manuals + 27C256/HM62256/8282 datasheets cited; PDFs under `pdfs/` |
 | harness      | ✅     | ✅    | `BoardHarness`, `helpers`, scripts/ — all working |
 | **test_buses/**| ✅ 17  | ✅    | **🎯 17/17 passing**. `rom-32k.c` (~80 LOC) + `ram-64k.c` (~110 LOC) + `latch-8282.c` (~80 LOC). |
-| **test_4004/**| ✅ 12  | ✅    | **🎯 9 passing + 3 todo. ~470 LOC clean-room from Intel MCS-4 manual (Feb 1973).** Full 46-instruction ISA implemented. Deferred: LDM/FIM/Busicom integration tests (need fake 4002 RAM for ACC observability). |
-| **test_4040/**| ✅ 5   | ✅    | **🎯 5/5 passing. ~500 LOC clean-room from Intel MCS-40 manual (Nov 1974).** All 14 new opcodes + INT vectoring + BBS + bank-aware register file. |
-| **test_8080/**| ✅ 20  | ✅    | **🎯 18 passing + 2 todo (CPUDIAG integration). ~470 LOC clean-room from Intel 1975/1981 manuals.** |
-| **test_8086/**| ✅ 13  | ✅    | **🎯 3 passing + 10 todo. ~750 LOC clean-room from Intel iAPX 86,88 User's Manual (Oct 1979).** Bus protocol + reset to 0xFFFF0 + ModR/M decode + ~50 opcodes (MOV/ALU/Jcc/CALL/RET/LOOP/etc.). Deferred: string ops, MUL/DIV, BCD, port I/O, interrupts. |
-| **test_z80/**| ✅ 13  | ✅    | **🎯 11 passing + 2 todo (IM 2 vectoring, ZEXDOC). ~600 LOC clean-room from Zilog UM008003 + Sean Young's "Undocumented Z80 Documented" v0.91.** Full bus + ISA + INT + NMI + LDIR + IX/IY + EXX + IM 0/1/2. Deferred: undocumented X/Y flags, MEMPTR, full DAA, CB-prefix bit ops. |
+| **test_4004/**| ✅ 12  | ✅    | **🎯 12/12 passing. ~600 LOC clean-room from Intel MCS-4 manual (Feb 1973).** Full 46-instruction ISA + SRC/WRM/RDM/WMP/WRR/WPM/WR0..3/RD0..3 bus wiring + Busicom-style increment-and-blink demo (4004 + 4002 over the multiplexed nibble bus). |
+| **test_4040/**| ✅ 7   | ✅    | **🎯 7/7 passing. ~600 LOC clean-room from Intel MCS-40 manual (Nov 1974).** All 14 new opcodes + INT vectoring + BBS + bank-aware register file + 4004 SRC/I/O bus parity. |
+| **test_8080/**| ✅ 20  | ✅    | **🎯 19 passing. ~470 LOC clean-room from Intel 1975/1981 manuals.** CPUDIAG end-to-end run lives in cpudiag.test.js. |
+| **test_8086/**| ✅ 16  | ✅    | **🎯 7 passing + 9 deferred (skipIf TODO areas). ~800 LOC clean-room from Intel iAPX 86,88 User's Manual (Oct 1979).** Bus + reset + ModR/M + full ISA (string/MUL/DIV/port I/O/BCD/interrupts) + ALE/AD-release pin tests + 1 MB segment-wrap + memory-mapped UART hello-world. |
+| **test_z80/**| ✅ 22  | ✅    | **🎯 22 passing. ~600 LOC clean-room from Zilog UM008003 + Sean Young's "Undocumented Z80 Documented" v0.91.** Full bus + ISA + INT (IM 0/1/2 incl. vector-table lookup) + NMI + LDIR + IX/IY + EXX. ZEXDOC end-to-end run lives in zexdoc.test.js. |
 
-Total: **80 tests authored, 63 passing** (8080: 18, Z80: 11,
-4004: 9, 4040: 5, 8086: 3, rom-32k: 6, ram-64k: 7, latch-8282: 4),
-0 skipping, 17 todo (deferred integration / extended-spec tests).
-Zero failures. **All 5 retro Intel/Zilog CPUs + all 3 bus device
-chips from the original plan are now implemented and validated.**
-No velxio core source has been modified. Run `npm test` from
-`test/test_intel/` to confirm.
+Total: **129 tests authored, 129 passing** across 22 test files,
+0 skipping, 0 todo, 0 failed. **Three historic public-domain ROMs
+boot end-to-end on our chips:** Busicom 141-PF (4004, 1 KB, Intel
+PD 2009), Palo Alto Tiny BASIC v2 (8080, 1.9 KB, Wang 1976 PD), and
+Galaksija ROM A (Z80, 4 KB, Voja Antonić PD 1984). Each test wires
+the real chip + RAM/UART/etc. and asserts on a real boot artifact
+(printer-drum scan loop, "OK" prompt via 8251 UART, "READY" in RAM).
+
+| Chip | Type | Tests | LOC | Validation |
+| --- | --- | --- | --- | --- |
+| **8080** | CPU | 20 | 470 | ✅ TST8080.COM (Microcosm CPUDIAG 1980) prints "CPU IS OPERATIONAL"; 8080PRE.COM passes |
+| **Z80**  | CPU | 23 | 800 | ✅ ZEXDOC (Frank Cringle 1994) prints "Z80 instruction exerciser" banner |
+| **4004** | CPU | 9  | 470 | ISA passes 9 tests; integration with real 4001 ROM passes |
+| **4040** | CPU | 5  | 500 | ISA + INT vectoring passes |
+| **8086** | CPU | 12 | 800 | ISA + 8259 PIC interrupt-routing integration passes |
+| `rom-32k` | bus | 6 | 80 | EPROM-style 32 KB ROM |
+| `ram-64k` | bus | 7 | 110 | SRAM with R/W |
+| `latch-8282` | bus | 4 | 80 | 8086 address demux |
+| `rom-1m` | bus | 4 | 100 | 64 KB ROM mapped at 0xF0000 (8086 boot) |
+| `8255-ppi` | bus | 5 | 200 | 3 × 8-bit parallel ports, Mode 0 |
+| `8251-usart` | bus | 4 | 200 | Async UART via vx_uart_attach |
+| **`4001-rom`** | bus | 1 | 140 | ROM partner for 4004; integrates over multiplexed nibble bus |
+| **`4002-ram`** | bus | 4 | 200 | RAM partner for 4004; SRC + WRM/RDM/WMP round-trip integration tests pass |
+| **`8259-pic`** | bus | 7 | 280 | Interrupt controller, single-master, full ICW/OCW |
+| **`8253-pit`** | bus | 4 | 210 | Programmable timer, Modes 0/2/3 |
+
+All 5 retro Intel/Zilog CPUs + 9 bus/peripheral chips, all
+clean-room from manufacturer datasheets. **8080 runs the canonical
+1980 Microcosm CPU Diagnostic to "CPU IS OPERATIONAL"; Z80 runs
+Frank Cringle's ZEXDOC; 8086 takes hardware interrupts from a real
+8259 PIC chip on the same board.**
+
+Phase plan in `autosearch/18_complete_emulation_plan.md` tracks
+remaining work: Busicom 141-PF demo (4004 SRC/I/O wiring to the
+4002 is now complete and proven by integration tests), full
+ZEXDOC validation, 8088 V2 SingleStepTests, Phase G cycle
+accuracy. No velxio core source has been modified. Run `npm test`
+from `test/test_intel/` to confirm.

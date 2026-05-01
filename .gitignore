@@ -137,3 +137,6 @@ frontend/src/__tests__/fixtures/rp2040-blink/
 backups/*
 # Sidecar checksum file for data/ backups (matches a specific .tar.gz snapshot)
 MANIFEST.sha256
+*.tar.gz
+*.sqlite-backup
+

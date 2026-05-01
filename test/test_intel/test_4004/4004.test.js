@@ -289,11 +289,161 @@ describe('Intel 4004 chip', () => {
       board.dispose();
     });
 
-    it.todo('LDM loads the immediate nibble into the accumulator');
-    it.todo('FIM loads an 8-bit immediate into a register pair');
+    it.skipIf(skip)('LDM loads the immediate nibble into the accumulator', async () => {
+      // Program: LDM 5 ; SRC P0 ; WMP ; NOP
+      // After LDM the ACC = 5. SRC P0 drives the (R0:R1) pair on the
+      // bus during X2/X3 — both 0 since the regs are still reset.
+      // WMP drives ACC on the bus during X2. We capture D0..D3 on
+      // exactly the WMP cycle's X2 frame (phase 6 since SYNC) and
+      // assert it equals 5.
+      const prog = new Uint8Array(0x40);
+      prog[0] = 0xD5;
+      prog[1] = 0x21;
+      prog[2] = 0xE1;
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+
+      let cycleIdx = -1;
+      let phaseSinceSync = -1;
+      let wmpX2Drive = null;
+      board.watchNet('SYNC', (high) => {
+        if (high) { cycleIdx++; phaseSinceSync = 0; }
+      });
+      // Run cycles 0, 1, 2 phase by phase, capturing D after each step.
+      for (let i = 0; i < 24; i++) {
+        bus.step();
+        // Cycle 2 is WMP; phase 6 since SYNC = X2 frame.
+        if (cycleIdx === 2 && phaseSinceSync === 6) {
+          wmpX2Drive = board.readBus('D', 4);
+        }
+        if (phaseSinceSync >= 0) phaseSinceSync++;
+      }
+      expect(wmpX2Drive, 'WMP X2 must drive ACC = 5 on D bus').toBe(5);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('FIM loads an 8-bit immediate into a register pair', async () => {
+      // Program: FIM P0, 0x57 ; SRC P0 ; NOP...
+      // FIM is 2-byte; cycles 0+1 fetch+execute → P0 = (R0=5, R1=7).
+      // Cycle 2 is SRC P0; X2 drives high nibble (5), X3 drives low (7).
+      const prog = new Uint8Array(0x40);
+      prog[0] = 0x20;          // FIM P0 (even = FIM)
+      prog[1] = 0x57;          // operand
+      prog[2] = 0x21;          // SRC P0
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+
+      let cycleIdx = -1;
+      let phaseSinceSync = -1;
+      let srcX2Drive = null, srcX3Drive = null;
+      board.watchNet('SYNC', (high) => {
+        if (high) { cycleIdx++; phaseSinceSync = 0; }
+      });
+      for (let i = 0; i < 24; i++) {
+        bus.step();
+        if (cycleIdx === 2 && phaseSinceSync === 6) srcX2Drive = board.readBus('D', 4);
+        if (cycleIdx === 2 && phaseSinceSync === 7) srcX3Drive = board.readBus('D', 4);
+        if (phaseSinceSync >= 0) phaseSinceSync++;
+      }
+      expect(srcX2Drive, 'SRC X2 must drive R0 (high nibble) = 5').toBe(5);
+      expect(srcX3Drive, 'SRC X3 must drive R1 (low nibble) = 7').toBe(7);
+      board.dispose();
+    });
   });
 
   describe('integration', () => {
-    it.todo('runs a Busicom-style decrement-and-blink program');
+    it.skipIf(skip || !chipWasmExists('4002-ram'))(
+      'runs a Busicom-style increment-and-blink program', async () => {
+        // The Busicom 141-PF firmware is not in this repo; this test
+        // exercises the same kind of inner loop the firmware ran:
+        // SRC + WMP + IAC + JUN, with the 4002's output port playing
+        // the role of the printer/display latch.
+        //
+        // Program (under 16 bytes so it fits the 4001 ROM page):
+        //   0x00: F0       CLB           ; ACC = 0
+        //   0x01: 21       SRC P0        ; ← loop label
+        //   0x02: E1       WMP           ; latch ACC into the 4002 output
+        //   0x03: F2       IAC           ; ACC++
+        //   0x04: 40 01    JUN 0x001     ; jump back to SRC
+        //
+        // Each iteration of the loop is 4 instructions = 5 machine cycles
+        // (JUN is 2-byte). Run until ACC has been incremented several
+        // times and assert the 4002 output port reflects the latest
+        // value.
+        const PROG = new Uint8Array(0x40);
+        PROG[0x00] = 0xF0;          // CLB
+        PROG[0x01] = 0x21;          // SRC P0
+        PROG[0x02] = 0xE1;          // WMP
+        PROG[0x03] = 0xF2;          // IAC
+        PROG[0x04] = 0x40;          // JUN 0x001 (high nibble = 0)
+        PROG[0x05] = 0x01;          //   operand = low byte of target
+
+        const board = new BoardHarness();
+        // 4002 first so its on_phase fires before the 4004's per
+        // advanceNanos — the one-frame-behind protocol.
+        await board.addChip('4002-ram', {
+          SYNC: 'SYNC', CL: 'CLK1', RESET: 'RESET', CM: 'CMRAM0',
+          VDD: 'VDD', VSS: 'VSS',
+          D0: 'D0', D1: 'D1', D2: 'D2', D3: 'D3',
+          O0: 'O0', O1: 'O1', O2: 'O2', O3: 'O3',
+        });
+        await bootChip(board);
+
+        let phaseSinceSync = -1;
+        let observedPc = 0;
+        let pcLow = 0, pcMid = 0;
+        board.watchNet('SYNC', (high) => { if (high) phaseSinceSync = 0; });
+
+        function driveDNibble(n) {
+          for (let i = 0; i < 4; i++) {
+            board.setNet(`D${i}`, ((n >> i) & 1) === 1);
+          }
+        }
+
+        // Capture the 4002 output port after each WMP cycle so we can
+        // verify the BLINK SEQUENCE — not just the final value.
+        const outputs = [];
+        let prevOut = -1;       // -1 so the very first sample (= 0) registers
+
+        // Run lots of cycles — enough for ACC to roll past 9 a few times.
+        const PHASES = 8 * 80;        // 80 instruction cycles
+        for (let p = 0; p < PHASES; p++) {
+          if (phaseSinceSync === 3) {
+            driveDNibble((PROG[observedPc & 0x3F] >> 4) & 0xF);
+          } else if (phaseSinceSync === 4) {
+            driveDNibble(PROG[observedPc & 0x3F] & 0xF);
+          }
+          board.advanceNanos(CLOCK_NS);
+          if (phaseSinceSync === 0)      pcLow = board.readBus('D', 4);
+          else if (phaseSinceSync === 1) pcMid = board.readBus('D', 4);
+          else if (phaseSinceSync === 2) {
+            const pcHigh = board.readBus('D', 4);
+            observedPc = pcLow | (pcMid << 4) | (pcHigh << 8);
+          }
+          if (phaseSinceSync >= 0) phaseSinceSync++;
+
+          // Sample output at end of each cycle (phase 7).
+          if (phaseSinceSync === 8) {
+            let out = 0;
+            for (let i = 0; i < 4; i++) if (board.getNet(`O${i}`)) out |= (1 << i);
+            if (out !== prevOut) {
+              outputs.push(out);
+              prevOut = out;
+            }
+          }
+        }
+
+        // Each loop iteration produces a fresh WMP. The output should
+        // walk 0, 1, 2, 3, ... 0xF, 0, 1, ... — i.e. an incrementing
+        // sequence (modulo 16). Verify the first several distinct
+        // outputs follow that pattern.
+        expect(outputs.length, 'must blink at least 6 distinct values').toBeGreaterThanOrEqual(6);
+        for (let i = 0; i < Math.min(6, outputs.length); i++) {
+          expect(outputs[i], `tick ${i} of the increment-and-blink loop`).toBe(i);
+        }
+        board.dispose();
+      });
   });
 });

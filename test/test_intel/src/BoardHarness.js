@@ -203,6 +203,87 @@ export class BoardHarness {
   }
 
   /**
+   * Install a fake 8086-bus ROM/RAM that handles the multiplexed AD
+   * protocol with ALE-driven address latching, exactly as a real 8086
+   * minimum-mode board does. The chip drives:
+   *   T1: AD0..AD15 = addr_low; A16..A19 = addr_high; ALE pulse.
+   *   T2..T4 (read): chip releases AD; asserts RD̅; we drive AD with
+   *     data; chip samples on byte boundaries (even addr → AD0..AD7,
+   *     odd addr → AD8..AD15).
+   *   T2..T4 (write): chip drives AD with data; asserts WR̅; we latch
+   *     on rising edge of WR̅.
+   *
+   * Returns { mem, peek, poke } where mem is an internal array indexed
+   * by physical address (size depends on `opts.size`).
+   */
+  installFake8086Bus(opts = {}) {
+    const {
+      size = 0x100000,        /* 1 MB by default */
+      ramRange = [0x00000, 0x80000],   /* writable region */
+      rom = null,             /* optional Uint8Array placed at romBase */
+      romBase = 0xF0000,
+    } = opts;
+    const mem = new Uint8Array(size);
+    if (rom) {
+      for (let i = 0; i < rom.length && (romBase + i) < size; i++) {
+        mem[romBase + i] = rom[i];
+      }
+    }
+
+    let latchedAddr = 0;
+
+    const inWritable = (a) => a >= ramRange[0] && a < ramRange[1];
+
+    const driveByteOnAD = (byte, addr) => {
+      if (addr & 1) {
+        for (let i = 0; i < 8; i++) {
+          this.pm.triggerPinChange(this.net(`AD${i+8}`), Boolean((byte >> i) & 1));
+        }
+      } else {
+        for (let i = 0; i < 8; i++) {
+          this.pm.triggerPinChange(this.net(`AD${i}`), Boolean((byte >> i) & 1));
+        }
+      }
+    };
+
+    /* Latch address on ALE rising. */
+    this.pm.onPinChange(this.net('ALE'), (_pin, level) => {
+      if (level !== true) return;
+      let lo = 0, hi = 0;
+      for (let i = 0; i < 16; i++) if (this.getNet(`AD${i}`)) lo |= (1 << i);
+      for (let i = 16; i < 20; i++) if (this.getNet(`A${i}`)) hi |= (1 << (i - 16));
+      latchedAddr = (hi << 16) | lo;
+    });
+
+    /* Read response on RD̅ falling. */
+    this.pm.onPinChange(this.net('RD'), (_pin, level) => {
+      if (level !== false) return;
+      const addr = latchedAddr & (size - 1);
+      driveByteOnAD(mem[addr], addr);
+    });
+
+    /* Write latch on WR̅ rising. */
+    this.pm.onPinChange(this.net('WR'), (_pin, level) => {
+      if (level !== true) return;
+      const addr = latchedAddr & (size - 1);
+      if (!inWritable(addr)) return;
+      let byte = 0;
+      if (addr & 1) {
+        for (let i = 0; i < 8; i++) if (this.getNet(`AD${i+8}`)) byte |= (1 << i);
+      } else {
+        for (let i = 0; i < 8; i++) if (this.getNet(`AD${i}`)) byte |= (1 << i);
+      }
+      mem[addr] = byte;
+    });
+
+    return {
+      mem,
+      peek: (a) => mem[a & (size - 1)],
+      poke: (a, v) => { mem[a & (size - 1)] = v & 0xff; },
+    };
+  }
+
+  /**
    * Capture every (addr, data) pair the CPU writes via WR̅. Useful for
    * asserting the *sequence* of writes, not just final state.
    */
