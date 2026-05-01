@@ -709,6 +709,51 @@ SYNC rising. Documented in `4001-rom.c`.
 
 ---
 
+## Phase D-3 + todo cleanup — completed (2026-05-01)
+
+### 4040 bus wiring (D-3)
+The same `xact_t` pattern from D-2 (4004) applied to `test_4040/4040.c`
+so SRC + the I/O group drive/sample the multiplexed nibble bus during
+X2/X3 with CM-RAM (CM-ROM for ROM-port ops) strobed. Two integration
+tests added (`SRC + WMP`, `SRC + WRM/RDM round-trip`) wired to the
+real 4002 — the 4040 inherits the 4004's bus protocol so the same
+4002 chip works unchanged.
+
+### Cleanup of `it.todo` markers
+Most outstanding todos were converted to passing tests now that the
+chips and infrastructure support them:
+- **4004 LDM** — observe ACC via SRC + WMP X2 bus drive.
+- **4004 FIM** — observe register pair via SRC X2 (high) + X3 (low)
+  bus drives.
+- **8080 hand-built loop** — `LXI H + MVI M + DCR B + JNZ` increments
+  a memory cell to 10.
+- **Z80 IM 2 vector-table lookup** — sets I=0x40, vector byte=0x00,
+  table at 0x4000 points to ISR; INT̅ low fires the ISR.
+- **8086 1 MB physical-address wrap** — DS=0xFFFF + offset 0x11 →
+  0x100001 wraps to 0x00001.
+- **8086 ALE pulse** — counts ALE rising edges over a small program
+  to confirm one pulse per bus cycle.
+- **8086 AD release during T2** — proves the chip stops driving AD
+  when RD̅ asserts (we externally drive a pin and confirm it sticks).
+- **8086 hello-world via memory-mapped UART** — 5 unrolled
+  `MOV BYTE [imm], imm` writes to a fake UART data port at
+  DS:0x9000; bus capture + RAM peek both confirm "Hello".
+- **8080 CPUDIAG / Z80 ZEXDOC** — `it.todo` removed; the actual
+  end-to-end runs already pass in dedicated files
+  (`cpudiag.test.js`, `zexdoc.test.js`).
+
+### Remaining todo
+- **`4004` Busicom-style decrement-and-blink** — needs the 1 KB
+  Busicom 141-PF firmware split across 4 4001 ROM variants. Awaiting
+  a sourceable public-domain ROM image; the bus protocol is ready.
+
+### Tests delta
+- Total test_intel: 115 → **125 passing**, 1 todo, 0 failed
+  (+10 net: 7 todo conversions + 2 4040 integrations + 1 redundant
+  todo removed in z80.test.js).
+
+---
+
 ## Phase C extension — completed (2026-04-30)
 
 ### Delivered (the two deferred chips from Phase C)

@@ -464,7 +464,32 @@ describe('Intel 8080 chip', () => {
   });
 
   describe('integration', () => {
-    it.todo('runs a hand-built loop that increments memory 10× and stores final count');
-    it.todo('runs the public-domain CPUDIAG test ROM and reports "CPU IS OPERATIONAL"');
+    it.skipIf(skip)('runs a hand-built loop that increments memory 10× and stores final count', async () => {
+      // Loop: B = 10; mem[0x8000] = 0; do { mem[0x8000]++; B--; } while (B != 0);
+      //
+      //   LXI H, 0x8000          ; HL ← 0x8000 (memory pointer)
+      //   MVI M, 0x00            ; mem[HL] = 0
+      //   MVI B, 10              ; B = 10 (loop count)
+      //   loop: INR M            ; mem[HL]++
+      //         DCR B            ; B--
+      //         JNZ loop         ; while B != 0
+      //   HLT                    ; stop
+      const program = asm(
+        I8080.LXI_H, ...imm16(0x8000),     // 0x00..0x02
+        I8080.MVI_M, 0x00,                  // 0x03..0x04
+        I8080.MVI_B, 0x0A,                  // 0x05..0x06
+        I8080.INR_M,                        // 0x07  ← loop label
+        I8080.DCR_B,                        // 0x08
+        I8080.JNZ, ...imm16(0x0007),        // 0x09..0x0B
+        I8080.HLT,                          // 0x0C
+      );
+      const { board, ram } = await bootCpu(program);
+      runUntilHlt(board);
+      expect(ram.peek(0x8000), 'memory must hold the final loop count = 10').toBe(10);
+      board.dispose();
+    });
+
+    /* CPUDIAG end-to-end run lives in its own file (`cpudiag.test.js`)
+       — it requires a much longer time budget than the unit suite. */
   });
 });

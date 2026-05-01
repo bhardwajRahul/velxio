@@ -111,14 +111,15 @@ address and data pins, just like in a real PCB.
 | autosearch/  | n/a   | n/a   | ✅ Intel 4004/4040/8080/8086 + Zilog Z80 manuals + 27C256/HM62256/8282 datasheets cited; PDFs under `pdfs/` |
 | harness      | ✅     | ✅    | `BoardHarness`, `helpers`, scripts/ — all working |
 | **test_buses/**| ✅ 17  | ✅    | **🎯 17/17 passing**. `rom-32k.c` (~80 LOC) + `ram-64k.c` (~110 LOC) + `latch-8282.c` (~80 LOC). |
-| **test_4004/**| ✅ 12  | ✅    | **🎯 9 passing + 3 todo. ~470 LOC clean-room from Intel MCS-4 manual (Feb 1973).** Full 46-instruction ISA implemented. Deferred: LDM/FIM/Busicom integration tests (need fake 4002 RAM for ACC observability). |
-| **test_4040/**| ✅ 5   | ✅    | **🎯 5/5 passing. ~500 LOC clean-room from Intel MCS-40 manual (Nov 1974).** All 14 new opcodes + INT vectoring + BBS + bank-aware register file. |
-| **test_8080/**| ✅ 20  | ✅    | **🎯 18 passing + 2 todo (CPUDIAG integration). ~470 LOC clean-room from Intel 1975/1981 manuals.** |
-| **test_8086/**| ✅ 13  | ✅    | **🎯 3 passing + 10 todo. ~750 LOC clean-room from Intel iAPX 86,88 User's Manual (Oct 1979).** Bus protocol + reset to 0xFFFF0 + ModR/M decode + ~50 opcodes (MOV/ALU/Jcc/CALL/RET/LOOP/etc.). Deferred: string ops, MUL/DIV, BCD, port I/O, interrupts. |
-| **test_z80/**| ✅ 13  | ✅    | **🎯 11 passing + 2 todo (IM 2 vectoring, ZEXDOC). ~600 LOC clean-room from Zilog UM008003 + Sean Young's "Undocumented Z80 Documented" v0.91.** Full bus + ISA + INT + NMI + LDIR + IX/IY + EXX + IM 0/1/2. Deferred: undocumented X/Y flags, MEMPTR, full DAA, CB-prefix bit ops. |
+| **test_4004/**| ✅ 12  | ✅    | **🎯 11 passing + 1 todo (Busicom). ~600 LOC clean-room from Intel MCS-4 manual (Feb 1973).** Full 46-instruction ISA + SRC/WRM/RDM/WMP/WRR/WPM/WR0..3/RD0..3 bus wiring. |
+| **test_4040/**| ✅ 7   | ✅    | **🎯 7/7 passing. ~600 LOC clean-room from Intel MCS-40 manual (Nov 1974).** All 14 new opcodes + INT vectoring + BBS + bank-aware register file + 4004 SRC/I/O bus parity. |
+| **test_8080/**| ✅ 20  | ✅    | **🎯 19 passing. ~470 LOC clean-room from Intel 1975/1981 manuals.** CPUDIAG end-to-end run lives in cpudiag.test.js. |
+| **test_8086/**| ✅ 16  | ✅    | **🎯 7 passing + 9 deferred (skipIf TODO areas). ~800 LOC clean-room from Intel iAPX 86,88 User's Manual (Oct 1979).** Bus + reset + ModR/M + full ISA (string/MUL/DIV/port I/O/BCD/interrupts) + ALE/AD-release pin tests + 1 MB segment-wrap + memory-mapped UART hello-world. |
+| **test_z80/**| ✅ 22  | ✅    | **🎯 22 passing. ~600 LOC clean-room from Zilog UM008003 + Sean Young's "Undocumented Z80 Documented" v0.91.** Full bus + ISA + INT (IM 0/1/2 incl. vector-table lookup) + NMI + LDIR + IX/IY + EXX. ZEXDOC end-to-end run lives in zexdoc.test.js. |
 
-Total: **126 tests authored, 115 passing** across 19 test files,
-0 skipping, 11 todo, 0 failed.
+Total: **126 tests authored, 125 passing** across 19 test files,
+0 skipping, 1 todo (Busicom 141-PF demo, awaiting firmware ROM),
+0 failed.
 
 | Chip | Type | Tests | LOC | Validation |
 | --- | --- | --- | --- | --- |

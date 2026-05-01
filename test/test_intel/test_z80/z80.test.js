@@ -313,7 +313,41 @@ describe('Zilog Z80 chip', () => {
       board.dispose();
     });
 
-    it.todo('IM 2 + INT̅ uses I:byte to vector through a table');
+    it.skipIf(skip)('IM 2 + INT̅ uses I:byte to vector through a table', async () => {
+      // Set up:
+      //   I = 0x40, vector byte = 0x00 (our chip approximates the bus
+      //   data byte as 0x00 since we don't model an INTA cycle), so
+      //   vector table address = 0x4000. Place ISR pointer (0x6000)
+      //   there. ISR writes 0xC2 to 0x9000 and HALTs.
+      const program = new Uint8Array(0x8000);
+      program.fill(0x00);
+      program[0x00] = 0x3E; program[0x01] = 0x40;       // LD A, 0x40
+      program[0x02] = 0xED; program[0x03] = 0x47;       // LD I, A
+      program[0x04] = 0xED; program[0x05] = 0x5E;       // IM 2
+      program[0x06] = 0xFB;                              // EI
+      program[0x07] = 0x00;                              // NOP (loop)
+      program[0x08] = 0x18; program[0x09] = 0xFD;       // JR -3 → 0x07
+
+      // Vector table at I:00 = 0x4000 → ISR @ 0x6000
+      program[0x4000] = 0x00;
+      program[0x4001] = 0x60;
+
+      // ISR at 0x6000: LD A, 0xC2 ; LD (0x9000), A ; HALT
+      program[0x6000] = 0x3E; program[0x6001] = 0xC2;
+      program[0x6002] = 0x32; program[0x6003] = 0x00; program[0x6004] = 0x90;
+      program[0x6005] = 0x76;
+
+      const { board, ram } = await bootZ80(program);
+      // Let LD A,I + LD I,A + IM 2 + EI execute, then enter the loop.
+      for (let i = 0; i < 80; i++) board.advanceNanos(CLOCK_NS);
+      // Pulse INT̅ low.
+      board.setNet('INT', false);
+      for (let i = 0; i < 200; i++) board.advanceNanos(CLOCK_NS);
+      board.setNet('INT', true);
+      for (let i = 0; i < 200; i++) board.advanceNanos(CLOCK_NS);
+      expect(ram.peek(0x9000), 'ISR sentinel must reach RAM via IM 2 vectoring').toBe(0xC2);
+      board.dispose();
+    });
   });
 
   describe('CB-prefix bit ops', () => {
@@ -505,7 +539,7 @@ describe('Zilog Z80 chip', () => {
     });
   });
 
-  describe('integration', () => {
-    it.todo('runs the public-domain ZEXDOC test ROM (documented flags)');
-  });
+  /* ZEXDOC end-to-end integration run lives in its own file
+     (`zexdoc.test.js`) — it needs a much longer time budget than
+     the unit suite. */
 });

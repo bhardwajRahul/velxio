@@ -289,8 +289,68 @@ describe('Intel 4004 chip', () => {
       board.dispose();
     });
 
-    it.todo('LDM loads the immediate nibble into the accumulator');
-    it.todo('FIM loads an 8-bit immediate into a register pair');
+    it.skipIf(skip)('LDM loads the immediate nibble into the accumulator', async () => {
+      // Program: LDM 5 ; SRC P0 ; WMP ; NOP
+      // After LDM the ACC = 5. SRC P0 drives the (R0:R1) pair on the
+      // bus during X2/X3 — both 0 since the regs are still reset.
+      // WMP drives ACC on the bus during X2. We capture D0..D3 on
+      // exactly the WMP cycle's X2 frame (phase 6 since SYNC) and
+      // assert it equals 5.
+      const prog = new Uint8Array(0x40);
+      prog[0] = 0xD5;
+      prog[1] = 0x21;
+      prog[2] = 0xE1;
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+
+      let cycleIdx = -1;
+      let phaseSinceSync = -1;
+      let wmpX2Drive = null;
+      board.watchNet('SYNC', (high) => {
+        if (high) { cycleIdx++; phaseSinceSync = 0; }
+      });
+      // Run cycles 0, 1, 2 phase by phase, capturing D after each step.
+      for (let i = 0; i < 24; i++) {
+        bus.step();
+        // Cycle 2 is WMP; phase 6 since SYNC = X2 frame.
+        if (cycleIdx === 2 && phaseSinceSync === 6) {
+          wmpX2Drive = board.readBus('D', 4);
+        }
+        if (phaseSinceSync >= 0) phaseSinceSync++;
+      }
+      expect(wmpX2Drive, 'WMP X2 must drive ACC = 5 on D bus').toBe(5);
+      board.dispose();
+    });
+
+    it.skipIf(skip)('FIM loads an 8-bit immediate into a register pair', async () => {
+      // Program: FIM P0, 0x57 ; SRC P0 ; NOP...
+      // FIM is 2-byte; cycles 0+1 fetch+execute → P0 = (R0=5, R1=7).
+      // Cycle 2 is SRC P0; X2 drives high nibble (5), X3 drives low (7).
+      const prog = new Uint8Array(0x40);
+      prog[0] = 0x20;          // FIM P0 (even = FIM)
+      prog[1] = 0x57;          // operand
+      prog[2] = 0x21;          // SRC P0
+      const board = new BoardHarness();
+      await bootChip(board);
+      const bus = new Bus4004(board, prog);
+
+      let cycleIdx = -1;
+      let phaseSinceSync = -1;
+      let srcX2Drive = null, srcX3Drive = null;
+      board.watchNet('SYNC', (high) => {
+        if (high) { cycleIdx++; phaseSinceSync = 0; }
+      });
+      for (let i = 0; i < 24; i++) {
+        bus.step();
+        if (cycleIdx === 2 && phaseSinceSync === 6) srcX2Drive = board.readBus('D', 4);
+        if (cycleIdx === 2 && phaseSinceSync === 7) srcX3Drive = board.readBus('D', 4);
+        if (phaseSinceSync >= 0) phaseSinceSync++;
+      }
+      expect(srcX2Drive, 'SRC X2 must drive R0 (high nibble) = 5').toBe(5);
+      expect(srcX3Drive, 'SRC X3 must drive R1 (low nibble) = 7').toBe(7);
+      board.dispose();
+    });
   });
 
   describe('integration', () => {
