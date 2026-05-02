@@ -771,7 +771,11 @@ export const useSimulatorStore = create<SimulatorState>((set, get) => {
 
     compileBoardProgram: (boardId: string, program: string) => {
       const board = get().boards.find((b) => b.id === boardId);
-      if (!board) return;
+      if (!board) {
+        console.warn(`[compileBoardProgram] board not found: ${boardId}`);
+        return;
+      }
+      console.log(`[compileBoardProgram] ${boardId} kind=${board.boardKind} programLen=${program?.length ?? 0}`);
 
       if (isEsp32Kind(board.boardKind)) {
         // All ESP32 boards (Xtensa + RISC-V C3): send firmware to QEMU via bridge.

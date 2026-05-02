@@ -474,6 +474,43 @@ export class Esp32Bridge {
     this._send({ type: 'esp32_sensor_detach', data: { pin } });
   }
 
+  // ── ESP32-CAM webcam injection ────────────────────────────────────────────
+  /** Tell the backend a frame source is connected (call once when the user
+   *  grants webcam permission). */
+  sendCameraAttach(): void {
+    this._send({ type: 'esp32_camera_attach', data: { board: 'esp32-cam' } });
+  }
+
+  /** Push one JPEG frame from the browser webcam to the emulator. The
+   *  backend forwards it via ctypes to the QEMU OV2640+I²S device, which
+   *  delivers the bytes to the firmware's DMA buffer.
+   *
+   *  Encoding: base64 in JSON. ~10–14 KB per QVGA frame at quality 0.6.
+   *  At 10 fps that's ~120 KB/s — trivial over local WS. */
+  sendCameraFrame(jpegBytes: ArrayBuffer | Uint8Array,
+                  width = 320, height = 240): void {
+    const u8 = jpegBytes instanceof Uint8Array
+      ? jpegBytes
+      : new Uint8Array(jpegBytes);
+    // btoa needs a binary string; build one in 32 KB chunks to avoid
+    // "argument size limit" issues with very large frames.
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < u8.length; i += chunkSize) {
+      binary += String.fromCharCode(...u8.subarray(i, i + chunkSize));
+    }
+    const b64 = btoa(binary);
+    this._send({
+      type: 'esp32_camera_frame',
+      data: { fmt: 'jpeg', w: width, h: height, b64 },
+    });
+  }
+
+  /** Drop the queued frame. Call when the user stops the webcam. */
+  sendCameraDetach(): void {
+    this._send({ type: 'esp32_camera_detach', data: {} });
+  }
+
   /**
    * Queue user MicroPython code for injection after the REPL boots.
    * The code will be sent via raw-paste protocol once `>>>` is detected.
