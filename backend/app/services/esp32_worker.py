@@ -384,6 +384,7 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
     _uart0_buf      = bytearray()           # accumulate UART0 for crash detection
     _reboot_count   = [0]
     _crashed        = [False]
+    _camera_frame_count = [0]               # ESP32-CAM frame trace counter
     _CRASH_STR      = b'Cache disabled but cached memory region accessed'
     _REBOOT_STR     = b'Rebooting...'
     # LEDC channel → GPIO pin (populated from GPIO out_sel sync events)
@@ -1530,6 +1531,12 @@ def main() -> None:  # noqa: C901  (complexity OK for inline worker)
             except Exception as exc:
                 _log(f'camera_frame: bad base64: {exc}')
                 payload = b''
+            # Throttled trace — log every 30th frame so noisy streaming
+            # leaves a footprint in the lib_manager log without spamming.
+            _camera_frame_count[0] += 1
+            n = _camera_frame_count[0]
+            if n == 1 or n % 30 == 0:
+                _log(f'camera_frame #{n} received ({len(payload)} bytes payload)')
             if payload:
                 _push_camera_frame(payload)
 

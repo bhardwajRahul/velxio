@@ -1,5 +1,14 @@
 # 14 — ESP32-CAM emulation complete ✅
 
+> **Update 2026-05-02**: bumped EOFS_PER_FRAME 6 → 8 and added EOI
+> injection on the last EOF after the user verified end-to-end with
+> a real laptop webcam (QVGA, JPEG quality 0.6, ~10.5 KiB per frame).
+> Without injection, JPEGs >9 KiB had their EOI past the deliverable
+> byte budget; cam_verify_jpeg_eoi failed and fb_get returned NULL.
+> See "Bug #9" section at the end of this doc.
+
+
+
 `esp_camera_fb_get()` returns frames end-to-end. The last two bugs
 (out of seven total) were found by adding file-based debug logging
 to the I²S device, running under a direct worker bypass, and
@@ -164,6 +173,91 @@ End-users with no ESP32-CAM hardware can:
 User Arduino sketches that compile against `esp_camera.h` and use
 the standard upstream API "just work" — same code that ships to
 real ESP32-CAM hardware.
+
+## Bug #9 — Real webcam JPEGs exceed deliverable byte budget
+
+### Diagnosis
+
+After all 8 previous bugs were fixed, the SYNTHETIC test (4 KiB JPEG
+hand-crafted in webcam_helper.py) passed end-to-end. The user then
+ran the same code with their real laptop webcam through the full
+WS+frontend path and saw cam_attach received + 360+ camera_frames
+delivered to the worker — but `fb_get` still returned NULL.
+
+The difference: real webcam JPEGs at QVGA quality 0.6 are ~10.5 KiB
+(`pil-synthetic` test was 4 KiB). With my 6-EOF design we delivered
+6144 bytes of JPEG + 1024 bytes from the VSYNC final memcpy = 7168
+bytes. That covered offsets 0..7167 of the source JPEG. The EOI
+marker at offset ~10498 was never delivered.
+
+`cam_verify_jpeg_eoi` scans the framebuffer backward for FF D9.
+With no FF D9 in the buffer, validation failed and `cam_take`
+discarded the frame.
+
+### Fix
+
+Two complementary changes in `hw/misc/esp32_i2s_cam.c`:
+
+1. **`EOFS_PER_FRAME 6 → 8`** — maxes out the default cam_hal ring
+   of 16 descriptors (each EOF spans 2 descriptors). Effective
+   delivery: 8192 bytes per frame. Still doesn't fit a 10.5 KiB
+   JPEG, but combined with #2 it doesn't need to.
+
+2. **`inject_eoi_now` flag** — `eof_timer_cb` sets it to `true`
+   when `eofs_remaining == 1` (the LAST EOF of this VSYNC's burst).
+   The walker then overrides the final 2 samples of that EOF with
+   `0xFF 0xD9`. Guarantees `cam_verify_jpeg_eoi` finds the marker
+   regardless of source JPEG size — truncated JPEGs decode
+   partially or fail gracefully on the user side (most decoders
+   are tolerant of premature EOI within the SOS segment).
+
+```c
+/* In eof_timer_cb, before produce_one_chunk: */
+s->inject_eoi_now = (s->eofs_remaining == 1);
+produce_one_chunk(s);
+s->inject_eoi_now = false;
+
+/* In walk_dma_chain inner loop: */
+uint8_t p = next_pixel_byte(s);
+if (s->inject_eoi_now &&
+    (samples_written + i + 2 >= target_samples)) {
+    p = ((samples_written + i + 1 == target_samples) ? 0xD9u : 0xFFu);
+}
+```
+
+### Verification
+
+User confirmed end-to-end with real laptop webcam (Velxio frontend
+→ WS → backend route → worker → DLL → I²S → firmware):
+
+```
+[Frame #1]  8192 bytes  320x240  fmt=4
+  ├─ SOI (FF D8 FF):     ✓ at offset 0
+  ├─ EOI (FF D9):        ✓ at offset 8190    ← injected by QEMU walker
+  ├─ Effective JPEG:     8192 bytes
+  └─ First 16 bytes:     FF D8 FF E0 00 10 4A 46 49 46 …
+                                          (real JFIF header from webcam)
+
+  ┌─ Stats after 10 frames ─────────┐
+  │  Avg fps:            3.55       │
+  │  Avg bytes/frame:    8192       │
+  │  Valid JPEGs:       10/10  ✅   │
+  └─────────────────────────────────┘
+```
+
+## Updated bug list (final, 9 distinct silent bugs)
+
+| # | Bug | Phase |
+|---|-----|-------|
+| 1 | I²C catch-all NACK semantics broken | A |
+| 2 | Single-shot vs continuous EOFs | B |
+| 3 | dma_elem_t bit packing wrong field | C-pre |
+| 4 | `pack_two_pixels` consumed 2 bytes per sample, used 1 | C |
+| 5 | Single-descriptor walker (vs multi-descriptor per EOF) | C |
+| 6 | `vsync_kick_timer` gated on rx_start (chicken-and-egg) | D |
+| 7 | Insufficient EOFs per frame (synthetic JPEG) | E |
+| 8 | Descriptor ring stuck at owner=0 after first lap | E |
+| 9 | Real webcam JPEGs exceed deliverable budget — need EOI injection | F |
 
 ## Sources used in the final round
 
