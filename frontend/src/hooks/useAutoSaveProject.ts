@@ -112,7 +112,12 @@ export function useAutoSaveProject(): AutoSaveState {
     const reset = () => {
       const user = useAuthStore.getState().user;
       const proj = useProjectStore.getState().currentProject;
-      const eligible = !!user && !!proj && UUID_RE.test(proj.id);
+      // Only the project owner can auto-save. Viewing someone else's project
+      // (admin inspection, browsing public projects) leaves the hook idle —
+      // the backend correctly rejects non-owner PUTs with 403, and surfacing
+      // those failures as "save fail" to the user is misleading.
+      const eligible =
+        !!user && !!proj && UUID_RE.test(proj.id) && user.username === proj.ownerUsername;
       projectIdRef.current = eligible ? proj!.id : null;
       // Take a snapshot of the freshly-loaded state — this is the baseline
       // for dirty detection. Without this, the very first change would fire
