@@ -46,11 +46,12 @@ const FRAME_HEIGHT = 240;
 const FRAME_INTERVAL_MS = 100; // 10 fps
 // JPEG must fit in the QEMU emulator's 8 KiB-per-frame deliverable
 // budget (8 EOFs × 1024 bytes from the cam_hal default 16-descriptor
-// ring) — beyond that the firmware sees a truncated JPEG and
-// jpg2rgb565() rejects it with "Data format error". 0.35 produces
-// ~6-7 KiB JPEGs at QVGA which fit comfortably, with clearly more
-// detail than the 0.25 fallback we used pre-batching.
-const JPEG_QUALITY = 0.35;
+// ring). Anything bigger gets truncated and jpg2rgb565() rejects it
+// with "Data format error" — observed intermittently at 0.35 because
+// complex scenes encode larger than the average. 0.28 keeps the worst
+// case well under 8 KiB while staying noticeably sharper than the
+// 0.25 fallback we used before SPI batching landed.
+const JPEG_QUALITY = 0.28;
 
 export function useWebcamFrames(): UseWebcamFramesResult {
   const [status, setStatus] = useState<WebcamStatus>('idle');
