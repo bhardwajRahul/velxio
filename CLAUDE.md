@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Auth: Email/password + Google OAuth, JWT in httpOnly cookies
 - Project persistence: SQLite via SQLAlchemy 2.0 async + aiosqlite
 
-The project uses **local clones of official Wokwi repositories** in `wokwi-libs/` instead of npm packages.
+The project uses **local clones of official Wokwi repositories** in `third-party/` instead of npm packages.
 
 ## Development Commands
 
@@ -74,19 +74,19 @@ npm run lint
 
 ### Wokwi Libraries (Local Repositories)
 
-The project uses local clones of Wokwi repositories in `wokwi-libs/`:
+The project uses local clones of Wokwi repositories in `third-party/`:
 - `wokwi-elements/` - Web Components for electronic parts
 - `avr8js/` - AVR8 CPU emulator
 - `rp2040js/` - RP2040 emulator
 
 **Update libraries:**
 ```bash
-update-wokwi-libs.bat
+update-third-party.bat
 ```
 
 Or manually:
 ```bash
-cd wokwi-libs/wokwi-elements
+cd third-party/wokwi-elements
 git pull origin main
 npm install
 npm run build
@@ -122,8 +122,8 @@ The `frontend/vite.config.ts` uses path aliases to import from local repositorie
 ```typescript
 resolve: {
   alias: {
-    'avr8js': path.resolve(__dirname, '../wokwi-libs/avr8js/dist/esm'),
-    '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
+    'avr8js': path.resolve(__dirname, '../third-party/avr8js/dist/esm'),
+    '@wokwi/elements': path.resolve(__dirname, '../third-party/wokwi-elements/dist/esm'),
   },
 }
 ```
@@ -366,7 +366,7 @@ board.
 
 `frontend/public/components-metadata.json` is produced by
 `scripts/generate-component-metadata.ts`. **Direct edits get wiped** the
-next time the generator runs (which happens on every wokwi-libs update,
+next time the generator runs (which happens on every third-party update,
 plus anyone who runs `npm run generate:metadata` from `frontend/`).
 
 For Velxio-native components that don't exist in wokwi-elements (custom
@@ -402,14 +402,14 @@ There are known pre-existing TS errors that do NOT block the app from running:
 
 **Do not fix these unless explicitly asked.** They are suppressed in Docker builds by using `build:docker` which runs `vite build` only (no `tsc -b`). Local `npm run build` runs `tsc -b` and will show these errors.
 
-### 8. Docker Build — wokwi-libs
+### 8. Docker Build — third-party
 
 The git submodule pointers for `rp2040js` and `wokwi-elements` in this repo are stale (point to very old commits that predate `package.json`). The `Dockerfile.standalone` works around this by **cloning the libs fresh from GitHub** at build time instead of COPYing from the build context:
 
 ```dockerfile
-RUN git clone --depth=1 https://github.com/wokwi/avr8js.git wokwi-libs/avr8js \
- && git clone --depth=1 https://github.com/wokwi/rp2040js.git wokwi-libs/rp2040js \
- && git clone --depth=1 https://github.com/wokwi/wokwi-elements.git wokwi-libs/wokwi-elements
+RUN git clone --depth=1 https://github.com/wokwi/avr8js.git third-party/avr8js \
+ && git clone --depth=1 https://github.com/wokwi/rp2040js.git third-party/rp2040js \
+ && git clone --depth=1 https://github.com/wokwi/wokwi-elements.git third-party/wokwi-elements
 ```
 
 The GitHub Actions workflow does NOT use `submodules: recursive` for this reason.
@@ -445,7 +445,7 @@ npm test
 
 ### Adding a New Electronic Component
 
-1. Check if wokwi-elements has the component (see `wokwi-libs/wokwi-elements/src/`)
+1. Check if wokwi-elements has the component (see `third-party/wokwi-elements/src/`)
 2. Create React wrapper in `frontend/src/components/components-wokwi/`
 3. Add component type to `useSimulatorStore` interface
 4. Update SimulatorCanvas to render the component

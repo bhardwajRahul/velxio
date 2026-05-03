@@ -3,7 +3,7 @@
  *
  * Real-world feasibility check: drives the Cyw43Emulator with the
  * exact network workflows used by the **Pico W projects** in
- *   wokwi-libs/100_Days_100_IoT_Projects/
+ *   third-party/100_Days_100_IoT_Projects/
  *
  * For each project we encode the high-level Python calls
  * (`wlan.active(True)`, `wlan.connect(...)`, `urequests.post(...)`,

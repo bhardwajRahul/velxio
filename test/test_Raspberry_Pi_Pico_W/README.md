@@ -7,7 +7,7 @@ This folder is the answer to:
 
 > "Velxio emulates ESP32 WiFi but not Raspberry Pi Pico W WiFi. The
 > WiFi chip is a CYW43439. Has anyone written an emulator for it?
-> Look at `wokwi-libs/rp2040js` and figure out what would be needed to
+> Look at `third-party/rp2040js` and figure out what would be needed to
 > complete WiFi emulation."
 
 It is **not** a feature drop. The Velxio frontend and backend are
@@ -132,7 +132,7 @@ No Wokwi-* identifiers anywhere in the tree.
 ## What this folder does NOT do
 
 - It does **not** modify the Velxio frontend, backend, or
-  `wokwi-libs/rp2040js`. The repo's Pico W behaviour is unchanged.
+  `third-party/rp2040js`. The repo's Pico W behaviour is unchanged.
 - It does **not** ship the closed CYW43 firmware blob — see
   [`autosearch/06_firmware_blob_question.md`](./autosearch/06_firmware_blob_question.md).
 - It does **not** implement Tier 1+ (scan, connect, real packet flow).

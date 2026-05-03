@@ -7,9 +7,9 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      'avr8js': path.resolve(__dirname, '../wokwi-libs/avr8js/dist/esm'),
-      'rp2040js': path.resolve(__dirname, '../wokwi-libs/rp2040js/dist/esm'),
-      '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
+      'avr8js': path.resolve(__dirname, '../third-party/avr8js/dist/esm'),
+      'rp2040js': path.resolve(__dirname, '../third-party/rp2040js/dist/esm'),
+      '@wokwi/elements': path.resolve(__dirname, '../third-party/wokwi-elements/dist/esm'),
     },
   },
   server: {

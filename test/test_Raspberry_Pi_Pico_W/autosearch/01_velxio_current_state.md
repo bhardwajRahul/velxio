@@ -20,7 +20,7 @@ imports straight from `rp2040js` and the upstream package contains zero
 references to:
 
 ```
-$ grep -rE "CYW43|cyw43|wifi|WLAN|802\.11" wokwi-libs/rp2040js/src
+$ grep -rE "CYW43|cyw43|wifi|WLAN|802\.11" third-party/rp2040js/src
    (no matches)
 ```
 

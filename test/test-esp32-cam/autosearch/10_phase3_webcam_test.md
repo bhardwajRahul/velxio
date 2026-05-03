@@ -68,7 +68,7 @@ worker subprocess stdin (JSON line)
     ↓
 backend/app/services/esp32_worker.py: ctypes → velxio_push_camera_frame()
     ↓
-wokwi-libs/qemu-lcgamboa/hw/misc/velxio_camera_export.c
+third-party/qemu-lcgamboa/hw/misc/velxio_camera_export.c
     ↓
 hw/misc/esp32_i2s_cam.c: Esp32I2sCamState.frame_buf
     ↓

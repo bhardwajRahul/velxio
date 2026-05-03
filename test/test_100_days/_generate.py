@@ -2,7 +2,7 @@
 Generator for test_100_days
 
 This script reads every project under
-  wokwi-libs/100_Days_100_IoT_Projects/
+  third-party/100_Days_100_IoT_Projects/
 classifies it against Velxio's emulation capabilities, copies the source
 files into a per-project sub-folder under test/test_100_days/, and emits
 either:
@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PROJECTS_DIR = REPO_ROOT / "wokwi-libs" / "100_Days_100_IoT_Projects"
+PROJECTS_DIR = REPO_ROOT / "third-party" / "100_Days_100_IoT_Projects"
 OUT_DIR = REPO_ROOT / "test" / "test_100_days"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -649,7 +649,7 @@ def write_readme(summary: list[dict]) -> None:
         "# test_100_days",
         "",
         f"Generated tests for the **{n_total} projects** in "
-        "`wokwi-libs/100_Days_100_IoT_Projects/`, mapped against Velxio's "
+        "`third-party/100_Days_100_IoT_Projects/`, mapped against Velxio's "
         "current emulation capabilities.",
         "",
         f"- ✅ Velxio can run: **{n_ok}**",

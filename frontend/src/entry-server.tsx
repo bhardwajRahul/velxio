@@ -55,7 +55,7 @@ const ROUTE_COMPONENTS: Record<string, React.FC> = {
   '/docs/raspberry-pi3-emulation': DocsPage,
   '/docs/components': DocsPage,
   '/docs/architecture': DocsPage,
-  '/docs/wokwi-libs': DocsPage,
+  '/docs/third-party': DocsPage,
   '/docs/mcp': DocsPage,
   '/docs/setup': DocsPage,
   '/docs/roadmap': DocsPage,

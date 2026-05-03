@@ -382,10 +382,10 @@ Each example includes full Arduino sketch, component definitions, and wire conne
 
 | Library | Location | Purpose |
 |---------|----------|---------|
-| wokwi-elements | `wokwi-libs/wokwi-elements/` | 48+ Lit Web Components |
-| avr8js | `wokwi-libs/avr8js/` | AVR8 ATmega328p emulator |
-| rp2040js | `wokwi-libs/rp2040js/` | RP2040 emulator (future) |
-| wokwi-features | `wokwi-libs/wokwi-features/` | Features documentation |
+| wokwi-elements | `third-party/wokwi-elements/` | 48+ Lit Web Components |
+| avr8js | `third-party/avr8js/` | AVR8 ATmega328p emulator |
+| rp2040js | `third-party/rp2040js/` | RP2040 emulator (future) |
+| wokwi-features | `third-party/wokwi-features/` | Features documentation |
 
 ## Vite Integration
 
@@ -394,8 +394,8 @@ Each example includes full Arduino sketch, component definitions, and wire conne
 // vite.config.ts
 resolve: {
   alias: {
-    'avr8js': path.resolve(__dirname, '../wokwi-libs/avr8js/dist/esm'),
-    '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
+    'avr8js': path.resolve(__dirname, '../third-party/avr8js/dist/esm'),
+    '@wokwi/elements': path.resolve(__dirname, '../third-party/wokwi-elements/dist/esm'),
   },
 },
 optimizeDeps: {

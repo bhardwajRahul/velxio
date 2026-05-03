@@ -172,14 +172,14 @@ export const SEO_ROUTES: SeoRoute[] = [
     },
   },
   {
-    path: '/docs/wokwi-libs',
+    path: '/docs/third-party',
     priority: 0.7,
     changefreq: 'monthly',
     seoMeta: {
       title: 'Wokwi Libraries | Velxio Documentation',
       description:
         'How Velxio integrates the official Wokwi open-source libraries: avr8js, wokwi-elements, and rp2040js. Covers configuration, updates, and the 48 available components.',
-      url: `${DOMAIN}/docs/wokwi-libs`,
+      url: `${DOMAIN}/docs/third-party`,
     },
   },
   {

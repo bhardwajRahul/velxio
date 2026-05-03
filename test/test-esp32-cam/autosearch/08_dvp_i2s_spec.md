@@ -65,7 +65,7 @@ The **registers our QEMU model must implement** (offsets from
 
 (The exact offsets above are approximate; final mapping per the
 `I2S_*_REG` macros in `soc/i2s_struct.h`. The Phase-2 PR derives them
-from `wokwi-libs/qemu-lcgamboa`'s existing field-AP scheme — see
+from `third-party/qemu-lcgamboa`'s existing field-AP scheme — see
 `hw/i2c/esp32_i2c.c` for the pattern.)
 
 ## Linked-list DMA descriptor (`lldesc_t`)

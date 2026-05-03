@@ -5,28 +5,28 @@ This project uses the official Wokwi repositories cloned locally, which allows k
 ## Cloned Repositories
 
 ### wokwi-elements
-- **Location**: `wokwi-libs/wokwi-elements/`
+- **Location**: `third-party/wokwi-elements/`
 - **Description**: Web Components (Lit) for 48+ electronic elements (LEDs, resistors, buttons, LCDs, sensors, etc.)
 - **Repository**: https://github.com/wokwi/wokwi-elements
 - **License**: MIT
 - **Current usage**: Visual rendering of all components on the simulation canvas. A metadata generation script (`scripts/generate-component-metadata.ts`) parses the TypeScript source code to automatically discover all components, their properties, and pins.
 
 ### avr8js
-- **Location**: `wokwi-libs/avr8js/`
+- **Location**: `third-party/avr8js/`
 - **Description**: Complete AVR8 microcontroller emulator (ATmega328p) in JavaScript
 - **Repository**: https://github.com/wokwi/avr8js
 - **License**: MIT
 - **Current usage**: Real CPU emulation at 16MHz, with Timer0/1/2, USART, ADC, and GPIO ports (PORTB/C/D). Runs ~267,000 cycles per frame at ~60fps.
 
 ### rp2040js
-- **Location**: `wokwi-libs/rp2040js/`
+- **Location**: `third-party/rp2040js/`
 - **Description**: Raspberry Pi Pico (RP2040) emulator in JavaScript
 - **Repository**: https://github.com/wokwi/rp2040js
 - **License**: MIT
 - **Usage**: Cloned for future Raspberry Pi Pico support
 
 ### wokwi-features
-- **Location**: `wokwi-libs/wokwi-features/`
+- **Location**: `third-party/wokwi-features/`
 - **Description**: Wokwi documentation and feature tracking
 - **Repository**: https://github.com/wokwi/wokwi-features
 
@@ -39,8 +39,8 @@ The `frontend/vite.config.ts` file is configured to use the local repositories v
 ```typescript
 resolve: {
   alias: {
-    'avr8js': path.resolve(__dirname, '../wokwi-libs/avr8js/dist/esm'),
-    '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
+    'avr8js': path.resolve(__dirname, '../third-party/avr8js/dist/esm'),
+    '@wokwi/elements': path.resolve(__dirname, '../third-party/wokwi-elements/dist/esm'),
   },
 },
 optimizeDeps: {
@@ -53,8 +53,8 @@ The `frontend/package.json` file references the local packages:
 ```json
 {
   "dependencies": {
-    "@wokwi/elements": "file:../wokwi-libs/wokwi-elements",
-    "avr8js": "file:../wokwi-libs/avr8js"
+    "@wokwi/elements": "file:../third-party/wokwi-elements",
+    "avr8js": "file:../third-party/avr8js"
   }
 }
 ```
@@ -77,13 +77,13 @@ To keep your project up-to-date with the latest versions of Wokwi:
 
 ```bash
 # Script to update all repositories
-update-wokwi-libs.bat
+update-third-party.bat
 ```
 
 ### Option 2: Update each repository manually
 
 ```bash
-cd wokwi-libs
+cd third-party
 
 # Update wokwi-elements
 cd wokwi-elements
@@ -107,7 +107,7 @@ npm run build
 ### Option 3: Update to a specific version
 
 ```bash
-cd wokwi-libs/wokwi-elements
+cd third-party/wokwi-elements
 
 # View available versions
 git tag -l
@@ -131,7 +131,7 @@ npx tsx ../scripts/generate-component-metadata.ts
 
 ## Automatic Update Script
 
-The `update-wokwi-libs.bat` script simplifies updates:
+The `update-third-party.bat` script simplifies updates:
 
 ```batch
 @echo off
@@ -139,7 +139,7 @@ echo ========================================
 echo Updating Wokwi Libraries
 echo ========================================
 
-cd wokwi-libs
+cd third-party
 
 echo [1/3] Updating wokwi-elements...
 cd wokwi-elements
@@ -323,7 +323,7 @@ const metadata = registry.getById('led');
 Make sure wokwi-elements is built:
 
 ```bash
-cd wokwi-libs/wokwi-elements
+cd third-party/wokwi-elements
 npm install
 npm run build
 ```
@@ -333,7 +333,7 @@ npm run build
 Verify that the alias in `vite.config.ts` is correct and that avr8js is built:
 
 ```bash
-cd wokwi-libs/avr8js
+cd third-party/avr8js
 npm install
 npm run build
 ```
@@ -349,7 +349,7 @@ npx tsx ../scripts/generate-component-metadata.ts
 
 ### New wokwi-elements component does not appear
 
-1. Update wokwi-elements: `cd wokwi-libs/wokwi-elements && git pull && npm run build`
+1. Update wokwi-elements: `cd third-party/wokwi-elements && git pull && npm run build`
 2. Regenerate metadata: `cd frontend && npx tsx ../scripts/generate-component-metadata.ts`
 3. If it needs simulation, register its behavior in `frontend/src/simulation/parts/`
 

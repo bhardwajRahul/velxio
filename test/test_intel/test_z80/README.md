@@ -123,7 +123,7 @@ the Z80's expanded ISA.
 - `z80.c` (likely split into `z80_core.c` + `z80_decode.c` if the
   ported decoder is large)
 - `vendor/` for any vendored MIT-licensed reference code (or move
-  to `wokwi-libs/cpu-cores/` per the open question in
+  to `third-party/cpu-cores/` per the open question in
   [../autosearch/05_open_questions.md](../autosearch/05_open_questions.md#q2-where-exactly-should-vendor-emulator-cores-live))
 - `roms/zexdoc.bin`, `roms/hello.bin`
 - `z80.test.ts`

@@ -27,10 +27,10 @@
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "@wokwi/elements": "file:../wokwi-libs/wokwi-elements",
+    "@wokwi/elements": "file:../third-party/wokwi-elements",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
-    "avr8js": "file:../wokwi-libs/avr8js",
+    "avr8js": "file:../third-party/avr8js",
     "axios": "^1.13.6",
     "eecircuit-engine": "^1.7.0",
     "idb-keyval": "^6.2.2",

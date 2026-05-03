@@ -1,4 +1,4 @@
-# ---- Stage 1: Build wokwi-libs and frontend ----
+# ---- Stage 1: Build third-party and frontend ----
 FROM node:20-slim AS builder
 
 WORKDIR /app
@@ -11,13 +11,13 @@ RUN npm install
 COPY scripts/ scripts/
 
 # Copy and build avr8js
-COPY wokwi-libs/avr8js/ wokwi-libs/avr8js/
-WORKDIR /app/wokwi-libs/avr8js
+COPY third-party/avr8js/ third-party/avr8js/
+WORKDIR /app/third-party/avr8js
 RUN npm install && npm run build
 
 # Copy and build wokwi-elements
-COPY wokwi-libs/wokwi-elements/ wokwi-libs/wokwi-elements/
-WORKDIR /app/wokwi-libs/wokwi-elements
+COPY third-party/wokwi-elements/ third-party/wokwi-elements/
+WORKDIR /app/third-party/wokwi-elements
 RUN npm install && npm run build
 
 # Copy frontend source and install dependencies

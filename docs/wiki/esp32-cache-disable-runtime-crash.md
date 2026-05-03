@@ -208,7 +208,7 @@ A reference implementation lives at
 The patch lives behind a compile-time flag so upstream lcgamboa stays
 strictly faithful to silicon and only the Velxio build relaxes the rule.
 
-**File**: `wokwi-libs/qemu-lcgamboa/hw/misc/esp32_dport.c`
+**File**: `third-party/qemu-lcgamboa/hw/misc/esp32_dport.c`
 
 **Change A** — keep the cache regions mapped even when firmware writes
 0 to `CACHE_ENA`. Existing `esp32_cache_data_sync` keeps them coherent
@@ -273,14 +273,14 @@ disabled, instruction fetches from IROM return the fill value
 ## 8. Building the patched libraries
 
 The patch is already in the source tree
-(`wokwi-libs/qemu-lcgamboa/hw/misc/esp32_dport.c`) and the
+(`third-party/qemu-lcgamboa/hw/misc/esp32_dport.c`) and the
 `-DESP32_PICSIMLAB_SOFT_CACHE=1` flag is wired into both
 `build_libqemu-esp32.sh` (Linux/macOS) and `build_libqemu-esp32-win.sh`
 (Windows MSYS2 MINGW64).
 
 ### 8.1 Recommended — let the CI publish the release
 
-`wokwi-libs/qemu-lcgamboa/.github/workflows/build-libqemu.yml` builds
+`third-party/qemu-lcgamboa/.github/workflows/build-libqemu.yml` builds
 the patched libraries for **every host Velxio supports natively** and
 uploads them to the `qemu-prebuilt` release of the velxio repo:
 
@@ -319,7 +319,7 @@ extension automatically based on `sys.platform`.
 
 **Linux / macOS:**
 ```bash
-cd wokwi-libs/qemu-lcgamboa
+cd third-party/qemu-lcgamboa
 mkdir build-out && cd build-out
 bash ../build_libqemu-esp32.sh xtensa-softmmu,riscv32-softmmu ..
 
@@ -344,7 +344,7 @@ script's `sed -i …` calls resolve to GNU sed, not BSD sed.)
 
 **Windows (MSYS2 MINGW64):**
 ```bash
-cd /e/Hardware/velxio\ release/wokwi-libs/qemu-lcgamboa
+cd /e/Hardware/velxio\ release/third-party/qemu-lcgamboa
 bash build_libqemu-esp32-win.sh
 
 cp build/libqemu-xtensa.dll  ../../backend/app/services/

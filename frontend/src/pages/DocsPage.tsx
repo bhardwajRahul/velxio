@@ -31,7 +31,7 @@ type SectionId =
   | 'components'
   | 'roadmap'
   | 'architecture'
-  | 'wokwi-libs'
+  | 'third-party'
   | 'mcp'
   | 'setup';
 
@@ -46,7 +46,7 @@ const VALID_SECTIONS: SectionId[] = [
   'components',
   'roadmap',
   'architecture',
-  'wokwi-libs',
+  'third-party',
   'mcp',
   'setup',
 ];
@@ -66,7 +66,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'raspberry-pi3-emulation', label: 'Raspberry Pi 3 Emulation (QEMU)' },
   { id: 'components', label: 'Components Reference' },
   { id: 'architecture', label: 'Project Architecture' },
-  { id: 'wokwi-libs', label: 'Wokwi Libraries' },
+  { id: 'third-party', label: 'Wokwi Libraries' },
   { id: 'mcp', label: 'MCP Server' },
   { id: 'setup', label: 'Project Status' },
   { id: 'roadmap', label: 'Roadmap' },
@@ -118,7 +118,7 @@ const SECTION_META: Record<SectionId, SectionMeta> = {
     description:
       'Detailed overview of the Velxio system architecture: frontend, backend, AVR8 emulation pipeline, data flows, Zustand stores, and wire system.',
   },
-  'wokwi-libs': {
+  'third-party': {
     title: 'Wokwi Libraries | Velxio Documentation',
     description:
       'How Velxio integrates the official Wokwi open-source libraries: avr8js, wokwi-elements, and rp2040js. Covers configuration, updates, and the 48 available components.',
@@ -1090,7 +1090,7 @@ const WokwiLibsSection: React.FC = () => (
     <span className="docs-label">// open-source libs</span>
     <h1>Wokwi Libraries</h1>
     <p>
-      Velxio uses official Wokwi open-source repositories cloned locally in <code>wokwi-libs/</code>
+      Velxio uses official Wokwi open-source repositories cloned locally in <code>third-party/</code>
       . This gives you up-to-date, compatible emulation engines and visual components without npm
       registry dependencies.
     </p>
@@ -1116,7 +1116,7 @@ const WokwiLibsSection: React.FC = () => (
             </a>
           </td>
           <td>
-            <code>wokwi-libs/wokwi-elements/</code>
+            <code>third-party/wokwi-elements/</code>
           </td>
           <td>48+ Lit Web Components (LEDs, LCDs, sensors, buttons…)</td>
         </tr>
@@ -1127,7 +1127,7 @@ const WokwiLibsSection: React.FC = () => (
             </a>
           </td>
           <td>
-            <code>wokwi-libs/avr8js/</code>
+            <code>third-party/avr8js/</code>
           </td>
           <td>ATmega328p / ATmega2560 CPU emulator at 16 MHz</td>
         </tr>
@@ -1138,7 +1138,7 @@ const WokwiLibsSection: React.FC = () => (
             </a>
           </td>
           <td>
-            <code>wokwi-libs/rp2040js/</code>
+            <code>third-party/rp2040js/</code>
           </td>
           <td>Raspberry Pi Pico (RP2040) emulator</td>
         </tr>
@@ -1151,18 +1151,18 @@ const WokwiLibsSection: React.FC = () => (
     </p>
     <CodeBlock language="typescript">{`resolve: {
   alias: {
-    'avr8js':          '../wokwi-libs/avr8js/dist/esm',
-    '@wokwi/elements': '../wokwi-libs/wokwi-elements/dist/esm',
+    'avr8js':          '../third-party/avr8js/dist/esm',
+    '@wokwi/elements': '../third-party/wokwi-elements/dist/esm',
   },
 }`}</CodeBlock>
 
     <h2>Updating the Libraries</h2>
     <h3>All at once (recommended)</h3>
     <CodeBlock language="bash">{`# Windows
-update-wokwi-libs.bat`}</CodeBlock>
+update-third-party.bat`}</CodeBlock>
 
     <h3>Manually</h3>
-    <CodeBlock language="bash">{`cd wokwi-libs/wokwi-elements
+    <CodeBlock language="bash">{`cd third-party/wokwi-elements
 git pull origin main
 npm install && npm run build
 
@@ -1779,7 +1779,7 @@ const SetupSection: React.FC = () => (
           <td>Components not displayed</td>
           <td>
             <pre style={{ margin: 0 }}>
-              <code>cd wokwi-libs/wokwi-elements{'\n'}npm run build</code>
+              <code>cd third-party/wokwi-elements{'\n'}npm run build</code>
             </pre>
           </td>
         </tr>
@@ -1789,7 +1789,7 @@ const SetupSection: React.FC = () => (
           </td>
           <td>
             <pre style={{ margin: 0 }}>
-              <code>cd wokwi-libs/avr8js{'\n'}npm install && npm run build</code>
+              <code>cd third-party/avr8js{'\n'}npm install && npm run build</code>
             </pre>
           </td>
         </tr>
@@ -2486,7 +2486,7 @@ const SECTION_MAP: Record<SectionId, React.FC> = {
   components: ComponentsSection,
   roadmap: RoadmapSection,
   architecture: ArchitectureSection,
-  'wokwi-libs': WokwiLibsSection,
+  'third-party': WokwiLibsSection,
   mcp: McpSection,
   setup: SetupSection,
 };

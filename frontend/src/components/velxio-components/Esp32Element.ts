@@ -10,16 +10,16 @@
  *   - esp32-c3     → ESP32-C3 DevKitM-1   (127 × 215 px)
  */
 
-import esp32SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/esp32-devkit-v1/board.svg?url';
-import esp32S3SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/esp32-s3-devkitc-1/board.svg?url';
-import esp32C3SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/esp32-c3-devkitm-1/board.svg?url';
-import esp32DevkitCV4SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/esp32-devkit-c-v4/board.svg?url';
-import esp32CamSvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/esp32-cam/board.svg?url';
-import wemosLolin32SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/wemos-lolin32-lite/board.svg?url';
-import xiaoEsp32S3SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/xiao-esp32-s3/board.svg?url';
-import arduinoNanoEsp32SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/arduino-nano-esp32/board.svg?url';
-import xiaoEsp32C3SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/xiao-esp32-c3/board.svg?url';
-import aitewinC3SvgUrl from '../../../../wokwi-libs/wokwi-boards/boards/aitewinrobot-esp32c3-supermini/board.svg?url';
+import esp32SvgUrl from '../../../../third-party/wokwi-boards/boards/esp32-devkit-v1/board.svg?url';
+import esp32S3SvgUrl from '../../../../third-party/wokwi-boards/boards/esp32-s3-devkitc-1/board.svg?url';
+import esp32C3SvgUrl from '../../../../third-party/wokwi-boards/boards/esp32-c3-devkitm-1/board.svg?url';
+import esp32DevkitCV4SvgUrl from '../../../../third-party/wokwi-boards/boards/esp32-devkit-c-v4/board.svg?url';
+import esp32CamSvgUrl from '../../../../third-party/wokwi-boards/boards/esp32-cam/board.svg?url';
+import wemosLolin32SvgUrl from '../../../../third-party/wokwi-boards/boards/wemos-lolin32-lite/board.svg?url';
+import xiaoEsp32S3SvgUrl from '../../../../third-party/wokwi-boards/boards/xiao-esp32-s3/board.svg?url';
+import arduinoNanoEsp32SvgUrl from '../../../../third-party/wokwi-boards/boards/arduino-nano-esp32/board.svg?url';
+import xiaoEsp32C3SvgUrl from '../../../../third-party/wokwi-boards/boards/xiao-esp32-c3/board.svg?url';
+import aitewinC3SvgUrl from '../../../../third-party/wokwi-boards/boards/aitewinrobot-esp32c3-supermini/board.svg?url';
 
 // ─── Pin positions (mm × 5 px/mm, from board.json) ───────────────────────────
 

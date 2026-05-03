@@ -54,8 +54,8 @@ documentation/source over the forum reproduction.
 
 ## Velxio internal (this repo)
 
-- `wokwi-libs/rp2040js/src/peripherals/pio.ts` — `RPPIO`, `StateMachine`
-- `wokwi-libs/rp2040js/src/gpio-pin.ts`
+- `third-party/rp2040js/src/peripherals/pio.ts` — `RPPIO`, `StateMachine`
+- `third-party/rp2040js/src/gpio-pin.ts`
 - `frontend/src/simulation/RP2040Simulator.ts` — current wrapper
 - `frontend/src/simulation/MicroPythonLoader.ts` — current MP firmware loader
 - `frontend/src/types/board.ts` — `pi-pico-w` board declaration

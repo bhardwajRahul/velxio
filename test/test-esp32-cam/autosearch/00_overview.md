@@ -73,7 +73,7 @@ shipping hardware kills the value prop.
 1. **`01_state_of_the_art.md`** — what others have tried, why each path
    is or isn't a fit.
 2. **`02_qemu_lcgamboa_audit.md`** — concrete inventory of the QEMU fork
-   we ship (`wokwi-libs/qemu-lcgamboa`) so future-you knows exactly
+   we ship (`third-party/qemu-lcgamboa`) so future-you knows exactly
    which peripherals exist (and don't).
 3. **`03_browser_webcam_capture.md`** — `getUserMedia` + canvas + JPEG
    encode + WebSocket framing.

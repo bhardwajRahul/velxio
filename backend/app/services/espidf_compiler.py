@@ -22,7 +22,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 logger = logging.getLogger(__name__)
 
@@ -508,10 +508,12 @@ class ESPIDFCompiler:
 
         srcs_line = 'SRCS ' + ' '.join(f'"{f}"' for f in sorted(cpp_files)) if cpp_files else ''
 
-        # Generate INCLUDE_DIRS from the directory structure of copied files
+        # Generate INCLUDE_DIRS from the directory structure of copied files.
+        # Use PurePosixPath so paths stay forward-slashed on Windows — CMake
+        # parses backslashes as string escapes (e.g. "src\bitmaps" → invalid \b).
         include_dirs: set[str] = {'.'}
         for file_key in seen_names:
-            parent = str(Path(file_key).parent)
+            parent = str(PurePosixPath(file_key).parent)
             if parent and parent != '.':
                 include_dirs.add(parent)
 

@@ -4,7 +4,7 @@
  *
  * Source projects come from
  *   https://github.com/KritishMohapatra/100_Days_100_IoT_Projects
- * (cloned at wokwi-libs/100_Days_100_IoT_Projects/) — every example
+ * (cloned at third-party/100_Days_100_IoT_Projects/) — every example
  * here is a verbatim copy of the upstream `Main Files/main.py` for the
  * matching project, with the WiFi credentials replaced by the synthetic
  * `Velxio-GUEST` AP that the emulator advertises.

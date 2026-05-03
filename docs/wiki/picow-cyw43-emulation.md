@@ -120,7 +120,7 @@ a single 60 fps frame and consume <0.05% of the budget.
 
 The `07_picow_iot_projects.test.ts` suite drives the emulator with
 the **exact** workflows of every Pico W project in
-`wokwi-libs/100_Days_100_IoT_Projects/`:
+`third-party/100_Days_100_IoT_Projects/`:
 
 - HTTP server with on-board LED toggle (Pico_W_Async_LED_Control)
 - HTTP server flipping a relay (IoT_Relay_Control_Web_Server)

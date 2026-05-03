@@ -90,7 +90,7 @@ The DLL is built in MSYS2 MINGW64 against the qemu-lcgamboa fork.
 Path with spaces breaks meson, so we copy to `/c/v_qemu/` first:
 
 ```bash
-cp -r "/e/Hardware/velxio release/wokwi-libs/qemu-lcgamboa" /c/v_qemu
+cp -r "/e/Hardware/velxio release/third-party/qemu-lcgamboa" /c/v_qemu
 cd /c/v_qemu
 ./configure --target-list=xtensa-softmmu --enable-shared
 make -j8 lib/libqemu-xtensa.dll

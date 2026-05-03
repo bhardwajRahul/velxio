@@ -45,7 +45,7 @@ if op in (0x00, 0x01) and resp == 0 and addr not in _i2c_responses:
 ```
 
 A secondary fix in
-`wokwi-libs/qemu-lcgamboa/hw/i2c/picsimlab_i2c.c:picsimlab_i2c_match`
+`third-party/qemu-lcgamboa/hw/i2c/picsimlab_i2c.c:picsimlab_i2c_match`
 declines to claim addresses when no host-side I²C event handler is
 registered (defensive — protects builds where the worker hasn't
 loaded yet).

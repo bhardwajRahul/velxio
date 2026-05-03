@@ -1,6 +1,6 @@
 # 09 — QEMU build & distribution blueprint
 
-How a Phase-2 patch to `wokwi-libs/qemu-lcgamboa/` actually reaches a
+How a Phase-2 patch to `third-party/qemu-lcgamboa/` actually reaches a
 running container in production. Read this before writing any C in
 `hw/misc/`.
 
@@ -26,7 +26,7 @@ The asset names already encode arch: `libqemu-xtensa-amd64.so`,
 ## Build scripts that exist
 
 ```
-wokwi-libs/qemu-lcgamboa/
+third-party/qemu-lcgamboa/
 ├── build_libqemu-esp32.sh        # Linux/macOS — host nproc, bash
 └── build_libqemu-esp32-win.sh    # MSYS2 MINGW64 — produces .dll
 ```
@@ -59,7 +59,7 @@ Windows for the desktop tier.
 A new C source file, drop-in:
 
 ```
-wokwi-libs/qemu-lcgamboa/
+third-party/qemu-lcgamboa/
 ├── hw/i2c/
 │   └── esp32_ov2640.c        # NEW — SCCB device, 7-bit addr 0x30
 ├── hw/misc/
@@ -106,7 +106,7 @@ The CI matrix needs:
 
 Once the library is rebuilt:
 
-1. Tag the `wokwi-libs/qemu-lcgamboa/` commit (in a fork, or a
+1. Tag the `third-party/qemu-lcgamboa/` commit (in a fork, or a
    submodule pointer in this repo).
 2. CI workflow `.github/workflows/qemu-publish.yml` (NEW) builds the
    matrix and uploads to the existing `qemu-prebuilt` GitHub Release
@@ -123,7 +123,7 @@ For iteration speed during Phase 2:
 
 ```bash
 # 1. one-time
-cd wokwi-libs/qemu-lcgamboa
+cd third-party/qemu-lcgamboa
 ./configure --target-list=xtensa-softmmu --extra-cflags="-fPIC -DESP32_PICSIMLAB_SOFT_CACHE=1" --disable-werror --enable-tcg --enable-system --enable-debug
 make -j$(nproc)
 

@@ -24,11 +24,11 @@ upstream `espressif/esp32-camera` driver runs unmodified.
    esp32-camera driver issues, and the `lldesc_t` DMA descriptor
    format.
 10. `autosearch/09_qemu_build_blueprint.md` — how a Phase-2 patch in
-    `wokwi-libs/qemu-lcgamboa/` reaches a running container.
+    `third-party/qemu-lcgamboa/` reaches a running container.
 
 ## Reference sources cloned into the tree
 
-`wokwi-libs/esp32-camera/` (Apache 2.0, cloned for offline
+`third-party/esp32-camera/` (Apache 2.0, cloned for offline
 reference). Used by autosearch and the C-side QEMU device once we
 ship Phase 2. Treat as read-only — never modify.
 

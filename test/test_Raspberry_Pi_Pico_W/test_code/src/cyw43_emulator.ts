@@ -5,7 +5,7 @@
  * Everything in here is derived from public sources:
  *   - Infineon CYW43439 datasheet
  *   - pico-sdk pico_cyw43_driver  (BSD-3)
- *   - jbentham/picowi             (MIT — wokwi-libs/picowi/LICENSE)
+ *   - jbentham/picowi             (MIT — third-party/picowi/LICENSE)
  *   - georgerobotics/cyw43-driver (read-only reference, not copied)
  *
  * The chip's real ARM core inside the package is NOT executed — this

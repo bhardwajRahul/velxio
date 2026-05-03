@@ -148,8 +148,8 @@ logs (need to enable `ESP_LOG_DEBUG` for cam_hal — see TODO below).
 
 | File | Change |
 |------|--------|
-| `wokwi-libs/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c` | Multi-descriptor walker + one-byte-per-sample fix + split timers |
-| `wokwi-libs/qemu-lcgamboa/include/hw/misc/esp32_i2s_cam.h` | Added `vsync_kick_timer` field, updated comments |
+| `third-party/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c` | Multi-descriptor walker + one-byte-per-sample fix + split timers |
+| `third-party/qemu-lcgamboa/include/hw/misc/esp32_i2s_cam.h` | Added `vsync_kick_timer` field, updated comments |
 | `test/test-esp32-cam/autosearch/12_descriptor_walker_fix.md` | (previous bug write-up) |
 | `test/test-esp32-cam/autosearch/13_three_remaining_bugs.md` | This file |
 

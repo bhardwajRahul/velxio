@@ -98,7 +98,7 @@ class MetadataGenerator {
   private overridesPath: string;
 
   constructor() {
-    this.wokwiElementsPath = path.join(__dirname, '../wokwi-libs/wokwi-elements/src');
+    this.wokwiElementsPath = path.join(__dirname, '../third-party/wokwi-elements/src');
     this.outputPath = path.join(__dirname, '../frontend/public/components-metadata.json');
     this.overridesPath = path.join(__dirname, 'component-overrides.json');
   }

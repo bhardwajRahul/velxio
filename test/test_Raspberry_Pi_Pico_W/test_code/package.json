@@ -10,7 +10,7 @@
     "all": "vitest run"
   },
   "dependencies": {
-    "rp2040js": "file:../../../wokwi-libs/rp2040js"
+    "rp2040js": "file:../../../third-party/rp2040js"
   },
   "devDependencies": {
     "typescript": "^5.4.0",

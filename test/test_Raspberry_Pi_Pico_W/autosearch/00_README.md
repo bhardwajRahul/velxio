@@ -5,7 +5,7 @@ user on 2026-04-28**:
 
 > "Velxio emulates ESP32 WiFi but not Raspberry Pi Pico W WiFi. The
 > WiFi chip is a CYW43439. Has anyone written an emulator for it? Look
-> at `wokwi-libs/rp2040js`, find out what would be needed to complete
+> at `third-party/rp2040js`, find out what would be needed to complete
 > WiFi emulation."
 
 ## TL;DR
@@ -33,4 +33,4 @@ sources.md                      ← canonical URLs, dated 2026-04-28
 ```
 
 The companion folder `../test_code/` contains runnable prototypes that
-exercise these findings against the real `wokwi-libs/rp2040js`.
+exercise these findings against the real `third-party/rp2040js`.

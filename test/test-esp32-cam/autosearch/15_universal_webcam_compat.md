@@ -45,7 +45,7 @@ tooltip via `CameraToggle.tsx`).
 
 ### Layer B — Multi-lap descriptor ring walker (QEMU)
 
-`wokwi-libs/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c` `walk_dma_chain`
+`third-party/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c` `walk_dma_chain`
 previously bailed when all 16 descriptors were `owner=0` from a
 single lap, capping per-frame delivery at 8 KiB. The new code:
 
@@ -94,9 +94,9 @@ truly extreme cases.
   encoder dropped below 0.3 / fell back to the smaller canvas.
 
 ### Capa B
-- `wokwi-libs/qemu-lcgamboa/include/hw/misc/esp32_i2s_cam.h` — new
+- `third-party/qemu-lcgamboa/include/hw/misc/esp32_i2s_cam.h` — new
   `int laps_in_burst` field on `Esp32I2sCamState`.
-- `wokwi-libs/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c`:
+- `third-party/qemu-lcgamboa/hw/misc/esp32_i2s_cam.c`:
   - Forward decl of `reset_descriptor_ring` (defined in lifecycle
     section, called from walker).
   - `ESP32_I2S_CAM_EOFS_PER_FRAME` 8 → 24.

@@ -4,7 +4,7 @@
 
 ### Wokwi Repositories Cloned and Configured
 
-Official Wokwi repositories in `wokwi-libs/`:
+Official Wokwi repositories in `third-party/`:
 
 | Repository | Status | Description |
 |------------|--------|-------------|
@@ -110,7 +110,7 @@ Official Wokwi repositories in `wokwi-libs/`:
 | Item | Status |
 |------|--------|
 | Vite aliases for local repos | ✅ |
-| Package.json with `file:../wokwi-libs/...` | ✅ |
+| Package.json with `file:../third-party/...` | ✅ |
 | TypeScript declarations for Web Components | ✅ |
 | Backend CORS (ports 5173-5175) | ✅ |
 | React Router (2 routes) | ✅ |
@@ -125,7 +125,7 @@ Official Wokwi repositories in `wokwi-libs/`:
 | `docs/WOKWI_LIBS.md` | Wokwi integration guide |
 | `docs/SETUP_COMPLETE.md` | This file — project status |
 | `CLAUDE.md` | Guide for AI assistants |
-| `update-wokwi-libs.bat` | Automatic update script |
+| `update-third-party.bat` | Automatic update script |
 
 ## Getting Started
 
@@ -161,7 +161,7 @@ npm run dev
 
 ```bash
 # Run the update script
-update-wokwi-libs.bat
+update-third-party.bat
 
 # Regenerate component metadata (if you updated wokwi-elements)
 cd frontend
@@ -184,14 +184,14 @@ npx tsx ../scripts/generate-component-metadata.ts
 ### Components are not displayed
 
 ```bash
-cd wokwi-libs/wokwi-elements
+cd third-party/wokwi-elements
 npm run build
 ```
 
 ### Error: "Cannot find module 'avr8js'"
 
 ```bash
-cd wokwi-libs/avr8js
+cd third-party/avr8js
 npm install
 npm run build
 ```

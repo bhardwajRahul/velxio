@@ -11,6 +11,7 @@ import './components/velxio-components/LogicICElements';
 import './components/velxio-components/FlipFlopElements';
 import './components/velxio-components/RaspberryPi3Element';
 import './components/velxio-components/Bmp280Element';
+import './components/velxio-components/EPaperElement';
 import App from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(<App />);

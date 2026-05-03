@@ -65,15 +65,15 @@ coverage/
 .nyc_output/
 
 # Wokwi libs build artifacts (no ignorar el código fuente, solo builds)
-wokwi-libs/*/dist/
-wokwi-libs/*/node_modules/
-wokwi-libs/*/.cache/
+third-party/*/dist/
+third-party/*/node_modules/
+third-party/*/.cache/
 
 # NO ignorar los repositorios de Wokwi
-!wokwi-libs/wokwi-elements/
-!wokwi-libs/avr8js/
-!wokwi-libs/rp2040js/
-!wokwi-libs/wokwi-features/
+!third-party/wokwi-elements/
+!third-party/avr8js/
+!third-party/rp2040js/
+!third-party/wokwi-features/
 .claude/settings.local.json
 .history/*
 .daveagent/*
@@ -98,7 +98,7 @@ backend/app/services/libqemu-*.dll.bak
 # esp32-camera repo is cloned during dev (used as include path by the
 # arduino-esp32 toolchain via ARDUINO_ESP32_PATH). Not a submodule and
 # not part of the main repo — gitignored to keep the working tree clean.
-wokwi-libs/esp32-camera/
+third-party/esp32-camera/
 
 # Pre-built QEMU .so for Docker (built by build-qemu.sh — ~30MB Linux binaries)
 prebuilt/*

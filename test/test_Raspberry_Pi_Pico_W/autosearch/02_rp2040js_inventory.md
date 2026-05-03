@@ -1,8 +1,8 @@
 # rp2040js — what's already there to hook into
 
 This is a **read-the-source** inventory of the bits of
-`wokwi-libs/rp2040js` we'd build on top of. Paths are relative to
-`wokwi-libs/rp2040js/src/`.
+`third-party/rp2040js` we'd build on top of. Paths are relative to
+`third-party/rp2040js/src/`.
 
 ## Core peripherals already present
 

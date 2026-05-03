@@ -74,7 +74,7 @@ class TestSccbProbeLive(unittest.IsolatedAsyncioTestCase):
         device misbehaves.
 
         Phase 1 deliverable: PASSING since the OV2640 SCCB device shipped
-        in libqemu-xtensa. See wokwi-libs/qemu-lcgamboa/hw/i2c/esp32_ov2640.c."""
+        in libqemu-xtensa. See third-party/qemu-lcgamboa/hw/i2c/esp32_ov2640.c."""
         try:
             import httpx           # type: ignore
             import websockets      # type: ignore

@@ -29,7 +29,7 @@ React + TypeScript + Vite frontend for the Arduino emulator with visual simulato
 ### Prerequisites
 - Node.js 18+
 - Backend running at http://localhost:8001
-- Wokwi libraries built in `../wokwi-libs/`
+- Wokwi libraries built in `../third-party/`
 
 ### Install Dependencies
 ```bash
@@ -106,8 +106,8 @@ Vite aliases point to local clones instead of npm packages:
 ```typescript
 resolve: {
   alias: {
-    'avr8js': path.resolve(__dirname, '../wokwi-libs/avr8js/dist/esm'),
-    '@wokwi/elements': path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/esm'),
+    'avr8js': path.resolve(__dirname, '../third-party/avr8js/dist/esm'),
+    '@wokwi/elements': path.resolve(__dirname, '../third-party/wokwi-elements/dist/esm'),
   },
 }
 ```
@@ -155,7 +155,7 @@ See [backend documentation](../backend/README.md) for API details.
 
 1. Check if wokwi-elements has the component:
    ```bash
-   ls ../wokwi-libs/wokwi-elements/src/
+   ls ../third-party/wokwi-elements/src/
    ```
 
 2. Create React wrapper in `src/components/velxio-components/`:
@@ -186,7 +186,7 @@ See [backend documentation](../backend/README.md) for API details.
 - Verify Vite worker configuration in vite.config.ts
 
 ### Components Not Rendering
-- Ensure wokwi-elements is built: `cd ../wokwi-libs/wokwi-elements && npm run build`
+- Ensure wokwi-elements is built: `cd ../third-party/wokwi-elements && npm run build`
 - Check browser console for Web Component registration errors
 - Verify Vite alias paths in vite.config.ts
 

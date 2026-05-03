@@ -1,7 +1,7 @@
 # Open-source emulator references
 
 Candidate emulators we could **port** or **vendor** under
-`wokwi-libs/` (or under `test/test_intel/<chip>/vendor/`). All
+`third-party/` (or under `test/test_intel/<chip>/vendor/`). All
 licenses must be reviewed by a human before vendoring.
 
 ## Status convention
@@ -53,7 +53,7 @@ cores. Realistic options:
 
 If we vendor a permissively-licensed emulator, two options:
 
-1. **`wokwi-libs/<emu-name>/`** — matches the existing pattern for
+1. **`third-party/<emu-name>/`** — matches the existing pattern for
    `avr8js`, `rp2040js`, `wokwi-elements`. Top-level vendor location.
    Right call when the same emulator core is shared across multiple
    velxio chip projects.
@@ -62,7 +62,7 @@ If we vendor a permissively-licensed emulator, two options:
    don't want to imply it's a project-wide dependency.
 
 For the 8080 and Z80 ports we expect to share infrastructure (bus state
-machine, helpers), so option 1 with a unified `wokwi-libs/cpu-cores/`
+machine, helpers), so option 1 with a unified `third-party/cpu-cores/`
 folder is probably the better long-term home. Decide before committing
 the first port.
 

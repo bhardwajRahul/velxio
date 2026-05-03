@@ -25,12 +25,12 @@ Three plausible homes:
 
 - `frontend/src/simulation/cyw43/` — sibling of `MicroPythonLoader.ts`
   and `RP2040Simulator.ts`. Most consistent with current layout.
-- A new `wokwi-libs/cyw43js/` clone, mirroring how avr8js / rp2040js
+- A new `third-party/cyw43js/` clone, mirroring how avr8js / rp2040js
   are vendored. Sets us up to **upstream the work back to Wokwi as a
   separate package** later, which is a real possibility (issue #134
   has been open with no maintainer comment for years — they may be
   receptive to a contribution).
-- Inside `wokwi-libs/rp2040js/` directly — fastest to integrate,
+- Inside `third-party/rp2040js/` directly — fastest to integrate,
   worst for long-term sync with upstream.
 
 **Recommendation:** start in `frontend/src/simulation/cyw43/` for Tier 0

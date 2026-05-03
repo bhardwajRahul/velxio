@@ -19,7 +19,7 @@ firmware to read frames *in*.
 ## lcgamboa QEMU fork (the one we ship)
 
 - Repo: https://github.com/lcgamboa/qemu
-- Local copy: `wokwi-libs/qemu-lcgamboa/`
+- Local copy: `third-party/qemu-lcgamboa/`
 
 The README brags about three additions over Espressif's fork: **dynamic
 library compilation, Wi-Fi+ESP-NOW, and IOMUX**. No camera. A grep over

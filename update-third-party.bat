@@ -4,7 +4,7 @@ echo Actualizando Wokwi Libraries
 echo ========================================
 echo.
 
-cd wokwi-libs
+cd third-party
 
 echo [1/3] Actualizando wokwi-elements...
 cd wokwi-elements

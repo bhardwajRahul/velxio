@@ -1,4 +1,4 @@
-# 02 — `wokwi-libs/qemu-lcgamboa/` audit
+# 02 — `third-party/qemu-lcgamboa/` audit
 
 A grep-driven inventory of every ESP32 peripheral implemented in the
 QEMU fork we ship, so it's clear at a glance whether the hardware path
@@ -7,8 +7,8 @@ is ever feasible without forking.
 ## Method
 
 ```bash
-find wokwi-libs/qemu-lcgamboa/hw -maxdepth 3 -iname "esp32*"
-grep -ri "ov2640\|sccb\|dvp\|i2s_cam\|camera" wokwi-libs/qemu-lcgamboa/hw
+find third-party/qemu-lcgamboa/hw -maxdepth 3 -iname "esp32*"
+grep -ri "ov2640\|sccb\|dvp\|i2s_cam\|camera" third-party/qemu-lcgamboa/hw
 ```
 
 ## Inventory
@@ -76,7 +76,7 @@ grep -ri "ov2640\|sccb\|dvp\|i2s_cam\|camera" wokwi-libs/qemu-lcgamboa/hw
 ### Camera-related: nothing
 
 ```
-$ grep -ri "ov2640\|sccb\|dvp\|i2s_cam" wokwi-libs/qemu-lcgamboa/hw
+$ grep -ri "ov2640\|sccb\|dvp\|i2s_cam" third-party/qemu-lcgamboa/hw
 (no output)
 ```
 

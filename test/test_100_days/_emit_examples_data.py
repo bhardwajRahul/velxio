@@ -25,7 +25,7 @@ from pathlib import Path
 REPO_ROOT     = Path(__file__).resolve().parents[2]
 TESTS_ROOT    = REPO_ROOT / "test" / "test_100_days"
 OUT_FILE      = REPO_ROOT / "frontend" / "src" / "data" / "examples-100-days.ts"
-ORIG_PROJECTS = REPO_ROOT / "wokwi-libs" / "100_Days_100_IoT_Projects"
+ORIG_PROJECTS = REPO_ROOT / "third-party" / "100_Days_100_IoT_Projects"
 
 # ── Board mapping (test_100_days kind → ExampleProject.boardType) ──────────
 BOARD_TO_TYPE = {

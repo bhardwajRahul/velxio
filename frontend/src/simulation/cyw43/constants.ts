@@ -5,7 +5,7 @@
  * numbers — derived from public sources:
  *   - Infineon CYW43439 datasheet (gSPI section)
  *   - pico-sdk pico_cyw43_driver  (BSD-3)
- *   - jbentham/picowi             (MIT, see wokwi-libs/picowi/LICENSE)
+ *   - jbentham/picowi             (MIT, see third-party/picowi/LICENSE)
  *
  * Re-implemented as TypeScript constants. No copyrighted text is
  * reproduced; the names match the de-facto Broadcom / Cypress

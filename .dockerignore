@@ -12,11 +12,11 @@ env/
 # Build outputs (will be built inside Docker)
 frontend/dist/
 frontend/.vite/
-wokwi-libs/avr8js/dist/
-wokwi-libs/wokwi-elements/dist/
+third-party/avr8js/dist/
+third-party/wokwi-elements/dist/
 
 # QEMU source & Windows builds (only prebuilt/qemu/ .so files are needed)
-wokwi-libs/qemu-lcgamboa/
+third-party/qemu-lcgamboa/
 
 # IDE and OS
 .vscode/

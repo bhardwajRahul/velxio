@@ -95,7 +95,7 @@ it's a "sensor", which would imply `pin` semantics that don't apply.
 Phase 1 (SCCB stub)       → Python pytest layer (test_camera_websocket.py exists)
 Phase 2 (I²S + DMA)       → Python pytest layer + new C unit-tests inside QEMU
 Phase 3 (frame injection) → New live e2e: test/backend/e2e/test_camera_simulation.mjs
-Phase 4 (build)           → Update wokwi-libs/qemu-lcgamboa/build_libqemu-esp32.sh
+Phase 4 (build)           → Update third-party/qemu-lcgamboa/build_libqemu-esp32.sh
 Phase 5 (frontend)        → frontend/src/__tests__/esp32-camera-frame.test.ts
 Phase 6 (backfill tests)  → flip @expectedFailure off in tests we already wrote
 ```

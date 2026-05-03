@@ -64,28 +64,28 @@ RUN git clone --branch 2.0.17 --depth=1 --recursive --shallow-submodules \
  && rm -rf /opt/arduino-esp32/.git
 
 
-# ---- Stage 1: Build frontend and wokwi-libs ----
+# ---- Stage 1: Build frontend and third-party ----
 FROM node:20 AS frontend-builder
 
 WORKDIR /app
 
-# Clone wokwi-libs fresh from upstream to avoid stale submodule pointers.
+# Clone third-party fresh from upstream to avoid stale submodule pointers.
 # git is pre-installed in the node:20 Debian image.
-RUN git clone --depth=1 https://github.com/wokwi/avr8js.git wokwi-libs/avr8js \
- && git clone --depth=1 https://github.com/wokwi/rp2040js.git wokwi-libs/rp2040js \
- && git clone --depth=1 https://github.com/wokwi/wokwi-elements.git wokwi-libs/wokwi-elements \
- && git clone --depth=1 https://github.com/wokwi/wokwi-boards.git wokwi-libs/wokwi-boards
+RUN git clone --depth=1 https://github.com/wokwi/avr8js.git third-party/avr8js \
+ && git clone --depth=1 https://github.com/wokwi/rp2040js.git third-party/rp2040js \
+ && git clone --depth=1 https://github.com/wokwi/wokwi-elements.git third-party/wokwi-elements \
+ && git clone --depth=1 https://github.com/wokwi/wokwi-boards.git third-party/wokwi-boards
 
 # Build avr8js
-WORKDIR /app/wokwi-libs/avr8js
+WORKDIR /app/third-party/avr8js
 RUN npm install && npm run build --if-present
 
 # Build rp2040js (may have no build script on some commits)
-WORKDIR /app/wokwi-libs/rp2040js
+WORKDIR /app/third-party/rp2040js
 RUN npm install && npm run build --if-present
 
 # Build wokwi-elements
-WORKDIR /app/wokwi-libs/wokwi-elements
+WORKDIR /app/third-party/wokwi-elements
 RUN npm install && npm run build --if-present
 
 # Build frontend

@@ -293,13 +293,13 @@ git clone --recurse-submodules https://github.com/davidmonterocrespo24/velxio.gi
 cd velxio
 ```
 
-> **Already cloned without `--recurse-submodules`?** The `wokwi-libs/` directories will be empty. Run:
+> **Already cloned without `--recurse-submodules`?** The `third-party/` directories will be empty. Run:
 > ```bash
 > git submodule update --init --recursive
 > ```
 > If that fails because the submodule pointers are stale, clone the libs fresh:
 > ```bash
-> cd wokwi-libs
+> cd third-party
 > git clone --depth=1 https://github.com/wokwi/avr8js.git avr8js
 > git clone --depth=1 https://github.com/wokwi/wokwi-elements.git wokwi-elements
 > git clone --depth=1 https://github.com/wokwi/rp2040js.git rp2040js
@@ -313,9 +313,9 @@ cd velxio
 **Build the Wokwi libraries** (required before running the frontend):
 
 ```bash
-cd wokwi-libs/avr8js && npm install && npm run build && cd ../..
-cd wokwi-libs/wokwi-elements && npm install && npm run build && cd ../..
-cd wokwi-libs/rp2040js && npm install && npm run build && cd ../..
+cd third-party/avr8js && npm install && npm run build && cd ../..
+cd third-party/wokwi-elements && npm install && npm run build && cd ../..
+cd third-party/rp2040js && npm install && npm run build && cd ../..
 # wokwi-boards is asset-only (SVGs) — no install or build needed.
 ```
 
@@ -371,7 +371,7 @@ velxio/
 │       ├── models/              # User, Project (SQLAlchemy)
 │       ├── services/            # arduino_cli, esp32_worker, qemu_manager, gpio_shim
 │       └── core/                # config, security, dependencies
-├── wokwi-libs/                  # Local clones of Wokwi repos
+├── third-party/                  # Local clones of Wokwi repos
 │   ├── wokwi-elements/          # Web Components for electronic parts
 │   ├── avr8js/                  # AVR8 CPU emulator
 │   ├── rp2040js/                # RP2040 emulator

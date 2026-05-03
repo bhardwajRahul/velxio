@@ -23,7 +23,7 @@ const Module = require('module');
 const path   = require('path');
 const fs     = require('fs');
 
-const CJS_DIR    = path.resolve(__dirname, '../wokwi-libs/wokwi-elements/dist/cjs');
+const CJS_DIR    = path.resolve(__dirname, '../third-party/wokwi-elements/dist/cjs');
 const OUT_DIR    = path.resolve(__dirname, '../frontend/public/component-svgs');
 const BOARDS_DIR = path.resolve(__dirname, '../frontend/public/boards');
 

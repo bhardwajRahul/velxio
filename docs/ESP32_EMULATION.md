@@ -114,14 +114,14 @@ esptool version   # or: python -m esptool version
 
 ### 1.5 Build the QEMU DLL (libqemu-xtensa.dll)
 
-The DLL is the main emulation engine. It needs to be compiled once from the `wokwi-libs/qemu-lcgamboa` submodule.
+The DLL is the main emulation engine. It needs to be compiled once from the `third-party/qemu-lcgamboa` submodule.
 
 ```bash
 # Make sure you have the submodule
-git submodule update --init wokwi-libs/qemu-lcgamboa
+git submodule update --init third-party/qemu-lcgamboa
 
 # In the MSYS2 MINGW64 terminal:
-cd /e/Hardware/wokwi_clon/wokwi-libs/qemu-lcgamboa
+cd /e/Hardware/wokwi_clon/third-party/qemu-lcgamboa
 bash build_libqemu-esp32-win.sh
 # Produces: build/libqemu-xtensa.dll and build/libqemu-riscv32.dll
 ```
@@ -156,8 +156,8 @@ copy "C:\esp-qemu\qemu\share\qemu\esp32-v3-rom-app.bin" backend\app\services\
 
 **Option B — From the lcgamboa submodule (easier):**
 ```bash
-cp wokwi-libs/qemu-lcgamboa/pc-bios/esp32-v3-rom.bin backend/app/services/
-cp wokwi-libs/qemu-lcgamboa/pc-bios/esp32-v3-rom-app.bin backend/app/services/
+cp third-party/qemu-lcgamboa/pc-bios/esp32-v3-rom.bin backend/app/services/
+cp third-party/qemu-lcgamboa/pc-bios/esp32-v3-rom-app.bin backend/app/services/
 ```
 
 **Verify:**
@@ -796,11 +796,11 @@ The original problem was that `ledc_update {channel: N}` arrived at the frontend
 
 #### Xtensa (ESP32 / ESP32-S3)
 
-The `build_libqemu-esp32-win.sh` script in `wokwi-libs/qemu-lcgamboa/` automates the process:
+The `build_libqemu-esp32-win.sh` script in `third-party/qemu-lcgamboa/` automates the process:
 
 ```bash
 # In MSYS2 MINGW64:
-cd wokwi-libs/qemu-lcgamboa
+cd third-party/qemu-lcgamboa
 bash build_libqemu-esp32-win.sh
 # Produces: build/libqemu-xtensa.dll
 ```
@@ -821,7 +821,7 @@ Building `libqemu-riscv32.dll` requires a **separate build directory** because t
 
 ```bash
 # In MSYS2 MINGW64:
-cd wokwi-libs/qemu-lcgamboa
+cd third-party/qemu-lcgamboa
 mkdir build-riscv && cd build-riscv
 
 ../configure \
@@ -855,7 +855,7 @@ See [RISCV_EMULATION.md §4](./RISCV_EMULATION.md) for full step-by-step instruc
 The `build_libqemu-esp32.sh` script produces a `.so`:
 
 ```bash
-cd wokwi-libs/qemu-lcgamboa
+cd third-party/qemu-lcgamboa
 bash build_libqemu-esp32.sh
 # Produces: build/libqemu-xtensa.so and build/libqemu-riscv32.so
 ```
@@ -901,7 +901,7 @@ When only a single QEMU source file is modified (e.g. `esp32_gpio.c`), there is 
 **Windows (MSYS2 MINGW64):**
 
 ```bash
-cd wokwi-libs/qemu-lcgamboa/build
+cd third-party/qemu-lcgamboa/build
 
 # 1. Compile only the modified file:
 ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj
@@ -925,7 +925,7 @@ Some files have dependencies on pre-generated headers (e.g. `version.h`, `windre
 **Linux:**
 
 ```bash
-cd wokwi-libs/qemu-lcgamboa/build
+cd third-party/qemu-lcgamboa/build
 
 # Compile only the modified .obj:
 ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj
@@ -1330,7 +1330,7 @@ signal   = (direction >> 8) & 0xFF  # bits 15:8 → LEDC signal index
 
 ```bash
 # In MSYS2 MINGW64 (Windows):
-cd /e/Hardware/wokwi_clon/wokwi-libs/qemu-lcgamboa/build
+cd /e/Hardware/wokwi_clon/third-party/qemu-lcgamboa/build
 
 # Step 1: Compile only the modified .obj
 ninja libcommon.fa.p/hw_gpio_esp32_gpio.c.obj

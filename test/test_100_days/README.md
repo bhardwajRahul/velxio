@@ -1,6 +1,6 @@
 # test_100_days
 
-Generated tests for the **78 projects** in `wokwi-libs/100_Days_100_IoT_Projects/`, mapped against Velxio's current emulation capabilities.
+Generated tests for the **78 projects** in `third-party/100_Days_100_IoT_Projects/`, mapped against Velxio's current emulation capabilities.
 
 - ✅ Velxio can run: **49**
 - ❌ Cannot run as-is: **29**

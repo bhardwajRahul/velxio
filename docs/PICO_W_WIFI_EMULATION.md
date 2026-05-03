@@ -216,5 +216,5 @@ that CI does not bundle (see `…/03_pico_w_blink.test.ts`); drop a
 - `test/test_Raspberry_Pi_Pico_W/autosearch/` — the upstream research
   dossier (8 markdown files) with citations and the layered design.
 - Reference upstream: <https://github.com/KritishMohapatra/100_Days_100_IoT_Projects>
-- Reference driver: <https://github.com/jbentham/picowi> (MIT, cloned at `wokwi-libs/picowi/`)
+- Reference driver: <https://github.com/jbentham/picowi> (MIT, cloned at `third-party/picowi/`)
 - Reference SPI program: <https://github.com/raspberrypi/pico-sdk/tree/master/src/rp2_common/pico_cyw43_driver>

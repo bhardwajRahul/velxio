@@ -73,7 +73,7 @@ Test Files  7 passed | 1 skipped (8)
 
 Each test drives the Cyw43Emulator with the **exact** network workflow
 of one of the Pico W projects in
-`wokwi-libs/100_Days_100_IoT_Projects/`:
+`third-party/100_Days_100_IoT_Projects/`:
 
 | # | Project | What's exercised | Result |
 |---|---|---|---|
@@ -148,7 +148,7 @@ Every numeric constant in `src/cyw43_constants.ts` is sourced from
 - **gSPI register addresses** — Infineon CYW43439 datasheet §3.5.
 - **WLC IOCTL command numbers** — pico-sdk's `pico_cyw43_driver`
   (BSD-3) and `jbentham/picowi` (MIT). The MIT-licensed picowi tree is
-  cloned into `wokwi-libs/picowi/` for cross-reference.
+  cloned into `third-party/picowi/` for cross-reference.
 - **WLC_E event numbers** — same two sources.
 - **SDPCM/CDC layout** — Broadcom-published in the AirForce SDK and
   re-implemented identically in every open driver.
