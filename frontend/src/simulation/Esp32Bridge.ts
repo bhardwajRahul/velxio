@@ -110,6 +110,12 @@ export class Esp32Bridge {
   onI2cEvent: ((addr: number, data: number) => void) | null = null;
   onI2cTransaction: ((addr: number, data: number[]) => void) | null = null;
   onSpiEvent: ((data: number) => void) | null = null;
+  /** Same as onSpiEvent but more explicit (a single MOSI byte). */
+  onSpiByte: ((mosi: number) => void) | null = null;
+  /** Fires on every CS line change emitted by the SoC's SPI peripheral.
+   * `csIdx` is the index of the CS pin within the SPI bus (0-3 typical),
+   * `low` is true when CS goes LOW (slave selected), false when HIGH. */
+  onSpiCsChange: ((csIdx: number, low: boolean) => void) | null = null;
   onConnected: (() => void) | null = null;
   onDisconnected: (() => void) | null = null;
   onError: ((msg: string) => void) | null = null;
@@ -287,8 +293,25 @@ export class Esp32Bridge {
           break;
         }
         case 'spi_event': {
-          const data = msg.data.data as number;
-          this.onSpiEvent?.(data);
+          // Worker emits {bus, event, response}. The 'event' field encodes:
+          //   event = mosi << 8        (op = event & 0xFF == 0x00) → byte transfer
+          //   event = ((cs<<1)|level) << 8 | 0x01 (op == 0x01)     → CS line change
+          // See backend/app/services/esp32_worker.py::_on_spi_event.
+          const event = msg.data.event as number;
+          const op    = (event ?? 0) & 0xFF;
+          if (op === 0x00) {
+            const mosi = (event >> 8) & 0xFF;
+            this.onSpiEvent?.(mosi);
+            this.onSpiByte?.(mosi);
+          } else if (op === 0x01) {
+            const csIdx = (event >> 9) & 0x3;
+            const level = (event >> 8) & 0x1;
+            this.onSpiCsChange?.(csIdx, level === 1);
+          }
+          // Backwards-compat path for callers reading the old `data` field.
+          if (msg.data.data !== undefined) {
+            this.onSpiEvent?.(msg.data.data as number);
+          }
           break;
         }
         case 'system': {
