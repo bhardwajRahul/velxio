@@ -126,6 +126,17 @@ app.include_router(simulation.router, prefix="/api/simulation", tags=["simulatio
 from app.api.routes import iot_gateway
 app.include_router(iot_gateway.router, prefix="/api/gateway", tags=["iot-gateway"])
 
+# Optional pro extension. The `app.pro` package only exists in private builds
+# (overlaid at Docker build time by an external repo) — its absence in the
+# open-source image is expected and silently ignored. Anyone with private
+# extensions can drop a package at `backend/app/pro/` exposing
+# `register_pro(app)` and have it auto-loaded here without further edits.
+try:
+    from app.pro import register_pro  # type: ignore[import-not-found]
+    register_pro(app)
+except ImportError:
+    pass
+
 @app.get("/")
 def root():
     return {

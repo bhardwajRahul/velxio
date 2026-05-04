@@ -33,6 +33,12 @@ interface EditorToolbarProps {
    * regardless of how narrow the editor pane gets.
    */
   centerSlot?: React.ReactNode;
+  /**
+   * Optional extra elements rendered after the built-in right-group buttons
+   * (Libraries / Import-Export / Output Console). Used by private overlays
+   * to add deployment-specific actions without forking the toolbar.
+   */
+  rightSlot?: React.ReactNode;
 }
 
 const BOARD_PILL_ICON: Record<BoardKind, string> = {
@@ -63,6 +69,7 @@ export const EditorToolbar = ({
   compileLogs: _compileLogs,
   setCompileLogs,
   centerSlot,
+  rightSlot,
 }: EditorToolbarProps) => {
   const { files, codeChangedSinceLastCompile, markCompiled } = useEditorStore();
   const {
@@ -973,6 +980,7 @@ export const EditorToolbar = ({
                 <line x1="12" y1="19" x2="20" y2="19" />
               </svg>
             </button>
+            {rightSlot}
           </div>
         </div>
       </div>

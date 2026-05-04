@@ -15,3 +15,13 @@ import './components/velxio-components/EPaperElement';
 import App from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(<App />);
+
+// Optional pro overlay. The `@pro` import resolves to a no-op stub in the
+// open-source build (see vite.config.ts) and to the real overlay only when
+// VITE_PRO_BUILD=true at build time. The dynamic import keeps the pro chunk
+// out of the OSS bundle entirely (Vite tree-shakes the never-taken branch).
+if (import.meta.env.VITE_PRO_BUILD) {
+  import('@pro/index')
+    .then((m) => m.mountPro?.())
+    .catch((err) => console.warn('[pro] failed to load overlay:', err));
+}
