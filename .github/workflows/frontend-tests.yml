@@ -24,17 +24,17 @@ jobs:
       - name: Clone wokwi-elements (for metadata regeneration only)
         run: git clone --depth=1 https://github.com/wokwi/wokwi-elements.git third-party/wokwi-elements
 
-      - name: Cache frontend node_modules
-        uses: actions/cache@v4
-        with:
-          path: frontend/node_modules
-          key: frontend-${{ hashFiles('frontend/package-lock.json') }}
+      # No node_modules cache. Lock files are gitignored (see .gitignore) so
+      # a cache key tied to package-lock.json never invalidates and ends up
+      # restoring stale links to old `file:` deps from previous commits
+      # (e.g. wokwi-elements pre-npm migration). Fresh install every run is
+      # ~30s slower but actually correct.
 
       - name: Install frontend dependencies
-        run: cd frontend && npm install
+        run: cd frontend && npm install --no-audit --no-fund --include=optional
 
       - name: Install root dev dependencies
-        run: npm install
+        run: npm install --no-audit --no-fund
 
       # Regenerate metadata and fail if committed JSON is stale. Catches PRs
       # that modify component-overrides.json without running generate:metadata.

@@ -14,7 +14,7 @@ Root cause: the frontend sends the FQBN
 ATTinyCore and arduino-cli didn't have the drazzy.com index URL configured.
 
 Fix lives in ``backend/app/services/arduino_cli.py`` (CORE_URLS +
-ON_DEMAND_CORES), ``deploy/entrypoint.sh`` (production image), and
+ON_DEMAND_CORES), ``docker/entrypoint.sh`` (production image), and
 ``backend/Dockerfile`` (dev image).
 
 These tests run pure-Python — no arduino-cli subprocess, no network. They
@@ -109,10 +109,10 @@ def test_core_id_for_fqbn_routes_attiny85():
 
 
 def test_entrypoint_installs_attinycore_in_production():
-    """deploy/entrypoint.sh must add the drazzy URL and `core install
+    """docker/entrypoint.sh must add the drazzy URL and `core install
     ATTinyCore:avr` so the standalone Docker image can compile ATtiny85
     sketches without the auto-install penalty on the first request."""
-    script = (_REPO / "deploy" / "entrypoint.sh").read_text(encoding="utf-8")
+    script = (_REPO / "docker" / "entrypoint.sh").read_text(encoding="utf-8")
     assert "drazzy.com/package_drazzy.com_index.json" in script, (
         "entrypoint.sh is missing the drazzy.com board-manager URL — first "
         "ATtiny85 compile will fail in the production Docker image."
