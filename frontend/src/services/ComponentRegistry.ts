@@ -177,6 +177,23 @@ export class ComponentRegistry {
   }
 
   /**
+   * Merge additional components into the registry from an external source.
+   *
+   * Used by private overlays (e.g. the velxio.dev pro overlay) to add
+   * premium components after the default `/components-metadata.json` has
+   * loaded. Components with an existing `id` are replaced; new ones are
+   * appended. Categories and search index are rebuilt.
+   */
+  mergeComponents(extras: ComponentMetadata[]): void {
+    if (!extras || extras.length === 0) return;
+    const byId = new Map(this.allComponents.map((c) => [c.id, c]));
+    for (const extra of extras) {
+      byId.set(extra.id, extra);
+    }
+    this.processMetadata(Array.from(byId.values()));
+  }
+
+  /**
    * Get components by category
    */
   getByCategory(category: ComponentCategory): ComponentMetadata[] {
