@@ -32,6 +32,7 @@
  */
 
 import type { BoardKind } from '../types/board';
+import { generateUUID } from '../utils/uuid';
 
 /**
  * Map any ESP32-family board kind to the 3 base QEMU machine types understood
@@ -51,11 +52,11 @@ const API_BASE = (): string =>
 /** Returns a stable UUID for this browser tab (persists across reloads, resets on new tab). */
 export function getTabSessionId(): string {
   // sessionStorage is not available in Node/test environments
-  if (typeof sessionStorage === 'undefined') return crypto.randomUUID();
+  if (typeof sessionStorage === 'undefined') return generateUUID();
   const KEY = 'velxio-tab-id';
   let id = sessionStorage.getItem(KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = generateUUID();
     sessionStorage.setItem(KEY, id);
   }
   return id;

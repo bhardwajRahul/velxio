@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { generateUUID } from '../utils/uuid';
 
 export interface WorkspaceFile {
   id: string;
@@ -151,7 +152,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // ── File operations (legacy API — operate on active group) ──────────────
 
   createFile: (name: string) => {
-    const id = crypto.randomUUID();
+    const id = generateUUID();
     const newFile: WorkspaceFile = { id, name, content: '', modified: false };
     set((s) => {
       const groupId = s.activeGroupId;
@@ -279,7 +280,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   loadFiles: (incoming: { name: string; content: string }[]) => {
     const files: WorkspaceFile[] = incoming.map((f, i) => ({
-      id: i === 0 ? MAIN_ID : crypto.randomUUID(),
+      id: i === 0 ? MAIN_ID : generateUUID(),
       name: f.name,
       content: f.content,
       modified: false,
@@ -315,7 +316,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       let files: WorkspaceFile[];
       if (initialFiles && initialFiles.length > 0) {
         files = initialFiles.map((f, i) => ({
-          id: i === 0 ? `${groupId}-main` : crypto.randomUUID(),
+          id: i === 0 ? `${groupId}-main` : generateUUID(),
           name: f.name,
           content: f.content,
           modified: false,
@@ -399,7 +400,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const openGroupFileIds: Record<string, string[]> = {};
     for (const [gid, files] of Object.entries(groups)) {
       const wsFiles: WorkspaceFile[] = files.map((f, i) => ({
-        id: i === 0 ? `${gid}-main` : crypto.randomUUID(),
+        id: i === 0 ? `${gid}-main` : generateUUID(),
         name: f.name,
         content: f.content,
         modified: false,
