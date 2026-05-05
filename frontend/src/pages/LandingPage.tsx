@@ -889,16 +889,14 @@ export const LandingPage: React.FC = () => {
       <section className="landing-hero">
         <div className="hero-left">
           <h1 className="hero-title">
-            Circuits + Code.
+            Arduino, ESP32 &amp; Raspberry Pi.
             <br />
-            One Browser Tab.
-            <br />
-            <span className="hero-accent">SPICE-accurate.</span>
+            <span className="hero-accent">Right in your browser.</span>
           </h1>
           <p className="hero-subtitle">
-            Free online circuit simulator with real ngspice analog co-simulated with 19 boards —
-            Arduino Uno, Mega, ATtiny85, ESP32, ESP32-C3, Raspberry Pi Pico, Raspberry Pi 3 —
-            plus build your own custom chips in C or Rust. No hardware, no cloud, no limits.
+            Write code, wire up components, hit run.
+            19 boards, 48+ parts, real CPU emulation —
+            no hardware, no installation, no cloud.
           </p>
           <div className="hero-ctas">
             <Link
