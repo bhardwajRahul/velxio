@@ -1,0 +1,130 @@
+"""Fire-and-forget bridge to Odoo's transactional-mail endpoints.
+
+Velxio leans on Odoo's outgoing-mail relay (SPF/DKIM already warmed up,
+templates editable from the admin UI) instead of running its own SMTP.
+The Odoo-side endpoints live in `velxio_transactional_mail` addon:
+
+    POST <ODOO_URL>/velxio/api/send-welcome
+    POST <ODOO_URL>/velxio/api/send-password-reset
+
+Both expect a JSON-RPC payload (Odoo's `type='json'` controllers expect
+`{"jsonrpc": "2.0", "params": {...}}`) and authenticate via the
+`X-Velxio-API-Key` header.
+
+These helpers are designed to be called from `asyncio.create_task(...)`
+so they NEVER raise into the request lifecycle. Any failure is logged at
+WARNING level and the function returns False. The result is otherwise
+ignored — registration / forgot-password succeed even when Odoo is down,
+the user just doesn't get the email until ops re-runs the cron.
+"""
+from __future__ import annotations
+
+import logging
+from typing import Optional
+
+import httpx
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _is_configured() -> bool:
+    return bool(settings.ODOO_URL and settings.ODOO_API_KEY)
+
+
+async def _post(endpoint: str, params: dict) -> Optional[dict]:
+    """POST a JSON-RPC envelope to an Odoo /velxio/api/* endpoint.
+
+    Returns the decoded `result` dict on success, None on any failure.
+    Never raises.
+    """
+    if not _is_configured():
+        logger.info("[odoo_mail] skipped %s — ODOO_URL or ODOO_API_KEY missing", endpoint)
+        return None
+
+    url = settings.ODOO_URL.rstrip("/") + endpoint
+    payload = {"jsonrpc": "2.0", "method": "call", "params": params}
+    headers = {
+        "X-Velxio-API-Key": settings.ODOO_API_KEY,
+        "Content-Type": "application/json",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=settings.ODOO_MAIL_TIMEOUT_S) as client:
+            response = await client.post(url, json=payload, headers=headers)
+        if response.status_code != 200:
+            logger.warning(
+                "[odoo_mail] %s → HTTP %s: %s",
+                endpoint, response.status_code, response.text[:200],
+            )
+            return None
+        body = response.json()
+        # Odoo wraps `type='json'` controllers in {"jsonrpc": "2.0", "result": ...}
+        # or {"error": {...}} on failure.
+        if "error" in body:
+            logger.warning("[odoo_mail] %s → error %s", endpoint, body["error"])
+            return None
+        return body.get("result")
+    except httpx.TimeoutException:
+        logger.warning("[odoo_mail] %s timed out after %ss", endpoint, settings.ODOO_MAIL_TIMEOUT_S)
+    except httpx.HTTPError as exc:
+        logger.warning("[odoo_mail] %s → HTTP error: %s", endpoint, exc)
+    except Exception:  # noqa: BLE001 — fire-and-forget must swallow everything
+        logger.exception("[odoo_mail] %s — unexpected failure", endpoint)
+    return None
+
+
+async def send_welcome(
+    *,
+    velxio_user_id: str,
+    email: str,
+    name: str,
+    country_code: Optional[str] = None,
+    editor_url: Optional[str] = None,
+    examples_url: Optional[str] = None,
+) -> bool:
+    """Ask Odoo to send the welcome mail. Returns True iff Odoo accepted
+    and dispatched the mail (sent=True in the response).
+
+    Idempotent: Odoo persists `velxio_welcome_sent_at` on the partner, so
+    a retry of this call after a successful first dispatch is a silent
+    no-op on the Odoo side (returns `{sent: false, reason: "already_sent"}`).
+    """
+    params: dict = {
+        "velxio_user_id": velxio_user_id,
+        "email": email,
+        "name": name,
+    }
+    if country_code:
+        params["country_code"] = country_code
+    if editor_url:
+        params["editor_url"] = editor_url
+    if examples_url:
+        params["examples_url"] = examples_url
+
+    result = await _post("/velxio/api/send-welcome", params)
+    return bool(result and result.get("sent"))
+
+
+async def send_password_reset(
+    *,
+    email: str,
+    reset_url: str,
+    expires_in_minutes: int = 60,
+    user_name: Optional[str] = None,
+) -> bool:
+    """Ask Odoo to deliver a password-reset mail with the given URL.
+
+    The caller (Velxio backend) is the source of truth for the one-time
+    token; Odoo only renders the email.
+    """
+    params: dict = {
+        "email": email,
+        "reset_url": reset_url,
+        "expires_in_minutes": expires_in_minutes,
+    }
+    if user_name:
+        params["user_name"] = user_name
+
+    result = await _post("/velxio/api/send-password-reset", params)
+    return bool(result and result.get("sent"))

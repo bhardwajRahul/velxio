@@ -223,6 +223,16 @@ body {
   margin-bottom: var(--space-6);
 }
 
+.ap-success {
+  background: #0e2d18;
+  border: 1px solid #1d7f3a;
+  border-radius: var(--radius-sm);
+  color: #4ade80;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: var(--space-6);
+}
+
 .ap-footer {
   color: var(--color-fg-muted);
   font-size: 14px;

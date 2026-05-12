@@ -24,6 +24,9 @@ export const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // ?reset=ok lands here after a successful /reset-password — show a
+  // one-shot banner so the user knows the new password is live.
+  const justReset = searchParams.get('reset') === 'ok';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,6 +50,11 @@ export const LoginPage: React.FC = () => {
         <h1 className="ap-card-title">{t('auth.login.title')}</h1>
         <p className="ap-card-sub">{t('auth.login.subtitle')}</p>
 
+        {justReset && !error && (
+          <div className="ap-success">
+            Password updated. Sign in with your new password to continue.
+          </div>
+        )}
         {error && <div className="ap-error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="ap-form">
@@ -70,6 +78,11 @@ export const LoginPage: React.FC = () => {
               required
               className="ap-input"
             />
+          </div>
+          <div className="ap-field" style={{ textAlign: 'right' }}>
+            <Link to={localize('/forgot-password')} className="ap-link">
+              Forgot your password?
+            </Link>
           </div>
           <button type="submit" disabled={loading} className="ap-btn-primary">
             {loading ? t('auth.login.signingIn') : t('auth.login.signIn')}

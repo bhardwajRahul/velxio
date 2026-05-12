@@ -33,6 +33,40 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    """Body of POST /api/auth/forgot-password.
+
+    Always responded to with 200 + a generic message (anti-enumeration);
+    the validator only normalises the email shape.
+    """
+
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Body of POST /api/auth/reset-password — consumes a one-time token."""
+
+    token: str
+    new_password: str
+
+    @field_validator("token")
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 16:
+            # Tokens are 32-byte URL-safe → ~43 base64url chars. Anything
+            # this short is malformed; reject early so we don't even hash it.
+            raise ValueError("Reset token is malformed.")
+        return v
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return v
+
+
 class UserResponse(BaseModel):
     id: str
     username: str

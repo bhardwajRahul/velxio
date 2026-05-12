@@ -6,6 +6,8 @@ import { ExamplesPage } from './pages/ExamplesPage';
 import { DocsPage } from './pages/DocsPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { UserProfilePage } from './pages/UserProfilePage';
 import { ProjectPage } from './pages/ProjectPage';
 import { ProjectByIdPage } from './pages/ProjectByIdPage';
@@ -51,6 +53,8 @@ const ROUTES: { path: string; element: ReactElement; index?: boolean }[] = [
   { path: 'docs/:section', element: <DocsPage /> },
   { path: 'login', element: <LoginPage /> },
   { path: 'register', element: <RegisterPage /> },
+  { path: 'forgot-password', element: <ForgotPasswordPage /> },
+  { path: 'reset-password', element: <ResetPasswordPage /> },
   { path: 'admin', element: <AdminPage /> },
   // SEO landing pages — keyword-targeted
   { path: 'circuit-simulator', element: <CircuitSimulatorPage /> },

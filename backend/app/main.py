@@ -26,6 +26,7 @@ from app.database.session import Base, async_engine
 import app.models.user  # noqa: F401
 import app.models.project  # noqa: F401
 import app.models.usage_event  # noqa: F401
+import app.models.password_reset_token  # noqa: F401
 
 
 logger = logging.getLogger(__name__)

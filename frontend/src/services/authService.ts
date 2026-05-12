@@ -31,3 +31,29 @@ export async function logout(): Promise<void> {
 export function initiateGoogleLogin(): void {
   window.location.href = `${API_BASE}/auth/google`;
 }
+
+/**
+ * Request a password-reset email. Returns the generic message string from
+ * the backend; the response is identical whether or not the email is
+ * registered (anti-enumeration), so callers should always show "check
+ * your inbox" regardless of the outcome.
+ */
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/forgot-password', { email });
+  return data;
+}
+
+/**
+ * Consume a reset token and set a new password. Throws on 400 (invalid /
+ * expired / reused token) so the page can show a clear error.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/reset-password', {
+    token,
+    new_password: newPassword,
+  });
+  return data;
+}

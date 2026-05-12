@@ -1,20 +1,54 @@
-from datetime import timedelta
+import asyncio
+import hashlib
+import logging
+import secrets
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user, require_auth
 from app.core.security import create_access_token, hash_password, verify_password
 from app.database.session import get_db
+from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, UserResponse
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UserResponse,
+)
+from app.services import odoo_mail
 from app.utils.geo import country_from_request
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+# ── Password reset helpers ────────────────────────────────────────────────
+
+def _hash_token(plaintext: str) -> str:
+    """SHA-256 hex of the token. Cheap one-shot hash (collision-free in
+    practice for 32-byte URL-safe inputs); we don't need bcrypt here
+    because the input itself is high-entropy random."""
+    return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
+
+
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _ensure_aware(value: datetime) -> datetime:
+    """SQLite (default DB) round-trips datetimes as naive — tag them UTC
+    so comparisons with `_now_utc()` don't raise."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 def _set_auth_cookie(response: Response, token: str) -> None:
@@ -56,6 +90,21 @@ async def register(
 
     token = create_access_token({"sub": user.id})
     _set_auth_cookie(response, token)
+
+    # Fire-and-forget welcome mail through Odoo. Registration MUST NOT
+    # block on this — if Odoo is down the user still gets in. We snapshot
+    # the fields we need so the task isn't tied to the SQLAlchemy session.
+    asyncio.create_task(
+        odoo_mail.send_welcome(
+            velxio_user_id=user.id,
+            email=user.email,
+            name=user.username,
+            country_code=user.signup_country or None,
+            editor_url=f"{settings.FRONTEND_URL.rstrip('/')}/editor",
+            examples_url=f"{settings.FRONTEND_URL.rstrip('/')}/examples",
+        )
+    )
+
     return user
 
 
@@ -94,6 +143,123 @@ async def me(user: User = Depends(get_current_user)):
 async def logout(response: Response, _user: User = Depends(require_auth)):
     response.delete_cookie("access_token")
     return {"message": "Logged out."}
+
+
+# ── Password reset flow ───────────────────────────────────────────────────
+
+_GENERIC_FORGOT_REPLY = {
+    "message": "If that email is registered, a reset link is on its way.",
+}
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a password-reset email if the address is registered.
+
+    Always returns 200 with the same generic message so a stranger can't
+    enumerate which emails belong to Velxio accounts. Rate-limited: at
+    most N=PASSWORD_RESET_RATE_LIMIT_PER_HOUR fresh tokens per user per
+    rolling hour. Excess attempts succeed silently (same generic 200) but
+    do NOT generate a token or email.
+
+    Tokens are 32-byte URL-safe random strings; only their SHA-256 hash
+    is persisted. The plaintext only leaves the server inside the reset
+    URL emailed via Odoo.
+    """
+    email = body.email.lower()
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        # Anti-enumeration: identical response shape and roughly identical
+        # latency. We don't sleep to fake the per-user code path — the
+        # bcrypt + token round-trips below are dominated by Odoo's
+        # network call, which only fires for real users anyway.
+        return _GENERIC_FORGOT_REPLY
+
+    # Rate-limit: count tokens minted in the last hour for this user.
+    window_start = _now_utc() - timedelta(hours=1)
+    count_result = await db.execute(
+        select(func.count(PasswordResetToken.id)).where(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.created_at >= window_start,
+        )
+    )
+    recent = count_result.scalar_one() or 0
+    if recent >= settings.PASSWORD_RESET_RATE_LIMIT_PER_HOUR:
+        logger.warning(
+            "[forgot-password] rate-limited user=%s email=%s recent=%s",
+            user.id, email, recent,
+        )
+        return _GENERIC_FORGOT_REPLY
+
+    # Mint a fresh one-time token; store only the hash.
+    plaintext = secrets.token_urlsafe(32)
+    token_row = PasswordResetToken(
+        user_id=user.id,
+        token_hash=_hash_token(plaintext),
+        expires_at=_now_utc() + timedelta(
+            minutes=settings.PASSWORD_RESET_TOKEN_TTL_MINUTES,
+        ),
+    )
+    db.add(token_row)
+    await db.commit()
+
+    reset_url = (
+        f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={plaintext}"
+    )
+    asyncio.create_task(
+        odoo_mail.send_password_reset(
+            email=user.email,
+            reset_url=reset_url,
+            expires_in_minutes=settings.PASSWORD_RESET_TOKEN_TTL_MINUTES,
+            user_name=user.username,
+        )
+    )
+    logger.info("[forgot-password] token minted user=%s", user.id)
+    return _GENERIC_FORGOT_REPLY
+
+
+@router.post("/reset-password")
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Consume a one-time token and set the user's new password.
+
+    Returns 400 for: token unknown, expired, or already used. We don't
+    distinguish those cases in the response — keeps probing useless — but
+    the server log records the exact reason.
+    """
+    token_hash = _hash_token(body.token)
+    result = await db.execute(
+        select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+    )
+    token_row = result.scalar_one_or_none()
+    if not token_row:
+        logger.info("[reset-password] unknown token hash=%s", token_hash[:8])
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+
+    expires_at = _ensure_aware(token_row.expires_at)
+    if expires_at < _now_utc():
+        logger.info("[reset-password] expired token id=%s", token_row.id)
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+    if token_row.used_at is not None:
+        logger.info("[reset-password] reused token id=%s", token_row.id)
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+
+    user_result = await db.execute(select(User).where(User.id == token_row.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="Reset link is invalid or has expired.")
+
+    user.hashed_password = hash_password(body.new_password)
+    token_row.used_at = _now_utc()
+    await db.commit()
+    logger.info("[reset-password] consumed token id=%s user=%s", token_row.id, user.id)
+    return {"message": "Password has been reset. You can now sign in with your new password."}
 
 
 # ── Google OAuth ──────────────────────────────────────────────────────────────
