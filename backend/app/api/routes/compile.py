@@ -7,13 +7,9 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user
-from app.database.session import AsyncSessionLocal, get_db
-from app.models.user import User
+from app.core.hooks import get_current_user_id, record_compile
 from app.services.arduino_cli import ArduinoCLIService
-from app.services.metrics import record_compile
 from app.services.espidf_compiler import espidf_compiler
 
 logger = logging.getLogger(__name__)
@@ -204,7 +200,7 @@ async def _run_compile(
 
 async def _record_async_metric(
     *,
-    user_id: int | None,
+    user_id: str | None,
     project_id: str | None,
     board_fqbn: str,
     success: bool,
@@ -212,38 +208,30 @@ async def _record_async_metric(
     error_kind: str | None,
     extra: dict[str, Any],
 ) -> None:
-    """Open a fresh DB session and record one compile metric.
+    """Forward a background-task compile metric to the registered hook.
 
-    Used by the async path: the request-scoped session is gone by the time
-    the background task finishes, so we open our own short-lived one.
-    Country/IP tagging is dropped on this path (the original Request is no
-    longer alive); user_id and success/duration still flow through.
+    Wrapper kept for the async path's signature symmetry with the sync path.
+    The hook owns its own DB session (the request-scoped one is gone by now)
+    and request=None means country/IP tagging is dropped — only user_id and
+    timing flow through.
     """
-    try:
-        async with AsyncSessionLocal() as session:
-            user = None
-            if user_id is not None:
-                user = await session.get(User, user_id)
-            await record_compile(
-                session,
-                user=user,
-                project_id=project_id,
-                board_fqbn=board_fqbn,
-                success=success,
-                duration_ms=duration_ms,
-                error_kind=error_kind,
-                extra=extra,
-                request=None,
-            )
-    except Exception as exc:
-        logger.warning(f"[compile] async metric record failed: {exc}")
+    await record_compile(
+        user_id=user_id,
+        project_id=project_id,
+        board_fqbn=board_fqbn,
+        success=success,
+        duration_ms=duration_ms,
+        error_kind=error_kind,
+        extra=extra,
+        request=None,
+    )
 
 
 async def _compile_job(
     job_id: str,
     request: CompileRequest,
     files: list[dict[str, str]],
-    user_id: int | None,
+    user_id: str | None,
 ) -> None:
     """Background worker: acquire global semaphore + per-target lock, run the
     compile, store result in COMPILE_JOBS.
@@ -340,8 +328,7 @@ async def _compile_job(
 async def compile_sketch(
     request: CompileRequest,
     http_request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: User | None = Depends(get_current_user),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     """
     Compile Arduino sketch and return hex/binary in a single response.
@@ -360,8 +347,7 @@ async def compile_sketch(
         response = await _run_compile(request, files)
     except Exception as e:
         await record_compile(
-            db,
-            user=current_user,
+            user_id=user_id,
             project_id=request.project_id,
             board_fqbn=request.board_fqbn,
             success=False,
@@ -374,8 +360,7 @@ async def compile_sketch(
 
     duration_ms = int((time.monotonic() - started) * 1000)
     await record_compile(
-        db,
-        user=current_user,
+        user_id=user_id,
         project_id=request.project_id,
         board_fqbn=request.board_fqbn,
         success=response.success,
@@ -407,7 +392,7 @@ class CompileStatusResponse(BaseModel):
 @router.post("/start", response_model=CompileStartResponse)
 async def compile_start(
     request: CompileRequest,
-    current_user: User | None = Depends(get_current_user),
+    user_id: str | None = Depends(get_current_user_id),
 ):
     """
     Queue a compile and return a `job_id` immediately.
@@ -443,7 +428,7 @@ async def compile_start(
             job_id=job_id,
             request=request,
             files=files,
-            user_id=current_user.id if current_user else None,
+            user_id=user_id,
         ),
     )
     return CompileStartResponse(job_id=job_id)

@@ -238,7 +238,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ autoSave }) => {
             </button>
           )}
 
-          {/* Auth UI */}
+          {/* Auth UI — wrapped in a header-auth slot so the private overlay
+              can portal-inject its own version (subscribed badge, billing
+              menu items, etc.). In Phase 3 the entire auth UI moves to the
+              overlay and this block renders nothing in OSS. */}
+          <div data-velxio-slot="header-auth" style={{ display: 'contents' }}>
           {user ? (
             <div style={{ position: 'relative' }} ref={dropdownRef}>
               <button
@@ -360,6 +364,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ autoSave }) => {
               </Link>
             </div>
           )}
+          </div>
 
           {/* Mobile hamburger */}
           <button
