@@ -4,6 +4,7 @@ import { useEditorStore } from '../../store/useEditorStore';
 import { useSimulatorStore } from '../../store/useSimulatorStore';
 import type { BoardKind } from '../../types/board';
 import { BOARD_KIND_LABELS } from '../../types/board';
+import { importVlxFile, VlxParseError } from '../../utils/vlxFile';
 import './FileExplorer.css';
 
 // SVG icons — same style as EditorToolbar (stroke-based, 16x16)
@@ -93,6 +94,25 @@ const IcoSave = () => (
   </svg>
 );
 
+const IcoOpen = () => (
+  // Folder with an "open / upload arrow" — matches Save visually (both
+  // are project-IO actions) but points the opposite way to signal load.
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    <polyline points="12 11 12 17" />
+    <polyline points="9 14 12 11 15 14" />
+  </svg>
+);
+
 const IcoChevron = ({ open }: { open: boolean }) => (
   <svg
     width="12"
@@ -152,6 +172,33 @@ interface FileExplorerProps {
 }
 
 export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewClick }) => {
+  // Hidden <input type="file"> we trigger via ref when the user clicks
+  // the Open .vlx button. Kept outside React state so the change event
+  // can fire repeatedly even if the user picks the same file twice.
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleOpenVlxClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  const handleVlxFilePicked = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Reset so picking the SAME file again later still fires onchange.
+    e.target.value = '';
+    if (!file) return;
+    if (
+      !window.confirm(
+        'Load this .vlx file? Your current workspace will be replaced. This cannot be undone.',
+      )
+    ) {
+      return;
+    }
+    try {
+      await importVlxFile(file);
+    } catch (err) {
+      const msg = err instanceof VlxParseError ? err.message : (err as Error).message;
+      window.alert(`Could not load .vlx file:\n\n${msg}`);
+    }
+  }, []);
+
   const { t } = useTranslation();
   const {
     fileGroups,
@@ -281,6 +328,20 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ onSaveClick, onNewCl
           >
             <IcoNewWorkspace />
           </button>
+          <button
+            className="file-explorer-save-btn"
+            title="Open .vlx file"
+            onClick={handleOpenVlxClick}
+          >
+            <IcoOpen />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".vlx,application/json"
+            onChange={handleVlxFilePicked}
+            style={{ display: 'none' }}
+          />
           <button
             className="file-explorer-save-btn"
             title={t('editor.fileExplorer.saveProject')}
