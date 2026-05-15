@@ -13,54 +13,62 @@ import { registerSensorUpdate, unregisterSensorUpdate } from '../SensorUpdateReg
  * Falls back to digital mode if no PWM is detected.
  */
 PartSimulationRegistry.register('rgb-led', {
-  attachEvents: (element, avrSimulator, getArduinoPinHelper) => {
+  attachEvents: (element, avrSimulator, getArduinoPinHelper, _componentId, getPinResolver) => {
     const pinManager = (avrSimulator as any).pinManager;
     if (!pinManager) return () => {};
 
     const el = element as any;
     const unsubscribers: (() => void)[] = [];
+    const useResolver = typeof getPinResolver === 'function';
 
-    const pinR = getArduinoPinHelper('R');
-    const pinG = getArduinoPinHelper('G');
-    const pinB = getArduinoPinHelper('B');
-
-    // Digital fallback
-    if (pinR !== null) {
-      unsubscribers.push(
-        pinManager.onPinChange(pinR, (_: number, state: boolean) => {
-          el.ledRed = state ? 255 : 0;
-        }),
-      );
-    }
-    if (pinG !== null) {
-      unsubscribers.push(
-        pinManager.onPinChange(pinG, (_: number, state: boolean) => {
-          el.ledGreen = state ? 255 : 0;
-        }),
-      );
-    }
-    if (pinB !== null) {
-      unsubscribers.push(
-        pinManager.onPinChange(pinB, (_: number, state: boolean) => {
-          el.ledBlue = state ? 255 : 0;
-        }),
-      );
-    }
-
-    // PWM override — when analogWrite() is used the OCR value supersedes digital
-    const pwmPins = [
-      { pin: pinR, prop: 'ledRed' },
-      { pin: pinG, prop: 'ledGreen' },
-      { pin: pinB, prop: 'ledBlue' },
+    // Digital path: prefer PinResolver so each channel works when driven
+    // through an active device (e.g. a P-MOSFET high-side switch).
+    type Channel = { pinName: 'R' | 'G' | 'B'; prop: 'ledRed' | 'ledGreen' | 'ledBlue' };
+    const channels: Channel[] = [
+      { pinName: 'R', prop: 'ledRed' },
+      { pinName: 'G', prop: 'ledGreen' },
+      { pinName: 'B', prop: 'ledBlue' },
     ];
-    for (const { pin, prop } of pwmPins) {
-      if (pin !== null) {
-        unsubscribers.push(
-          pinManager.onPwmChange(pin, (_: number, dc: number) => {
-            el[prop] = Math.round(dc * 255);
-          }),
-        );
+
+    // Track Arduino pin numbers for the PWM hook below — analogWrite()
+    // override still needs the integer pin number because PinResolver
+    // doesn't (yet) expose PWM duty.
+    const pwmPins: Array<{ pin: number; prop: Channel['prop'] }> = [];
+
+    for (const { pinName, prop } of channels) {
+      if (useResolver) {
+        const resolver = getPinResolver!(pinName);
+        if (resolver) {
+          el[prop] = resolver.getCurrentState() === 'HIGH' ? 255 : 0;
+          unsubscribers.push(
+            resolver.onChange((state) => {
+              el[prop] = state === 'HIGH' ? 255 : 0;
+            }),
+          );
+        }
+      } else {
+        const pin = getArduinoPinHelper(pinName);
+        if (pin !== null) {
+          unsubscribers.push(
+            pinManager.onPinChange(pin, (_: number, state: boolean) => {
+              el[prop] = state ? 255 : 0;
+            }),
+          );
+        }
       }
+      // PWM hook still uses the raw pin number — duty cycle handling
+      // doesn't live in PinResolver yet.
+      const rawPin = getArduinoPinHelper(pinName);
+      if (rawPin !== null) pwmPins.push({ pin: rawPin, prop });
+    }
+
+    // PWM override — analogWrite() value supersedes digital state.
+    for (const { pin, prop } of pwmPins) {
+      unsubscribers.push(
+        pinManager.onPwmChange(pin, (_: number, dc: number) => {
+          el[prop] = Math.round(dc * 255);
+        }),
+      );
     }
 
     return () => unsubscribers.forEach((u) => u());
@@ -482,10 +490,16 @@ PartSimulationRegistry.register('servo', {
  * Activates when duty cycle > 0 (pin is driven HIGH).
  */
 PartSimulationRegistry.register('buzzer', {
-  attachEvents: (element, avrSimulator, getArduinoPinHelper) => {
+  attachEvents: (element, avrSimulator, getArduinoPinHelper, _componentId, getPinResolver) => {
     const pinSIG =
       getArduinoPinHelper('1') ?? getArduinoPinHelper('+') ?? getArduinoPinHelper('POS');
     const pinManager = (avrSimulator as any).pinManager;
+    // PWM tracking still needs the integer pin number; resolver doesn't
+    // expose duty. The HIGH/LOW path migrates to PinResolver below.
+    const useResolver = typeof getPinResolver === 'function';
+    const sigResolver = useResolver
+      ? getPinResolver!('1') ?? getPinResolver!('+') ?? getPinResolver!('POS')
+      : null;
 
     let audioCtx: AudioContext | null = null;
     let oscillator: OscillatorNode | null = null;
@@ -568,19 +582,33 @@ PartSimulationRegistry.register('buzzer', {
         }),
       );
 
-      // Also respond to digital HIGH/LOW (tone() toggles the pin)
-      unsubscribers.push(
-        pinManager.onPinChange(pinSIG, (_: number, state: boolean) => {
-          if (!isSounding && state) {
-            const cpu = (avrSimulator as any).cpu;
-            const freq = cpu ? getFrequency(cpu) : 440;
-            startTone(Math.max(20, Math.min(20000, freq)));
-          } else if (isSounding && !state) {
-            // Don't stop on every LOW — tone() generates a square wave
-            // We stop only when duty cycle drops to 0 via onPwmChange
-          }
-        }),
-      );
+      // Also respond to digital HIGH/LOW (tone() toggles the pin).
+      // Prefer the resolver — a buzzer driven through a transistor sees
+      // the real collector voltage and threshold-converts via the board
+      // logic family.
+      if (sigResolver) {
+        unsubscribers.push(
+          sigResolver.onChange((state) => {
+            if (!isSounding && state === 'HIGH') {
+              const cpu = (avrSimulator as any).cpu;
+              const freq = cpu ? getFrequency(cpu) : 440;
+              startTone(Math.max(20, Math.min(20000, freq)));
+            }
+            // tone() produces a square wave — don't stop on every LOW;
+            // stop only when duty drops to 0 via onPwmChange.
+          }),
+        );
+      } else {
+        unsubscribers.push(
+          pinManager.onPinChange(pinSIG, (_: number, state: boolean) => {
+            if (!isSounding && state) {
+              const cpu = (avrSimulator as any).cpu;
+              const freq = cpu ? getFrequency(cpu) : 440;
+              startTone(Math.max(20, Math.min(20000, freq)));
+            }
+          }),
+        );
+      }
     }
 
     return () => {
