@@ -35,6 +35,126 @@ import { getBoardLogicFamily } from '../simulation/LogicFamilies';
 import '@wokwi/elements';
 import '../velxio-elements';
 
+// Map metadataId → [pinA, pinB] for 2-terminal passives.
+// "Tracing through" means: if the caller arrived on pinA, continue from pinB
+// (and vice-versa).
+//
+// NOTE: diodes / transistors / op-amps are NOT traced through as passives —
+// they have polarity / Vf / non-linear behaviour that the digital layer
+// cannot interpret as "same pin". BJTs are an explicit shortcut for the
+// canonical "Arduino digital pin controls a load via transistor" pattern so
+// 7-segment multiplex circuits with BJT digit drivers still resolve.
+const PASSIVE_PIN_PAIRS_BASE: Record<string, [string, string]> = {
+  resistor: ['1', '2'],
+  'resistor-us': ['1', '2'],
+  capacitor: ['1', '2'],
+  'capacitor-electrolytic': ['+', '−'],
+  inductor: ['1', '2'],
+  'analog-resistor': ['A', 'B'],
+  'analog-capacitor': ['A', 'B'],
+  'analog-inductor': ['A', 'B'],
+  'bjt-2n2222': ['C', 'B'],
+  'bjt-bc547': ['C', 'B'],
+  'bjt-2n3055': ['C', 'B'],
+  'bjt-2n3906': ['C', 'B'],
+  'bjt-bc557': ['C', 'B'],
+};
+// Preset variants of the generic passives share their parent's tag and pin
+// layout. Mirrors the PASSIVE_PRESETS map in spice/componentToSpice.ts.
+const PRESET_TO_BASE: Record<string, string> = {
+  'resistor-220': 'resistor',
+  'resistor-330': 'resistor',
+  'resistor-470': 'resistor',
+  'resistor-1k': 'resistor',
+  'resistor-2k2': 'resistor',
+  'resistor-4k7': 'resistor',
+  'resistor-10k': 'resistor',
+  'resistor-22k': 'resistor',
+  'resistor-47k': 'resistor',
+  'resistor-100k': 'resistor',
+  'resistor-1m': 'resistor',
+  'cap-10p': 'capacitor',
+  'cap-22p': 'capacitor',
+  'cap-100p': 'capacitor',
+  'cap-1n': 'capacitor',
+  'cap-10n': 'capacitor',
+  'cap-100n': 'capacitor',
+  'cap-1u': 'capacitor',
+  'cap-elec-1u': 'capacitor-electrolytic',
+  'cap-elec-10u': 'capacitor-electrolytic',
+  'cap-elec-47u': 'capacitor-electrolytic',
+  'cap-elec-100u': 'capacitor-electrolytic',
+  'cap-elec-470u': 'capacitor-electrolytic',
+  'cap-elec-1000u': 'capacitor-electrolytic',
+  'ind-100u': 'inductor',
+  'ind-1m': 'inductor',
+  'ind-10m': 'inductor',
+};
+const PASSIVE_PIN_PAIRS: Record<string, [string, string]> = {
+  ...PASSIVE_PIN_PAIRS_BASE,
+};
+for (const [preset, base] of Object.entries(PRESET_TO_BASE)) {
+  PASSIVE_PIN_PAIRS[preset] = PASSIVE_PIN_PAIRS_BASE[base];
+}
+
+type TraceState = ReturnType<typeof useSimulatorStore.getState>;
+
+// Depth-limited BFS: trace from (fromId, fromPin) through wires, traversing
+// through passive components to reach a board pin.  Returns the arduino pin
+// plus a `crossedActiveDevice` flag so the resolver factory can decide
+// between digital fast-path and SPICE-resolved per-pin.
+//
+// Lifted to module scope (was inside getArduinoPin) so that getPinResolver
+// can call it too — the previous nested-scope version caused a runtime
+// ReferenceError "traceDetailed is not defined" on the simulator page.
+function traceDetailed(
+  state: TraceState,
+  fromId: string,
+  fromPin: string,
+  depth: number,
+  activeSeen = false,
+): { arduinoPin: number | null; crossedActiveDevice: boolean } {
+  if (depth > 6) return { arduinoPin: null, crossedActiveDevice: activeSeen };
+
+  const wires = state.wires.filter(
+    (w) =>
+      (w.start.componentId === fromId && w.start.pinName === fromPin) ||
+      (w.end.componentId === fromId && w.end.pinName === fromPin),
+  );
+
+  for (const w of wires) {
+    const selfEp =
+      w.start.componentId === fromId && w.start.pinName === fromPin ? w.start : w.end;
+    const otherEp = selfEp === w.start ? w.end : w.start;
+
+    if (isBoardComponent(otherEp.componentId)) {
+      const boardKind =
+        state.boards.find((b) => b.id === otherEp.componentId)?.boardKind ??
+        otherEp.componentId;
+      const pin = boardPinToNumber(boardKind, otherEp.pinName);
+      if (pin !== null) return { arduinoPin: pin, crossedActiveDevice: activeSeen };
+    } else {
+      const comp = state.components.find((c) => c.id === otherEp.componentId);
+      const pair = comp && PASSIVE_PIN_PAIRS[comp.metadataId];
+      if (pair) {
+        const [p1, p2] = pair;
+        const otherPin = otherEp.pinName === p1 ? p2 : p1;
+        const nowActive =
+          activeSeen || (comp ? isActiveDevice(comp.metadataId) : false);
+        const result = traceDetailed(
+          state,
+          otherEp.componentId,
+          otherPin,
+          depth + 1,
+          nowActive,
+        );
+        if (result.arduinoPin !== null) return result;
+      }
+    }
+  }
+  return { arduinoPin: null, crossedActiveDevice: activeSeen };
+}
+
 interface DynamicComponentProps {
   id: string;
   metadata: ComponentMetadata;
@@ -249,144 +369,11 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
       // Helper to find Arduino pin connected to a component pin.
       // Traces through electrically-transparent passive components so that a
       // circuit like  LED-cathode → resistor → GND  returns -1 (GND) instead
-      // of null.
-      //
-      // NOTE: diodes / transistors / op-amps are NOT traced through — they
-      // have polarity / Vf / non-linear behaviour that the digital layer
-      // cannot interpret as "same pin".
+      // of null. Delegates to the module-level `traceDetailed` (shared with
+      // getPinResolver).
       const getArduinoPin = (componentPinName: string): number | null => {
         const state = useSimulatorStore.getState();
-
-        // Map metadataId → [pinA, pinB] for 2-terminal passives.
-        // Tracing "through" means: if the caller arrived on pinA, continue
-        // from pinB (and vice-versa).
-        const PASSIVE_PIN_PAIRS: Record<string, [string, string]> = {
-          resistor: ['1', '2'],
-          'resistor-us': ['1', '2'],
-          capacitor: ['1', '2'],
-          'capacitor-electrolytic': ['+', '−'],
-          inductor: ['1', '2'],
-          'analog-resistor': ['A', 'B'],
-          'analog-capacitor': ['A', 'B'],
-          'analog-inductor': ['A', 'B'],
-          // NTC and photoresistor breakouts are 3-pin active modules (VCC/GND
-          // + analog output); not traceable as 2-terminal passives. Their
-          // analog output is already an ADC-readable pin on its own.
-          //
-          // BJTs are 3-pin actives, but the canonical "Arduino digital pin
-          // controls a load via transistor" pattern is fundamental enough
-          // that we treat them as a [collector, base] shortcut.  Tracing
-          // FROM the collector side continues through the base — i.e. the
-          // Arduino pin driving the base is reported as the controller of
-          // the collector. That makes 7-segment multiplex circuits with
-          // BJT digit drivers actually work in the simulator, since
-          // getArduinoPinHelper('COM.1') can resolve through the transistor.
-          // For NPN, Arduino HIGH at base → transistor on → collector pulled
-          // to emitter (typically GND) — and "HIGH = digit enabled" in our
-          // 7-segment driver matches this when COM is common-cathode wired
-          // through the transistor to GND.
-          'bjt-2n2222': ['C', 'B'],
-          'bjt-bc547': ['C', 'B'],
-          'bjt-2n3055': ['C', 'B'],
-          'bjt-2n3906': ['C', 'B'],
-          'bjt-bc557': ['C', 'B'],
-        };
-        // Preset variants of the generic passives share their parent's tag
-        // and pin layout — so resistor-220, cap-1u, ind-10m, etc. trace the
-        // same way as their canonical sibling above. The list mirrors the
-        // PASSIVE_PRESETS map in spice/componentToSpice.ts.
-        const PRESET_TO_BASE: Record<string, string> = {
-          'resistor-220': 'resistor',
-          'resistor-330': 'resistor',
-          'resistor-470': 'resistor',
-          'resistor-1k': 'resistor',
-          'resistor-2k2': 'resistor',
-          'resistor-4k7': 'resistor',
-          'resistor-10k': 'resistor',
-          'resistor-22k': 'resistor',
-          'resistor-47k': 'resistor',
-          'resistor-100k': 'resistor',
-          'resistor-1m': 'resistor',
-          'cap-10p': 'capacitor',
-          'cap-22p': 'capacitor',
-          'cap-100p': 'capacitor',
-          'cap-1n': 'capacitor',
-          'cap-10n': 'capacitor',
-          'cap-100n': 'capacitor',
-          'cap-1u': 'capacitor',
-          'cap-elec-1u': 'capacitor-electrolytic',
-          'cap-elec-10u': 'capacitor-electrolytic',
-          'cap-elec-47u': 'capacitor-electrolytic',
-          'cap-elec-100u': 'capacitor-electrolytic',
-          'cap-elec-470u': 'capacitor-electrolytic',
-          'cap-elec-1000u': 'capacitor-electrolytic',
-          'ind-100u': 'inductor',
-          'ind-1m': 'inductor',
-          'ind-10m': 'inductor',
-        };
-        for (const [preset, base] of Object.entries(PRESET_TO_BASE)) {
-          PASSIVE_PIN_PAIRS[preset] = PASSIVE_PIN_PAIRS[base];
-        }
-
-        // Depth-limited BFS: trace from (fromId, fromPin) through wires,
-        // traversing through passive components to reach a board pin.
-        //
-        // Phase 1b: the legacy `trace()` returns just the pin number
-        // (backward compat); a sibling `traceDetailed()` returns the
-        // same pin plus a `crossedActiveDevice` flag so the resolver
-        // factory can decide between digital fast-path and SPICE-
-        // resolved per-pin.
-        const trace = (fromId: string, fromPin: string, depth: number): number | null => {
-          return traceDetailed(fromId, fromPin, depth).arduinoPin;
-        };
-
-        const traceDetailed = (
-          fromId: string,
-          fromPin: string,
-          depth: number,
-          activeSeen = false,
-        ): { arduinoPin: number | null; crossedActiveDevice: boolean } => {
-          if (depth > 6) return { arduinoPin: null, crossedActiveDevice: activeSeen };
-
-          const wires = state.wires.filter(
-            (w) =>
-              (w.start.componentId === fromId && w.start.pinName === fromPin) ||
-              (w.end.componentId === fromId && w.end.pinName === fromPin),
-          );
-
-          for (const w of wires) {
-            const selfEp =
-              w.start.componentId === fromId && w.start.pinName === fromPin ? w.start : w.end;
-            const otherEp = selfEp === w.start ? w.end : w.start;
-
-            if (isBoardComponent(otherEp.componentId)) {
-              const boardKind =
-                state.boards.find((b) => b.id === otherEp.componentId)?.boardKind ??
-                otherEp.componentId;
-              const pin = boardPinToNumber(boardKind, otherEp.pinName);
-              if (pin !== null) return { arduinoPin: pin, crossedActiveDevice: activeSeen };
-            } else {
-              const comp = state.components.find((c) => c.id === otherEp.componentId);
-              const pair = comp && PASSIVE_PIN_PAIRS[comp.metadataId];
-              if (pair) {
-                const [p1, p2] = pair;
-                const otherPin = otherEp.pinName === p1 ? p2 : p1;
-                const nowActive =
-                  activeSeen || (comp ? isActiveDevice(comp.metadataId) : false);
-                const result = traceDetailed(
-                  otherEp.componentId,
-                  otherPin,
-                  depth + 1,
-                  nowActive,
-                );
-                if (result.arduinoPin !== null) return result;
-              }
-            }
-          }
-          return { arduinoPin: null, crossedActiveDevice: activeSeen };
-        };
-
-        return trace(id, componentPinName, 0);
+        return traceDetailed(state, id, componentPinName, 0).arduinoPin;
       };
 
       // PinResolver factory — Phase 0 of the mixed-mode simulator project
@@ -416,7 +403,7 @@ export const DynamicComponent: React.FC<DynamicComponentProps> = ({
         // voltages (handles transistor inversion, op-amp gain, diode
         // forward-drop, etc.).  If no → use the legacy digital fast-path
         // (zero SPICE cost, identical to Phase 0 behavior).
-        const detailed = traceDetailed(id, componentPinName, 0);
+        const detailed = traceDetailed(state, id, componentPinName, 0);
         if (detailed.crossedActiveDevice) {
           const scheduler = getMixedModeScheduler();
           // Phase 3: threshold model from the OWNER BOARD's logic family
