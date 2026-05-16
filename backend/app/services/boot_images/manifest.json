@@ -22,13 +22,13 @@
         {
           "name": "raspios-trixie-armhf.img",
           "asset_id": "raspios-trixie-armhf-zst",
-          "sha256": "0606578f5a6054004f9466bbeaa99131eacef0c2d3ab7317c2ed22373ce16277",
+          "sha256": "1c5d05449be589fcdbc3283364462d40dd5efbc685e2bd5169fd857a311ff5b0",
           "size_bytes": 5729419264,
-          "version": "2026-04-21+velxio-init-v2",
+          "version": "2026-04-21+ttyAMA1",
           "compressed": {
             "encoding": "zstd",
-            "sha256": "739f4186de775a44f81e4e34a8db2bd76c54ca59e68bd51ca17c36594fa54b4c",
-            "size_bytes": 1488006498
+            "sha256": "2f5e62277cba51bc66f4a2d76666eae34e8ef5a1fbba4169b9f2824830afe115",
+            "size_bytes": 1488004697
           }
         }
       ]
