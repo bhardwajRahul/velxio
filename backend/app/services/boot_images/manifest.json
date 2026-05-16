@@ -8,9 +8,9 @@
         {
           "name": "kernel8.img",
           "asset_id": "kernel8-pi3",
-          "sha256": "495bf3ec05ad1de29cb884ec3d5e89bfc824740f537d40cbe6be59ee1cdc6ef9",
-          "size_bytes": 9695883,
-          "version": "2026-04-21"
+          "sha256": "2f87328ab8d36c266ac0545e59a7eed53841e146a75e0010929d3dafd0209310",
+          "size_bytes": 24367616,
+          "version": "2026-03-11+raw"
         },
         {
           "name": "bcm2710-rpi-3-b.dtb",

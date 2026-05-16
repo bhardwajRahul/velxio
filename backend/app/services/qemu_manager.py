@@ -184,13 +184,22 @@ class QemuManager:
             # ttyAMA1 → GPIO shim protocol
             '-serial', f'tcp:127.0.0.1:{inst.gpio_port},server,nowait',
             '-append',
+            # earlycon=pl011,mmio32,0x3f201000 — without explicit address
+            # the kernel doesn't initialise the BCM2837 PL011 UART early
+            # enough for any output to reach ttyAMA0; we get a silent
+            # boot followed by a "broken simulator" report. The address
+            # matches the BCM2837 SoC peripheral mapping (Pi 3 base
+            # 0x3f000000 + PL011 offset 0x201000).
+            #
             # No `quiet`: surface kernel boot messages to ttyAMA0 so the
-            # user sees progress while the 5.4 GiB Pi OS rootfs comes up
-            # (~30-60 s wall on a QEMU-emulated Cortex-A53 quad). No
-            # `init=/bin/sh`: let systemd run normally so a real
-            # `serial-getty@ttyAMA0` lands the user at a login prompt
-            # instead of a silent non-interactive shell.
-            'console=ttyAMA0 root=/dev/mmcblk0p2 rootwait rw '
+            # user sees progress while the 5.4 GiB Pi OS rootfs comes up.
+            # No `init=/bin/sh`: let systemd run normally; the SD image
+            # ships with a serial-getty@ttyAMA0 autologin drop-in (baked
+            # by scripts/configure-pi3-autologin.sh) so the user lands
+            # at a root shell without credentials.
+            'earlycon=pl011,mmio32,0x3f201000 '
+            'console=ttyAMA0,115200 '
+            'root=/dev/mmcblk0p2 rootwait rw '
             'dwc_otg.lpm_enable=0',
         ]
 
