@@ -118,12 +118,18 @@ class QemuManager:
 
     async def send_serial_bytes(self, client_id: str, data: bytes) -> None:
         inst = self._instances.get(client_id)
-        if inst and inst._serial_writer:
-            inst._serial_writer.write(data)
-            try:
-                await inst._serial_writer.drain()
-            except Exception as e:
-                logger.warning('send_serial_bytes drain: %s', e)
+        if not inst:
+            logger.warning('send_serial_bytes: no instance for client_id=%s', client_id)
+            return
+        if not inst._serial_writer:
+            logger.warning('send_serial_bytes: %s has no serial writer (qemu not connected yet?)', client_id)
+            return
+        logger.info('send_serial_bytes: %s sending %d bytes: %r', client_id, len(data), bytes(data[:32]))
+        inst._serial_writer.write(data)
+        try:
+            await inst._serial_writer.drain()
+        except Exception as e:
+            logger.warning('send_serial_bytes drain: %s', e)
 
     # ── Boot sequence ─────────────────────────────────────────────────────────
 
