@@ -80,6 +80,14 @@ const MINIMAL_FIXTURES: Record<string, Fixture> = {
     properties: { waveform: 'sine', frequency: 1000, amplitude: 1, offset: 0 },
     topology: { SIG: 'load', GND: 'gnd' },
   },
+  // Regulated power supply — same 2-pin shape as battery but with mode +
+  // voltage + currentLimit knobs. Loaded to GND so its ideal V-source has
+  // somewhere to push current without colliding with another voltage source.
+  'power-supply': {
+    pins: ['+', '−'],
+    properties: { mode: 'dc', voltage: 5, frequency: 50, currentLimit: 1 },
+    topology: { '+': 'load', '−': 'gnd' },
+  },
   pushbutton: { pins: ['A', 'B'] },
   'slide-switch': { pins: ['1', '2'], properties: { value: 1 } },
   'slide-potentiometer': {

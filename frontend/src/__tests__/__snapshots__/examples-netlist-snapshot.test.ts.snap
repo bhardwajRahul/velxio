@@ -1264,22 +1264,30 @@ R_autopull_n4 n4 0 100Meg
 
 exports[`netlist snapshot — circuits (40 examples) > mega-multi-led 1`] = `
 "* Velxio circuit
-V_led0_sense n0 led0_sense_mid DC 0
+V_led0_sense n9 led0_sense_mid DC 0
 D_led0 led0_sense_mid n8 LED_RED
-V_led1_sense n1 led1_sense_mid DC 0
+V_led1_sense n10 led1_sense_mid DC 0
 D_led1 led1_sense_mid n8 LED_RED
-V_led2_sense n2 led2_sense_mid DC 0
+V_led2_sense n11 led2_sense_mid DC 0
 D_led2 led2_sense_mid n8 LED_RED
-V_led3_sense n3 led3_sense_mid DC 0
+V_led3_sense n12 led3_sense_mid DC 0
 D_led3 led3_sense_mid n8 LED_RED
-V_led4_sense n4 led4_sense_mid DC 0
+V_led4_sense n13 led4_sense_mid DC 0
 D_led4 led4_sense_mid n8 LED_RED
-V_led5_sense n5 led5_sense_mid DC 0
+V_led5_sense n14 led5_sense_mid DC 0
 D_led5 led5_sense_mid n8 LED_RED
-V_led6_sense n6 led6_sense_mid DC 0
+V_led6_sense n15 led6_sense_mid DC 0
 D_led6 led6_sense_mid n8 LED_RED
-V_led7_sense n7 led7_sense_mid DC 0
+V_led7_sense n16 led7_sense_mid DC 0
 D_led7 led7_sense_mid n8 LED_RED
+R_r0 n0 n9 220
+R_r1 n1 n10 220
+R_r2 n2 n11 220
+R_r3 n3 n12 220
+R_r4 n4 n13 220
+R_r5 n5 n14 220
+R_r6 n6 n15 220
+R_r7 n7 n16 220
 R_autopull_n0 n0 0 100Meg
 R_autopull_n1 n1 0 100Meg
 R_autopull_n2 n2 0 100Meg
@@ -1289,6 +1297,14 @@ R_autopull_n5 n5 0 100Meg
 R_autopull_n6 n6 0 100Meg
 R_autopull_n7 n7 0 100Meg
 R_autopull_n8 n8 0 100Meg
+R_autopull_n9 n9 0 100Meg
+R_autopull_n10 n10 0 100Meg
+R_autopull_n11 n11 0 100Meg
+R_autopull_n12 n12 0 100Meg
+R_autopull_n13 n13 0 100Meg
+R_autopull_n14 n14 0 100Meg
+R_autopull_n15 n15 0 100Meg
+R_autopull_n16 n16 0 100Meg
 .model LED_RED D(Is=1e-20 N=1.7)
 .op
 .end"
