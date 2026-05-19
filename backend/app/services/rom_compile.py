@@ -1,0 +1,157 @@
+"""ROM-compile service — turns a chip-program source file into raw ROM bytes.
+
+Backs the `POST /api/compile-rom` endpoint that the frontend's "Compile" button
+uses when the active file is a chip-program file (.s / .asm / .hex / .bin).
+The output is base64-encoded bytes the frontend can stash in the chip's
+`romBytes` property; the chip then reads them at chip_setup via
+`vx_rom_size` / `vx_rom_read`.
+
+Supported targets and formats:
+
+  target=8080  format=asm   → in-tree two-pass Intel 8080 assembler (asm8080.py)
+  target=*     format=hex   → Intel HEX parser
+  target=*     format=bin   → raw byte passthrough (already-compiled ROM)
+
+Future: z80/8086/4004 assemblers and SDCC for C sources.
+"""
+from __future__ import annotations
+
+import base64
+import logging
+from importlib import import_module
+from typing import Literal
+
+logger = logging.getLogger(__name__)
+
+# Lazy-load the asm8080 module from this services dir so the import stays
+# explicit (no implicit sys.path manipulation).
+_ASM_MODULE = None
+
+
+def _asm8080():
+    global _ASM_MODULE
+    if _ASM_MODULE is None:
+        # The file ships alongside this one as backend/app/services/asm8080.py.
+        # Use importlib so test harnesses can mock it if needed.
+        _ASM_MODULE = import_module("app.services.asm8080")
+    return _ASM_MODULE
+
+
+Target = Literal["8080", "z80", "8086", "4004"]
+Format = Literal["asm", "hex", "bin"]
+
+
+def parse_intel_hex(text: str) -> bytes:
+    """Parse Intel HEX records into a flat byte buffer. Unknown record types
+    are skipped; data records (type 0x00) are placed at their declared address.
+    """
+    out = bytearray()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line.startswith(":"):
+            continue
+        try:
+            length = int(line[1:3], 16)
+            addr   = int(line[3:7], 16)
+            rtype  = int(line[7:9], 16)
+        except ValueError:
+            continue
+        if rtype == 0x01:        # EOF record
+            break
+        if rtype != 0x00:        # ignore extended-segment, start-address, etc.
+            continue
+        data_hex = line[9 : 9 + length * 2]
+        try:
+            data = bytes.fromhex(data_hex)
+        except ValueError:
+            continue
+        end = addr + len(data)
+        if end > len(out):
+            out.extend(b"\x00" * (end - len(out)))
+        out[addr:end] = data
+    return bytes(out)
+
+
+def assemble_8080(source: str) -> bytes:
+    """Two-pass Intel 8080 assembler. Returns raw ROM bytes."""
+    return _asm8080().assemble(source)
+
+
+def compile_rom(source: str, target: Target, fmt: Format) -> dict:
+    """Compile a chip-program source to ROM bytes.
+
+    Returns a dict shaped like:
+        { success, rom_base64, byte_size, stderr, error }
+    """
+    fmt_l = fmt.lower()
+    tgt_l = target.lower()
+
+    if fmt_l == "bin":
+        # Source may arrive as a hex string (frontend pre-encodes binary)
+        # or as raw text. Try hex-encoded first.
+        clean = "".join(source.split())
+        try:
+            data = bytes.fromhex(clean)
+        except ValueError:
+            data = source.encode("latin1")
+        return {
+            "success": True,
+            "rom_base64": base64.b64encode(data).decode("ascii"),
+            "byte_size": len(data),
+            "stderr": "",
+            "error": None,
+        }
+
+    if fmt_l == "hex":
+        try:
+            data = parse_intel_hex(source)
+        except Exception as e:  # noqa: BLE001
+            return {
+                "success": False,
+                "rom_base64": None,
+                "byte_size": 0,
+                "stderr": "",
+                "error": f"Intel HEX parse failed: {e}",
+            }
+        return {
+            "success": True,
+            "rom_base64": base64.b64encode(data).decode("ascii"),
+            "byte_size": len(data),
+            "stderr": "",
+            "error": None,
+        }
+
+    if fmt_l == "asm":
+        if tgt_l == "8080":
+            try:
+                data = assemble_8080(source)
+            except Exception as e:  # noqa: BLE001
+                return {
+                    "success": False,
+                    "rom_base64": None,
+                    "byte_size": 0,
+                    "stderr": "",
+                    "error": f"asm8080: {e}",
+                }
+            return {
+                "success": True,
+                "rom_base64": base64.b64encode(data).decode("ascii"),
+                "byte_size": len(data),
+                "stderr": "",
+                "error": None,
+            }
+        return {
+            "success": False,
+            "rom_base64": None,
+            "byte_size": 0,
+            "stderr": "",
+            "error": f"No assembler for target {target!r} yet — only 8080 is wired up.",
+        }
+
+    return {
+        "success": False,
+        "rom_base64": None,
+        "byte_size": 0,
+        "stderr": "",
+        "error": f"Unknown format {fmt!r} — expected asm / hex / bin.",
+    }

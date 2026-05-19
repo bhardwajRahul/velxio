@@ -24,6 +24,59 @@ import i8080ReplC      from '../components/customChips/examples/intel/i8080-repl
 import i8080ReplJ      from '../components/customChips/examples/intel/i8080-repl.chip.json?raw';
 import i8080CounterC   from '../components/customChips/examples/intel/i8080-counter.c?raw';
 import i8080CounterJ   from '../components/customChips/examples/intel/i8080-counter.chip.json?raw';
+import i8080CpuC       from '../components/customChips/examples/intel/i8080-cpu.c?raw';
+import i8080CpuJ       from '../components/customChips/examples/intel/i8080-cpu.chip.json?raw';
+
+const killbitsAsm = `; Kill the Bit -- Dean McDaniel, May 15, 1975. Public domain.
+;
+; The classic Altair 8800 front-panel reflex game adapted to Velxio.
+; A single LED walks across the 8 LEDs; press the matching button at
+; the right moment to "kill" the bit. Miss, and an extra bit lights up
+; next pass. Get all bits out to win.
+;
+; This file is the ROM image for the programmable i8080-cpu chip. Click
+; Compile to assemble it (calls /api/compile-rom on the backend), then
+; click Run to start the 8080 emulator.
+
+        ORG 0x0000
+
+        LXI  SP, 0xBFFF      ; stack at top of RAM
+        LXI  H, 0x0000       ; delay accumulator
+        MVI  D, 0x80         ; D = bit pattern (start: LED7 lit)
+        LXI  B, 0x0E00       ; delay step
+
+beat:
+        DAD  B               ; loop ~18 times per visible frame
+        JNC  beat
+
+        ; One tick: show pattern + sample buttons + advance bit.
+        MOV  A, D
+        STA  0xC000          ; LED port
+
+        LDA  0xC003          ; button bitmap
+        XRA  D               ; matching bits cancel
+        RRC                  ; rotate right
+        MOV  D, A
+
+        JMP  beat
+`;
+
+const killbitsSketch = `// Kill the Bit -- Arduino Uno companion sketch.
+//
+// All the action happens in the i8080-cpu chip on the canvas. This sketch
+// just keeps Serial alive in case you wire UART later. Watch the LEDs and
+// press the matching button on each beat.
+//
+// Steps:
+//   1. Open killbits.s in the editor.
+//   2. Click Compile -- the backend assembles the 28-byte ROM and injects
+//      it into the i8080-cpu chip's romBytes property.
+//   3. Click Run. A single LED will start walking across the 8 outputs.
+//   4. Press the button (BTN0..BTN7) below the lit LED to "kill" the bit.
+
+void setup() {}
+void loop() {}
+`;
 
 const replSketch = `// i8080 banner streamer
 //
@@ -228,6 +281,93 @@ export const retroIntelExamples: ExampleProject[] = [
       {
         id: 'wire-i8080c-gnd',
         start: { componentId: 'i8080c', pinName: 'GND' },
+        end: { componentId: 'arduino-uno', pinName: 'GND' },
+        color: '#000000',
+      },
+    ],
+  },
+
+  // ── Kill-the-Bit (1975) — first example using the PROGRAMMABLE i8080-cpu chip ──
+  {
+    id: 'i8080-killbits',
+    title: 'Kill the Bit (1975)',
+    description:
+      "Dean McDaniel's iconic 1975 Altair 8800 reflex game, running on a programmable Intel 8080 chip. " +
+      'A single LED walks across 8 LEDs; press the matching button at the right moment to kill it. ' +
+      'The ROM lives in killbits.s as a project file — click Compile to assemble it, then Run.',
+    category: 'games',
+    difficulty: 'advanced',
+    boardType: 'arduino-uno',
+    tags: ['retro', '8080', 'cpu', 'leds', 'buttons', 'game', 'altair', 'wasm', 'custom-chip', 'asm', 'programmable'],
+    code: killbitsSketch,
+    files: [
+      { name: 'sketch.ino', content: killbitsSketch },
+      { name: 'killbits.s', content: killbitsAsm },
+    ],
+    components: [
+      {
+        type: 'custom-chip',
+        id: 'i8080cpu',
+        x: 380,
+        y: 120,
+        properties: {
+          chipName: 'i8080 CPU (programmable)',
+          sourceC: i8080CpuC,
+          chipJson: i8080CpuJ,
+          wasmBase64: '',
+          romBytes: '',
+          programFile: 'killbits.s',
+        },
+      },
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        type: 'wokwi-led',
+        id: `led-${i}`,
+        x: 700 + i * 50,
+        y: 120,
+        properties: { color: i < 4 ? 'yellow' : 'orange' },
+      })),
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        type: 'wokwi-pushbutton',
+        id: `btn-${i}`,
+        x: 700 + i * 50,
+        y: 380,
+        properties: { color: 'green' },
+      })),
+    ],
+    wires: [
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        id: `wire-led-${i}`,
+        start: { componentId: 'i8080cpu', pinName: `LED${i}` },
+        end: { componentId: `led-${i}`, pinName: 'A' },
+        color: '#facc15',
+      })),
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        id: `wire-led-${i}-gnd`,
+        start: { componentId: `led-${i}`, pinName: 'C' },
+        end: { componentId: 'arduino-uno', pinName: 'GND' },
+        color: '#000000',
+      })),
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        id: `wire-btn-${i}`,
+        start: { componentId: `btn-${i}`, pinName: '1.l' },
+        end: { componentId: 'i8080cpu', pinName: `BTN${i}` },
+        color: '#22c55e',
+      })),
+      ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({
+        id: `wire-btn-${i}-pwr`,
+        start: { componentId: `btn-${i}`, pinName: '2.r' },
+        end: { componentId: 'arduino-uno', pinName: '5V' },
+        color: '#e74c3c',
+      })),
+      {
+        id: 'wire-cpu-vcc',
+        start: { componentId: 'i8080cpu', pinName: 'VCC' },
+        end: { componentId: 'arduino-uno', pinName: '5V' },
+        color: '#e74c3c',
+      },
+      {
+        id: 'wire-cpu-gnd',
+        start: { componentId: 'i8080cpu', pinName: 'GND' },
         end: { componentId: 'arduino-uno', pinName: 'GND' },
         color: '#000000',
       },
