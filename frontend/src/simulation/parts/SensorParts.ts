@@ -529,6 +529,52 @@ export function createNeopixelDecoder(
   return unsub;
 }
 
+/**
+ * Attach a WS2812 part to whichever of the two pixel sources its board has.
+ *
+ * A NeoPixel is driven one of two ways, and which one is a property of the
+ * BOARD, not of the part:
+ *
+ *  - Bit-banged (AVR, and anything else whose core toggles the pad in a
+ *    delay loop). The pixel colours only exist as edge timings on DIN, so
+ *    `createNeopixelDecoder` recovers them by counting cycles between edges.
+ *
+ *  - Driven by a hardware peripheral (RMT on every ESP32; Adafruit_NeoPixel
+ *    picks it automatically there). The pad never toggles at bit rate, the
+ *    engine decodes the peripheral's stream itself, and the part has to be
+ *    HANDED the frame. Boards whose simulator can do that expose
+ *    `subscribeWs2812`.
+ *
+ * Both are attached: a board offers one or the other, never both at once, and
+ * subscribing to the source that stays silent costs nothing. Attaching only
+ * the decoder is what left the `neopixel` part black on every ESP32 — the
+ * sketch ran, the engine had the colours, and nothing on the canvas was
+ * listening for them.
+ */
+function attachWs2812Part(
+  simulator: unknown,
+  pinDIN: number,
+  onPixel: (index: number, r: number, g: number, b: number) => void,
+): () => void {
+  const unsubDecoder = createNeopixelDecoder(simulator as any, pinDIN, onPixel);
+
+  const hw = simulator as {
+    subscribeWs2812?: (
+      pin: number,
+      sink: (pixels: Array<{ r: number; g: number; b: number }>) => void,
+    ) => () => void;
+  };
+  const unsubHardware =
+    hw.subscribeWs2812?.(pinDIN, (pixels) => {
+      pixels.forEach((px, i) => onPixel(i, px.r, px.g, px.b));
+    }) ?? (() => {});
+
+  return () => {
+    unsubDecoder();
+    unsubHardware();
+  };
+}
+
 // ─── LED Ring (WS2812B NeoPixel ring) ────────────────────────────────────────
 
 PartSimulationRegistry.register('led-ring', {
@@ -538,7 +584,7 @@ PartSimulationRegistry.register('led-ring', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (index, r, g, b) => {
       try {
         el.setPixel(index, { r, g, b });
       } catch (_) {
@@ -559,7 +605,7 @@ PartSimulationRegistry.register('neopixel-matrix', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (index, r, g, b) => {
       const cols: number = el.cols ?? 8;
       const row = Math.floor(index / cols);
       const col = index % cols;
@@ -586,7 +632,7 @@ PartSimulationRegistry.register('neopixel', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (_index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (_index, r, g, b) => {
       el.r = r / 255;
       el.g = g / 255;
       el.b = b / 255;

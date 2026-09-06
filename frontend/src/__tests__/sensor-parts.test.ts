@@ -455,3 +455,101 @@ describe('neopixel-matrix — attachEvents', () => {
     expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(6, expect.any(Function));
   });
 });
+
+// ─── The hardware (RMT) pixel path ───────────────────────────────────────────
+
+/**
+ * A board simulator that drives its pixels through a peripheral instead of by
+ * bit-banging the pad — every ESP32. `subscribeWs2812` is the whole contract:
+ * the engine already decoded the frame, and the part is HANDED it.
+ */
+function makeRmtSimulator() {
+  const sim = makeSimulator() as ReturnType<typeof makeSimulator> & {
+    subscribeWs2812: ReturnType<typeof vi.fn>;
+    emitFrame: (pin: number, pixels: Array<{ r: number; g: number; b: number }>) => void;
+  };
+  const sinks = new Map<number, (px: Array<{ r: number; g: number; b: number }>) => void>();
+  sim.subscribeWs2812 = vi.fn((pin: number, sink: (px: any) => void) => {
+    sinks.set(pin, sink);
+    return () => sinks.delete(pin);
+  });
+  sim.emitFrame = (pin, pixels) => sinks.get(pin)?.(pixels);
+  return sim;
+}
+
+describe('WS2812 parts — hardware-decoded frames (ESP32 RMT)', () => {
+  // The regression this guards: Adafruit_NeoPixel on ESP32 goes out over RMT,
+  // so DIN never toggles at bit rate and the edge decoder sees NOTHING. The
+  // part used to attach only that decoder, and every NeoPixel on every ESP32
+  // board stayed black while the sketch ran perfectly.
+  it('paints the single neopixel from a frame the engine decoded', () => {
+    const logic = PartSimulationRegistry.get('neopixel')!;
+    const sim = makeRmtSimulator();
+    const el = makeElement() as any;
+
+    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    expect(sim.subscribeWs2812).toHaveBeenCalledWith(6, expect.any(Function));
+
+    sim.emitFrame(6, [{ r: 255, g: 0, b: 0 }]);
+    expect(el.r).toBeCloseTo(1);
+    expect(el.g).toBeCloseTo(0);
+    expect(el.b).toBeCloseTo(0);
+  });
+
+  it('paints a ring pixel-by-pixel, in frame order', () => {
+    const logic = PartSimulationRegistry.get('led-ring')!;
+    const sim = makeRmtSimulator();
+    const el = makeElement() as any;
+    el.setPixel = vi.fn();
+
+    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    sim.emitFrame(6, [
+      { r: 1, g: 2, b: 3 },
+      { r: 4, g: 5, b: 6 },
+    ]);
+
+    expect(el.setPixel).toHaveBeenNthCalledWith(1, 0, { r: 1, g: 2, b: 3 });
+    expect(el.setPixel).toHaveBeenNthCalledWith(2, 1, { r: 4, g: 5, b: 6 });
+  });
+
+  it('maps a matrix frame to row/col', () => {
+    const logic = PartSimulationRegistry.get('neopixel-matrix')!;
+    const sim = makeRmtSimulator();
+    const el = makeElement() as any;
+    el.setPixel = vi.fn();
+    el.cols = 2;
+
+    logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    sim.emitFrame(6, [
+      { r: 1, g: 1, b: 1 },
+      { r: 2, g: 2, b: 2 },
+      { r: 3, g: 3, b: 3 },
+    ]);
+
+    expect(el.setPixel).toHaveBeenNthCalledWith(1, 0, 0, { r: 1, g: 1, b: 1 });
+    expect(el.setPixel).toHaveBeenNthCalledWith(2, 0, 1, { r: 2, g: 2, b: 2 });
+    expect(el.setPixel).toHaveBeenNthCalledWith(3, 1, 0, { r: 3, g: 3, b: 3 });
+  });
+
+  it('releases the pin on cleanup so a rewire hands it back', () => {
+    const logic = PartSimulationRegistry.get('neopixel')!;
+    const sim = makeRmtSimulator();
+    const el = makeElement() as any;
+
+    const cleanup = logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+    cleanup!();
+    sim.emitFrame(6, [{ r: 255, g: 255, b: 255 }]);
+    expect(el.r).toBeUndefined();
+  });
+
+  it('still works on a board with no hardware feed (bit-banged AVR)', () => {
+    const logic = PartSimulationRegistry.get('neopixel')!;
+    const sim = makeSimulator(); // no subscribeWs2812
+    const el = makeElement() as any;
+
+    const cleanup = logic.attachEvents!(el, sim as any, pinMap({ DIN: 6 }));
+
+    expect(sim.pinManager.onPinChange).toHaveBeenCalledWith(6, expect.any(Function));
+    expect(() => cleanup!()).not.toThrow();
+  });
+});
