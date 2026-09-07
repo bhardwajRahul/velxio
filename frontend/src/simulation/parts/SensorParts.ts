@@ -473,8 +473,36 @@ export function createNeopixelDecoder(
   const pinManager = simulator.pinManager;
   if (!pinManager) return () => {};
 
-  const RESET_CYCLES = 800;
-  const BIT1_THRESHOLD = 8;
+  // The line is decoded from how LONG the pad stays high, so this needs the
+  // board's own clock. Every simulator answers getCurrentCycles()/getClockHz();
+  // reading `simulator.cpu.cycles` instead only ever worked on the AVR, because
+  // it is the only one that has a `cpu`. The RP2040 does bit-bang the line —
+  // measured 241 edges and 5 completed frames for one two-colour sketch — but
+  // every edge timestamped at cycle 0, so every high measured 0 cycles, every
+  // bit decoded as 0, and the part painted #000000 on every frame. Reading
+  // black off a real signal looks exactly like a part that does nothing.
+  const readCycles = (): number => {
+    const c = simulator.getCurrentCycles?.();
+    if (typeof c === 'number' && c >= 0) return c;
+    const legacy = simulator.cpu?.cycles;
+    return typeof legacy === 'number' ? legacy : -1;
+  };
+  // A board with no cycle counter cannot be decoded from edges at all (the
+  // ESP32 shim answers -1: its guest runs in an engine or in QEMU). Refuse
+  // rather than decode garbage — those boards deliver whole frames instead,
+  // through attachWs2812Part's hardware feed, and a decoder running on a
+  // broken clock would paint black straight over them.
+  if (readCycles() < 0) return () => {};
+
+  // Physical WS2812B timings in cycles of THIS board's clock: a '1' holds the
+  // line high ~0.7 us and a '0' ~0.35 us, so 0.5 us splits them; a frame is
+  // latched by >50 us low. On a 16 MHz AVR these come out as the 8 and 800 that
+  // used to be hard-coded here — which is why the AVR was the one family where
+  // this worked, and why every faster core silently decoded all-ones or,
+  // without a working clock, all-zeros.
+  const clockHz = Number(simulator.getClockHz?.()) || 16_000_000;
+  const BIT1_THRESHOLD = Math.max(1, Math.round(clockHz * 0.5e-6));
+  const RESET_CYCLES = Math.max(8 * BIT1_THRESHOLD, Math.round(clockHz * 50e-6));
 
   let lastRisingCycle = 0;
   let lastFallingCycle = 0;
@@ -486,8 +514,7 @@ export function createNeopixelDecoder(
   let pixelIndex = 0;
 
   const unsub = pinManager.onPinChange(pinDIN, (_: number, high: boolean) => {
-    const cpu = simulator.cpu ?? (simulator as any).cpu;
-    const now: number = cpu?.cycles ?? 0;
+    const now = readCycles();
 
     if (high) {
       const lowDur = now - lastFallingCycle;
