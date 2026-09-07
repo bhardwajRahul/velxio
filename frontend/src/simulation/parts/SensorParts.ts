@@ -619,8 +619,36 @@ export function createNeopixelDecoder(
   const pinManager = simulator.pinManager;
   if (!pinManager) return () => {};
 
-  const RESET_CYCLES = 800;
-  const BIT1_THRESHOLD = 8;
+  // The line is decoded from how LONG the pad stays high, so this needs the
+  // board's own clock. Every simulator answers getCurrentCycles()/getClockHz();
+  // reading `simulator.cpu.cycles` instead only ever worked on the AVR, because
+  // it is the only one that has a `cpu`. The RP2040 does bit-bang the line —
+  // measured 241 edges and 5 completed frames for one two-colour sketch — but
+  // every edge timestamped at cycle 0, so every high measured 0 cycles, every
+  // bit decoded as 0, and the part painted #000000 on every frame. Reading
+  // black off a real signal looks exactly like a part that does nothing.
+  const readCycles = (): number => {
+    const c = simulator.getCurrentCycles?.();
+    if (typeof c === 'number' && c >= 0) return c;
+    const legacy = simulator.cpu?.cycles;
+    return typeof legacy === 'number' ? legacy : -1;
+  };
+  // A board with no cycle counter cannot be decoded from edges at all (the
+  // ESP32 shim answers -1: its guest runs in an engine or in QEMU). Refuse
+  // rather than decode garbage — those boards deliver whole frames instead,
+  // through attachWs2812Part's hardware feed, and a decoder running on a
+  // broken clock would paint black straight over them.
+  if (readCycles() < 0) return () => {};
+
+  // Physical WS2812B timings in cycles of THIS board's clock: a '1' holds the
+  // line high ~0.7 us and a '0' ~0.35 us, so 0.5 us splits them; a frame is
+  // latched by >50 us low. On a 16 MHz AVR these come out as the 8 and 800 that
+  // used to be hard-coded here — which is why the AVR was the one family where
+  // this worked, and why every faster core silently decoded all-ones or,
+  // without a working clock, all-zeros.
+  const clockHz = Number(simulator.getClockHz?.()) || 16_000_000;
+  const BIT1_THRESHOLD = Math.max(1, Math.round(clockHz * 0.5e-6));
+  const RESET_CYCLES = Math.max(8 * BIT1_THRESHOLD, Math.round(clockHz * 50e-6));
 
   let lastRisingCycle = 0;
   let lastFallingCycle = 0;
@@ -632,8 +660,7 @@ export function createNeopixelDecoder(
   let pixelIndex = 0;
 
   const unsub = pinManager.onPinChange(pinDIN, (_: number, high: boolean) => {
-    const cpu = simulator.cpu ?? (simulator as any).cpu;
-    const now: number = cpu?.cycles ?? 0;
+    const now = readCycles();
 
     if (high) {
       const lowDur = now - lastFallingCycle;
@@ -675,6 +702,52 @@ export function createNeopixelDecoder(
   return unsub;
 }
 
+/**
+ * Attach a WS2812 part to whichever of the two pixel sources its board has.
+ *
+ * A NeoPixel is driven one of two ways, and which one is a property of the
+ * BOARD, not of the part:
+ *
+ *  - Bit-banged (AVR, and anything else whose core toggles the pad in a
+ *    delay loop). The pixel colours only exist as edge timings on DIN, so
+ *    `createNeopixelDecoder` recovers them by counting cycles between edges.
+ *
+ *  - Driven by a hardware peripheral (RMT on every ESP32; Adafruit_NeoPixel
+ *    picks it automatically there). The pad never toggles at bit rate, the
+ *    engine decodes the peripheral's stream itself, and the part has to be
+ *    HANDED the frame. Boards whose simulator can do that expose
+ *    `subscribeWs2812`.
+ *
+ * Both are attached: a board offers one or the other, never both at once, and
+ * subscribing to the source that stays silent costs nothing. Attaching only
+ * the decoder is what left the `neopixel` part black on every ESP32 — the
+ * sketch ran, the engine had the colours, and nothing on the canvas was
+ * listening for them.
+ */
+function attachWs2812Part(
+  simulator: unknown,
+  pinDIN: number,
+  onPixel: (index: number, r: number, g: number, b: number) => void,
+): () => void {
+  const unsubDecoder = createNeopixelDecoder(simulator as any, pinDIN, onPixel);
+
+  const hw = simulator as {
+    subscribeWs2812?: (
+      pin: number,
+      sink: (pixels: Array<{ r: number; g: number; b: number }>) => void,
+    ) => () => void;
+  };
+  const unsubHardware =
+    hw.subscribeWs2812?.(pinDIN, (pixels) => {
+      pixels.forEach((px, i) => onPixel(i, px.r, px.g, px.b));
+    }) ?? (() => {});
+
+  return () => {
+    unsubDecoder();
+    unsubHardware();
+  };
+}
+
 // ─── LED Ring (WS2812B NeoPixel ring) ────────────────────────────────────────
 
 PartSimulationRegistry.register('led-ring', {
@@ -684,7 +757,7 @@ PartSimulationRegistry.register('led-ring', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (index, r, g, b) => {
       try {
         el.setPixel(index, { r, g, b });
       } catch (_) {
@@ -705,7 +778,7 @@ PartSimulationRegistry.register('neopixel-matrix', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (index, r, g, b) => {
       const cols: number = el.cols ?? 8;
       const row = Math.floor(index / cols);
       const col = index % cols;
@@ -732,7 +805,7 @@ PartSimulationRegistry.register('neopixel', {
 
     const el = element as any;
 
-    const unsub = createNeopixelDecoder(simulator as any, pinDIN, (_index, r, g, b) => {
+    const unsub = attachWs2812Part(simulator, pinDIN, (_index, r, g, b) => {
       el.r = r / 255;
       el.g = g / 255;
       el.b = b / 255;

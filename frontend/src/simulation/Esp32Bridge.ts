@@ -226,7 +226,18 @@ export class Esp32Bridge {
   /** Pin is no longer routed to any peripheral (firmware reset the
    *  matrix entry). */
   onGpioRoutingClear: ((gpio: number) => void) | null = null;
-  onWs2812Update: ((channel: number, pixels: Ws2812Pixel[]) => void) | null = null;
+  /**
+   * A decoded WS2812 frame from the engine's RMT peripheral.
+   *
+   * `pin` is the GPIO the frame went out on, and it is what a NeoPixel PART on
+   * the canvas is keyed by — the channel alone cannot reach one. The in-browser
+   * engines know the pin (the GPIO matrix routing they emit alongside is
+   * derived from it); the QEMU worker sends the channel only, so it stays
+   * optional and the pin-keyed delivery is skipped when it is absent.
+   */
+  onWs2812Update:
+    | ((channel: number, pixels: Ws2812Pixel[], pin?: number | null) => void)
+    | null = null;
   /**
    * ePaper SSD168x backend rendering. Backend decodes SPI traffic in
    * `Ssd168xEpaperSlave` and emits this event on every 0x20
@@ -502,7 +513,8 @@ export class Esp32Bridge {
           const channel = msg.data.channel as number;
           const raw = msg.data.pixels as [number, number, number][];
           const pixels: Ws2812Pixel[] = raw.map(([r, g, b]) => ({ r, g, b }));
-          this.onWs2812Update?.(channel, pixels);
+          const pin = msg.data.pin as number | undefined;
+          this.onWs2812Update?.(channel, pixels, pin ?? null);
           break;
         }
         case 'epaper_update': {
